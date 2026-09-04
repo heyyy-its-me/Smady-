@@ -1,0 +1,256 @@
+import { useRef, useState } from "react";
+import { Users, ShieldCheck, Send, Upload, Download, Linkedin, UploadCloud, Building2, Factory, UserRound, Globe2, MapPin } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { PageHeader } from "@/layouts/PageHeader";
+import { FormSection } from "@/components/smady/FormSection";
+import { MultiSelectDropdown } from "@/components/smady/MultiSelectDropdown";
+import { ButtonPrimary, ButtonOutline } from "@/components/smady/Button";
+import { StatCard } from "@/components/smady/StatCard";
+import { DataTable, type Column } from "@/components/smady/DataTable";
+import { AvatarInitial } from "@/components/smady/AvatarStack";
+import { StatusBadge } from "@/components/smady/Badge";
+import { KebabMenu } from "@/components/smady/KebabMenu";
+import { EmptyState } from "@/components/smady/EmptyState";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAppData } from "@/context/AppDataContext";
+import { toast } from "@/components/ui/sonner";
+import type { Lead } from "@/types";
+
+const industries = ["B2B SaaS", "Fintech", "Healthtech", "E-commerce", "Manufacturing"];
+const roles = ["VP of Sales", "Head of Growth", "CRO", "Founder", "Director of Marketing"];
+const countries = ["United States", "United Kingdom", "Canada", "Germany", "India"];
+const cities = ["New York", "London", "Toronto", "Berlin", "Bengaluru"];
+const companySizes = ["1-50", "50-200", "200-1000", "1000+"];
+
+const shimmerBar = "rounded-full bg-[linear-gradient(90deg,#F1E9E3_25%,#FFE6D6_50%,#F1E9E3_75%)] bg-[length:200%_100%] animate-shimmer";
+
+export default function Leads() {
+  const { leads, generatingLeads, generateLeads, uploadLeads, sendToOutreach } = useAppData();
+  const formRef = useRef<HTMLDivElement>(null);
+  const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
+  const [selectedCities, setSelectedCities] = useState<string[]>([]);
+  const [companySize, setCompanySize] = useState(companySizes[1]);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+
+  const toggleSelect = (id: string) => setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const allSelectedFilters = [...selectedIndustries, ...selectedRoles, ...selectedCountries, ...selectedCities];
+  const estimatedMatches = allSelectedFilters.length === 0 ? 0 : Math.min(500, allSelectedFilters.length * 35 + 40);
+
+  const onGenerate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await generateLeads({ industries: selectedIndustries, roles: selectedRoles, countries: selectedCountries, cities: selectedCities, companySize });
+  };
+
+  const columns: Column<Lead>[] = [
+    {
+      key: "checkbox",
+      label: "",
+      render: (l) => (
+        <input
+          type="checkbox"
+          checked={selected.includes(l.id)}
+          onChange={() => toggleSelect(l.id)}
+          data-testid={`lead-checkbox-${l.id}`}
+          className="h-4 w-4 rounded border-border text-primary-500"
+        />
+      ),
+    },
+    {
+      key: "lead",
+      label: "Lead",
+      sortable: true,
+      render: (l) => (
+        <div className="flex items-center gap-3">
+          <AvatarInitial name={l.name} />
+          <div>
+            <p className="text-sm font-semibold text-ink">{l.name}</p>
+            <p className="text-xs text-muted">{l.title}</p>
+          </div>
+        </div>
+      ),
+    },
+    { key: "company", label: "Company", render: (l) => <span className="text-sm text-body">{l.company}</span> },
+    { key: "email", label: "Email", render: (l) => <span className="text-sm text-body">{l.email}</span> },
+    {
+      key: "linkedin",
+      label: "LinkedIn",
+      render: (l) => (
+        <a href={l.linkedin} target="_blank" rel="noreferrer" className="text-primary-500" data-testid={`lead-linkedin-${l.id}`}>
+          <Linkedin className="h-4 w-4" strokeWidth={1.5} />
+        </a>
+      ),
+    },
+    { key: "status", label: "Status", render: (l) => <StatusBadge status={l.status} /> },
+    { key: "source", label: "Source", render: (l) => <StatusBadge status={l.source} /> },
+    {
+      key: "kebab",
+      label: "",
+      render: (l) => <KebabMenu testId={`lead-kebab-${l.id}`} items={[{ label: "View lead" }, { label: "Send to outreach", onClick: () => sendToOutreach([l.id]) }]} />,
+    },
+  ];
+
+  const totalFound = leads.length;
+  const verified = leads.filter((l) => l.status !== "New").length;
+  const readyForOutreach = leads.filter((l) => l.status === "New" || l.status === "Verified").length;
+
+  return (
+    <div data-testid="leads-page">
+      <PageHeader />
+
+      <div ref={formRef} className="rounded-2xl bg-surface p-6 shadow-card lg:p-8" data-testid="leads-filter-form-card">
+        <h2 className="text-[15px] font-semibold text-ink">Find Leads Matching Your ICP</h2>
+        <p className="mt-1 text-sm text-body">Filter by audience and location to source your next batch of leads.</p>
+        <form onSubmit={onGenerate} className="mt-6 space-y-5" data-testid="leads-filter-form">
+          <FormSection label="Industry & Roles" tint>
+            <MultiSelectDropdown icon={Factory} label="Industry" placeholder="Type or select an industry..." options={industries} value={selectedIndustries} onChange={setSelectedIndustries} testId="leads-industry-select" />
+            <MultiSelectDropdown icon={UserRound} label="Target Roles" placeholder="Type or select a role..." options={roles} value={selectedRoles} onChange={setSelectedRoles} testId="leads-roles-select" />
+          </FormSection>
+          <FormSection label="Location">
+            <MultiSelectDropdown icon={Globe2} label="Countries" placeholder="Type or select a country..." options={countries} value={selectedCountries} onChange={setSelectedCountries} testId="leads-countries-select" />
+            <MultiSelectDropdown icon={MapPin} label="Cities" placeholder="Type or select a city..." options={cities} value={selectedCities} onChange={setSelectedCities} testId="leads-cities-select" />
+          </FormSection>
+          <FormSection label="Company Size" tint>
+            <div className="relative sm:col-span-2">
+              <Building2 className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" strokeWidth={1.5} />
+              <select
+                value={companySize}
+                onChange={(e) => setCompanySize(e.target.value)}
+                data-testid="leads-company-size-select"
+                className="h-11 w-full rounded-xl border border-border bg-white pl-10 pr-4 text-sm text-ink shadow-[inset_0_1px_2px_rgba(23,20,18,0.04)] transition-all duration-150 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-200"
+              >
+                {companySizes.map((s) => (
+                  <option key={s} value={s}>
+                    {s} employees
+                  </option>
+                ))}
+              </select>
+            </div>
+          </FormSection>
+
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-bg/60 p-4" data-testid="leads-search-summary">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Search Summary:</span>
+              {allSelectedFilters.length === 0 ? (
+                <span className="text-sm text-muted">No filters selected yet</span>
+              ) : (
+                allSelectedFilters.map((c) => (
+                  <span key={c} className="rounded-full bg-primary-50 px-3 py-1 text-xs font-medium text-primary-600">
+                    {c}
+                  </span>
+                ))
+              )}
+            </div>
+            <span className="text-sm font-semibold text-ink" data-testid="leads-estimated-matches">
+              ~{estimatedMatches} leads match these filters
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <div className="flex flex-wrap gap-3">
+              <ButtonOutline type="button" icon={<Upload className="h-4 w-4" strokeWidth={1.5} />} onClick={() => setUploadOpen(true)} data-testid="leads-upload-button">
+                Upload Leads
+              </ButtonOutline>
+              <ButtonOutline
+                type="button"
+                disabled={leads.length === 0}
+                icon={<Download className="h-4 w-4" strokeWidth={1.5} />}
+                onClick={() => toast.success("Downloading leads.csv")}
+                data-testid="leads-download-button"
+              >
+                Download Leads
+              </ButtonOutline>
+            </div>
+            <ButtonPrimary type="submit" loading={generatingLeads} icon={<Users className="h-4 w-4" strokeWidth={1.5} />} data-testid="leads-generate-button">
+              {generatingLeads ? "Sourcing leads…" : "Generate Leads"}
+            </ButtonPrimary>
+          </div>
+        </form>
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-3">
+        <StatCard label="Total Leads Found" value={totalFound} icon={Users} />
+        <StatCard label="Verified Emails" value={verified} icon={ShieldCheck} />
+        <StatCard label="Ready for Outreach" value={readyForOutreach} icon={Send} />
+      </div>
+
+      <div className="mt-6">
+        {generatingLeads && (
+          <div className="space-y-3 rounded-2xl bg-surface p-6 shadow-card" data-testid="leads-loading-skeleton">
+            <div className={`h-4 w-1/4 ${shimmerBar}`} />
+            <div className="mt-4 space-y-3">
+              <div className={`h-3 w-full ${shimmerBar}`} />
+              <div className={`h-3 w-full ${shimmerBar}`} />
+              <div className={`h-3 w-2/3 ${shimmerBar}`} />
+            </div>
+          </div>
+        )}
+        {!generatingLeads && leads.length === 0 && (
+          <EmptyState
+            icon={Users}
+            title="No leads yet"
+            subtitle="Fill in your ICP filters above and generate your first batch of leads."
+            actionLabel="Go to Filters"
+            onAction={() => formRef.current?.scrollIntoView({ behavior: "smooth" })}
+          />
+        )}
+        {!generatingLeads && leads.length > 0 && (
+          <div className="rounded-2xl bg-surface p-6 shadow-card">
+            <DataTable columns={columns} rows={leads} testId="leads-table" />
+          </div>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {selected.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-4 rounded-full bg-ink px-6 py-3 shadow-nav"
+            data-testid="leads-bulk-action-bar"
+          >
+            <span className="text-sm text-white">{selected.length} selected</span>
+            <ButtonPrimary
+              onClick={() => {
+                sendToOutreach(selected);
+                toast.success("Leads sent to outreach");
+                setSelected([]);
+              }}
+              data-testid="leads-send-to-outreach-button"
+            >
+              Send to Outreach
+            </ButtonPrimary>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+        <DialogContent data-testid="leads-upload-modal">
+          <DialogHeader>
+            <DialogTitle>Upload Leads</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border py-10 text-center">
+            <UploadCloud className="h-8 w-8 text-primary-500" strokeWidth={1.5} />
+            <p className="mt-3 text-sm text-body">Drag & drop a CSV file, or click to browse</p>
+          </div>
+          <ButtonPrimary
+            fullWidth
+            className="mt-2"
+            onClick={() => {
+              uploadLeads(5);
+              setUploadOpen(false);
+              toast.success("5 leads uploaded");
+            }}
+            data-testid="leads-upload-confirm-button"
+          >
+            Upload
+          </ButtonPrimary>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
