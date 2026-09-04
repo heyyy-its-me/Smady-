@@ -31,9 +31,13 @@ export default function Signup() {
   } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { terms: false } });
 
   const onSubmit = async (data: FormData) => {
-    await signup(data.fullName, data.email, data.company, data.password);
-    toast.success("Account created — welcome to Smady!");
-    navigate("/dashboard");
+    try {
+      await signup(data.fullName, data.email, data.company, data.password);
+      toast.success("Account created — welcome to Smady!");
+      navigate("/dashboard");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Signup failed");
+    }
   };
 
   return (

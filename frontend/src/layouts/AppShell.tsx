@@ -3,7 +3,14 @@ import { useAuth } from "@/context/AuthContext";
 import { AppPillNav } from "@/components/smady/PillNav";
 
 export function AppShell() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authLoading } = useAuth();
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-bg text-sm text-muted" data-testid="app-shell-loading">
+        Loading…
+      </div>
+    );
+  }
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return (
     <div className="min-h-screen bg-bg">

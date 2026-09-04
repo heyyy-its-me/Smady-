@@ -11,13 +11,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { weeklyEmailsSent, outreachStats } from "@/mock/outreach";
 import { useAppData } from "@/context/AppDataContext";
 import { toast } from "@/components/ui/sonner";
 import type { Campaign } from "@/types";
 
 export default function Outreach() {
-  const { campaigns, addCampaign } = useAppData();
+  const { campaigns, addCampaign, outreachStats } = useAppData();
+  const { weeklyEmailsSent } = outreachStats;
   const [open, setOpen] = useState(false);
   const [recipientSource, setRecipientSource] = useState("all");
   const [name, setName] = useState("");
@@ -46,13 +46,11 @@ export default function Outreach() {
 
   const onSend = async () => {
     setSending(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    addCampaign({ name: name || "Untitled Campaign", leadsCount: Math.floor(Math.random() * 200) + 50, subject, body });
+    await addCampaign({ name: name || "Untitled Campaign", subject, body, recipientSource });
     setSending(false);
     setOpen(false);
     setName("");
     setSubject("");
-    toast.success(scheduled ? "Campaign scheduled" : "Campaign sent");
   };
 
   return (

@@ -28,9 +28,13 @@ export default function Login() {
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
   const onSubmit = async (data: FormData) => {
-    await login(data.email, data.password);
-    toast.success("Welcome back!");
-    navigate("/dashboard");
+    try {
+      await login(data.email, data.password);
+      toast.success("Welcome back!");
+      navigate("/dashboard");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Login failed");
+    }
   };
 
   return (

@@ -1,53 +1,59 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import type { User } from "@/types";
+import { api, formatApiError } from "@/lib/api";
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  authLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (fullName: string, email: string, company: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const STORAGE_KEY = "smady_user";
-
-function readStoredUser(): User | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(readStoredUser);
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
-  const persist = (u: User) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
-    setUser(u);
+  useEffect(() => {
+    api
+      .get("/auth/me")
+      .then(({ data }) => setUser(data))
+      .catch(() => setUser(null))
+      .finally(() => setAuthLoading(false));
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    try {
+      const { data } = await api.post("/auth/login", { email, password });
+      setUser(data);
+    } catch (e) {
+      throw new Error(formatApiError(e));
+    }
   };
 
-  const login = async (email: string, _password: string) => {
-    await new Promise((r) => setTimeout(r, 1000));
-    const namePart = email.split("@")[0] || "alex morgan";
-    const name = namePart.replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-    persist({ name, email, company: "Your Company", plan: "Pro Plan" });
+  const signup = async (fullName: string, email: string, company: string, password: string) => {
+    try {
+      const { data } = await api.post("/auth/signup", { fullName, email, company, password });
+      setUser(data);
+    } catch (e) {
+      throw new Error(formatApiError(e));
+    }
   };
 
-  const signup = async (fullName: string, email: string, company: string, _password: string) => {
-    await new Promise((r) => setTimeout(r, 1000));
-    persist({ name: fullName, email, company, plan: "Pro Plan" });
-  };
-
-  const logout = () => {
-    localStorage.removeItem(STORAGE_KEY);
+  const logout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // ignore
+    }
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, authLoading, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );

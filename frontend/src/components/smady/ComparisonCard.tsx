@@ -17,7 +17,7 @@ export function ComparisonCard({ title, percent, trend, thisWeek, lastWeek, tota
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[15px] font-semibold text-ink">{title}</p>
-          <p className="text-xs text-muted">vs yesterday</p>
+          <p className="text-xs text-muted">vs last week</p>
         </div>
         <button className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-ink hover:bg-bg">
           <ArrowUpRight className="h-4 w-4" strokeWidth={1.5} />

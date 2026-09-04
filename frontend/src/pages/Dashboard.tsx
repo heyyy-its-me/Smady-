@@ -10,12 +10,14 @@ import { AvatarInitial, AvatarStack } from "@/components/smady/AvatarStack";
 import { StatusBadge } from "@/components/smady/Badge";
 import { ProgressBar } from "@/components/smady/ProgressBar";
 import { KebabMenu } from "@/components/smady/KebabMenu";
-import { dashboardStats, leadsGrowth, emailsSentComparison, replyRateComparison, pipelineFunnel, leadSourceBreakdown, activityFeed } from "@/mock/dashboard";
-import { recentLeadsMock } from "@/mock/leads";
+import { useAppData } from "@/context/AppDataContext";
 import type { Lead } from "@/types";
 import { toast } from "@/components/ui/sonner";
 
 export default function Dashboard() {
+  const { dashboardStats, leads } = useAppData();
+  const { leadsGrowth, emailsSentComparison, replyRateComparison, pipelineFunnel, leadSourceBreakdown, activityFeed } = dashboardStats;
+  const recentLeads = leads.slice(0, 6);
   const columns: Column<Lead>[] = [
     {
       key: "lead",
@@ -76,7 +78,7 @@ export default function Dashboard() {
           title="Leads Growth"
           subtitle="New leads sourced over the last 12 months"
           data={leadsGrowth}
-          annotation={{ label: "+22% · Total per week: 293" }}
+          annotation={{ label: `Total leads: ${dashboardStats.totalLeads.value}` }}
           testId="dashboard-leads-growth-chart"
         />
         <div className="space-y-5">
@@ -110,7 +112,7 @@ export default function Dashboard() {
           <h2 className="text-[15px] font-semibold text-ink">Recent Leads</h2>
           <p className="mt-1 text-xs text-muted">Leads sourced and contacted in the last 30 days.</p>
           <div className="mt-4">
-            <DataTable columns={columns} rows={recentLeadsMock} testId="dashboard-recent-leads-table" />
+            <DataTable columns={columns} rows={recentLeads} testId="dashboard-recent-leads-table" />
           </div>
         </div>
       </div>

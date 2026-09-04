@@ -4,7 +4,7 @@ import { PlanBadge } from "@/components/smady/Badge";
 
 export function PageHeader({ actions }: { actions?: React.ReactNode }) {
   const { user } = useAuth();
-  const firstName = (user?.name || "Alex Morgan").split(" ")[0];
+  const firstName = (user?.name || "").split(" ")[0];
   return (
     <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
       <div>

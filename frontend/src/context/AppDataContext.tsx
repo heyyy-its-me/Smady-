@@ -1,13 +1,67 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import type { Lead, Campaign, Meeting, Proposal, ICPResult } from "@/types";
-import { leadPool } from "@/mock/leads";
-import { campaignsMock } from "@/mock/campaigns";
 import { meetingsMock } from "@/mock/meetings";
 import { proposalsMock } from "@/mock/proposals";
-import { defaultIcpResult } from "@/mock/icp";
+import { api, formatApiError } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "@/components/ui/sonner";
 
 let idCounter = 1000;
 const nextId = (prefix: string) => `${prefix}-${idCounter++}`;
+
+const emptyStat = { value: 0, sparkline: [0, 0, 0, 0, 0, 0, 0] };
+const emptyComparison = { percent: 0, trend: "up" as const, thisWeek: [0, 0, 0, 0, 0, 0, 0], lastWeek: [0, 0, 0, 0, 0, 0, 0], totalPerWeek: 0 };
+
+interface DashboardStats {
+  leadsToday: { value: number; sparkline: number[] };
+  totalLeads: { value: number; sparkline: number[] };
+  emailsSent: { value: number; sparkline: number[] };
+  meetingsBooked: { value: number; sparkline: number[] };
+  leadsGrowth: { label: string; value: number }[];
+  pipelineFunnel: { stage: string; value: number }[];
+  leadSourceBreakdown: { name: string; value: number }[];
+  activityFeed: { id: string; type: string; title: string; subtitle: string; time: string }[];
+  emailsSentComparison: typeof emptyComparison;
+  replyRateComparison: typeof emptyComparison;
+}
+
+interface OutreachStats {
+  emailsSent: { value: number; sparkline: number[] };
+  openRate: { value: number; sparkline: number[] };
+  replyRate: { value: number; sparkline: number[] };
+  bounceRate: { value: number; sparkline: number[] };
+  weeklyEmailsSent: { label: string; value: number }[];
+}
+
+const defaultDashboardStats: DashboardStats = {
+  leadsToday: emptyStat,
+  totalLeads: emptyStat,
+  emailsSent: emptyStat,
+  meetingsBooked: emptyStat,
+  leadsGrowth: [],
+  pipelineFunnel: [],
+  leadSourceBreakdown: [],
+  activityFeed: [],
+  emailsSentComparison: emptyComparison,
+  replyRateComparison: emptyComparison,
+};
+
+const defaultOutreachStats: OutreachStats = {
+  emailsSent: emptyStat,
+  openRate: emptyStat,
+  replyRate: emptyStat,
+  bounceRate: emptyStat,
+  weeklyEmailsSent: [],
+};
+
+async function pollUntilDone(url: string, intervalMs = 3000, maxAttempts = 100): Promise<any> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const { data } = await api.get(url);
+    if (data?.status && data.status !== "pending") return data;
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  throw new Error("Timed out waiting for a response");
+}
 
 interface AppDataContextType {
   icp: ICPResult | null;
@@ -17,11 +71,11 @@ interface AppDataContextType {
   leads: Lead[];
   generatingLeads: boolean;
   generateLeads: (filters: Record<string, unknown>) => Promise<void>;
-  uploadLeads: (count: number) => void;
-  sendToOutreach: (ids: string[]) => void;
+  uploadLeads: (count: number) => Promise<void>;
+  sendToOutreach: (ids: string[]) => Promise<void>;
 
   campaigns: Campaign[];
-  addCampaign: (data: { name: string; leadsCount: number; subject: string; body: string }) => void;
+  addCampaign: (data: { name: string; subject: string; body: string; recipientSource?: string }) => Promise<void>;
 
   meetings: Meeting[];
   addMeeting: (m: Omit<Meeting, "id">) => void;
@@ -31,62 +85,134 @@ interface AppDataContextType {
   generateProposal: (data: { leadName: string; company: string; notes: string }) => Promise<void>;
   approveProposal: (id: string) => void;
   rejectProposal: (id: string) => void;
+
+  dashboardStats: DashboardStats;
+  outreachStats: OutreachStats;
+  refreshDashboard: () => Promise<void>;
+  refreshOutreachStats: () => Promise<void>;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated, authLoading } = useAuth();
   const [icp, setIcp] = useState<ICPResult | null>(null);
   const [generatingIcp, setGeneratingIcp] = useState(false);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [generatingLeads, setGeneratingLeads] = useState(false);
-  const [poolIndex, setPoolIndex] = useState(0);
-  const [campaigns, setCampaigns] = useState<Campaign[]>(campaignsMock);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>(meetingsMock);
   const [proposals, setProposals] = useState<Proposal[]>(proposalsMock);
   const [generatingProposal, setGeneratingProposal] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats>(defaultDashboardStats);
+  const [outreachStats, setOutreachStats] = useState<OutreachStats>(defaultOutreachStats);
 
-  const generateIcp = async (_input: Record<string, unknown>) => {
+  const refreshLeads = useCallback(async () => {
+    const { data } = await api.get("/leads");
+    setLeads(data);
+  }, []);
+
+  const refreshCampaigns = useCallback(async () => {
+    const { data } = await api.get("/outreach/campaigns");
+    setCampaigns(data);
+  }, []);
+
+  const refreshDashboard = useCallback(async () => {
+    const { data } = await api.get("/dashboard/stats");
+    setDashboardStats(data);
+  }, []);
+
+  const refreshOutreachStats = useCallback(async () => {
+    const { data } = await api.get("/outreach/stats");
+    setOutreachStats(data);
+  }, []);
+
+  const fetchLatestIcp = useCallback(async () => {
+    const { data } = await api.get("/icp/latest");
+    if (data?.status === "completed" && data.result) setIcp(data.result);
+  }, []);
+
+  useEffect(() => {
+    if (authLoading || !isAuthenticated) return;
+    refreshLeads().catch(() => {});
+    refreshCampaigns().catch(() => {});
+    refreshDashboard().catch(() => {});
+    refreshOutreachStats().catch(() => {});
+    fetchLatestIcp().catch(() => {});
+  }, [authLoading, isAuthenticated, refreshLeads, refreshCampaigns, refreshDashboard, refreshOutreachStats, fetchLatestIcp]);
+
+  const generateIcp = async (input: Record<string, unknown>) => {
     setGeneratingIcp(true);
-    await new Promise((r) => setTimeout(r, 1800));
-    setIcp(defaultIcpResult);
-    setGeneratingIcp(false);
+    try {
+      const { data } = await api.post("/icp/generate", input);
+      if (data.status === "webhook_not_configured") {
+        toast.error("ICP engine webhook isn't configured yet. Add N8N_ICP_WEBHOOK_URL to run this live.");
+        return;
+      }
+      const result = await pollUntilDone(`/icp/status/${data.request_id}`);
+      if (result.status === "completed" && result.result) {
+        setIcp(result.result);
+      } else {
+        toast.error("ICP generation failed. Please try again.");
+      }
+    } catch (e) {
+      toast.error(formatApiError(e));
+    } finally {
+      setGeneratingIcp(false);
+    }
   };
 
-  const generateLeads = async (_filters: Record<string, unknown>) => {
+  const generateLeads = async (filters: Record<string, unknown>) => {
     setGeneratingLeads(true);
-    await new Promise((r) => setTimeout(r, 1800));
-    const start = poolIndex % leadPool.length;
-    const batch = [...leadPool.slice(start, start + 6), ...leadPool.slice(0, Math.max(0, start + 6 - leadPool.length))].map((l) => ({
-      ...l,
-      id: nextId("lead"),
-    }));
-    setPoolIndex((p) => p + 6);
-    setLeads((prev) => [...batch, ...prev]);
-    setGeneratingLeads(false);
+    try {
+      const { data } = await api.post("/leads/generate", filters);
+      if (data.status === "webhook_not_configured") {
+        toast.error("Lead sourcing webhook isn't configured yet. Add N8N_LEADS_WEBHOOK_URL to run this live.");
+        return;
+      }
+      await pollUntilDone(`/leads/status/${data.request_id}`);
+      await refreshLeads();
+      await refreshDashboard();
+    } catch (e) {
+      toast.error(formatApiError(e));
+    } finally {
+      setGeneratingLeads(false);
+    }
   };
 
-  const uploadLeads = (count: number) => {
-    const batch = leadPool.slice(0, count).map((l) => ({ ...l, id: nextId("lead"), source: "Uploaded" as const }));
-    setLeads((prev) => [...batch, ...prev]);
+  const uploadLeads = async (count: number) => {
+    try {
+      await api.post("/leads/upload", { count });
+      await refreshLeads();
+      await refreshDashboard();
+    } catch (e) {
+      toast.error(formatApiError(e));
+    }
   };
 
-  const sendToOutreach = (ids: string[]) => {
-    setLeads((prev) => prev.map((l) => (ids.includes(l.id) ? { ...l, status: "Contacted" as const } : l)));
+  const sendToOutreach = async (ids: string[]) => {
+    try {
+      await api.post("/leads/send-to-outreach", { ids });
+      setLeads((prev) => prev.map((l) => (ids.includes(l.id) ? { ...l, status: "Contacted" as const } : l)));
+    } catch (e) {
+      toast.error(formatApiError(e));
+    }
   };
 
-  const addCampaign = (data: { name: string; leadsCount: number; subject: string; body: string }) => {
-    const campaign: Campaign = {
-      id: nextId("camp"),
-      requestId: `#REQ-${1042 + campaigns.length}`,
-      name: data.name,
-      leadsCount: data.leadsCount,
-      status: "Queued",
-      sentDate: new Date().toISOString().slice(0, 10),
-      subject: data.subject,
-      body: data.body,
-    };
-    setCampaigns((prev) => [campaign, ...prev]);
+  const addCampaign = async (data: { name: string; subject: string; body: string; recipientSource?: string }) => {
+    try {
+      const { data: campaign } = await api.post("/outreach/campaigns", data);
+      setCampaigns((prev) => [campaign, ...prev]);
+      if (campaign.status === "Failed") {
+        toast.error("Outreach webhook isn't configured yet. Add N8N_OUTREACH_WEBHOOK_URL to send campaigns live.");
+      } else {
+        toast.success("Campaign sent");
+      }
+      await refreshOutreachStats();
+      await refreshDashboard();
+    } catch (e) {
+      toast.error(formatApiError(e));
+    }
   };
 
   const addMeeting = (m: Omit<Meeting, "id">) => {
@@ -132,6 +258,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         generateProposal,
         approveProposal,
         rejectProposal,
+        dashboardStats,
+        outreachStats,
+        refreshDashboard,
+        refreshOutreachStats,
       }}
     >
       {children}

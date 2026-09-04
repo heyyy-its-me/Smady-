@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/smady/Badge";
 import { KebabMenu } from "@/components/smady/KebabMenu";
 import { EmptyState } from "@/components/smady/EmptyState";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppData } from "@/context/AppDataContext";
 import { toast } from "@/components/ui/sonner";
 import type { Lead } from "@/types";
@@ -122,19 +123,22 @@ export default function Leads() {
           </FormSection>
           <FormSection label="Company Size" step="03" icon={Building2} tint>
             <div className="group relative sm:col-span-2">
-              <Building2 className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted transition-colors duration-150 group-focus-within:text-primary-500" strokeWidth={1.5} />
-              <select
-                value={companySize}
-                onChange={(e) => setCompanySize(e.target.value)}
-                data-testid="leads-company-size-select"
-                className="h-11 w-full rounded-xl border border-border bg-white pl-10 pr-4 text-sm text-ink shadow-[inset_0_1px_2px_rgba(23,20,18,0.04)] transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-4 focus:ring-primary-500/10"
-              >
-                {companySizes.map((s) => (
-                  <option key={s} value={s}>
-                    {s} employees
-                  </option>
-                ))}
-              </select>
+              <Building2 className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted transition-colors duration-150 group-focus-within:text-primary-500" strokeWidth={1.5} />
+              <Select value={companySize} onValueChange={setCompanySize}>
+                <SelectTrigger
+                  data-testid="leads-company-size-select"
+                  className="h-11 w-full rounded-xl border border-border bg-white pl-10 pr-4 text-sm text-ink shadow-[inset_0_1px_2px_rgba(23,20,18,0.04)] transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-4 focus:ring-primary-500/10"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {companySizes.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s} employees
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </FormSection>
 
