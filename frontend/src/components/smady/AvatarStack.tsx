@@ -8,7 +8,7 @@ export function AvatarInitial({ name, size = 36 }: { name: string; size?: number
   return (
     <div
       style={{ width: size, height: size, fontSize: size * 0.32 }}
-      className="flex shrink-0 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700"
+      className="flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-400 to-primary-600 font-bold text-white shadow-sm"
       data-testid={`avatar-${slug(name)}`}
     >
       {initials(name)}

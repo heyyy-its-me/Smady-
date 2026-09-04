@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sparkles, Package, FileText, Building2, Info, Globe2, Factory } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Sparkles, Package, FileText, Building2, Info, Globe2, Factory, Target, Radar } from "lucide-react";
 import { PageHeader } from "@/layouts/PageHeader";
 import { FormSection } from "@/components/smady/FormSection";
 import { FieldInput, FieldTextarea } from "@/components/smady/FieldInput";
@@ -36,15 +37,31 @@ export default function ICPEngine() {
     selectedIndustries.length ? selectedIndustries.join(", ") : "target industries"
   } companies across ${selectedCountries.length ? selectedCountries.join(", ") : "selected regions"}.`;
 
+  const totalFields = 6;
+  const filledFields =
+    [form.productName, form.productDescription, form.companyName, form.companyDetails].filter(Boolean).length +
+    (selectedIndustries.length > 0 ? 1 : 0) +
+    (selectedCountries.length > 0 ? 1 : 0);
+  const completeness = Math.round((filledFields / totalFields) * 100);
+
   return (
     <div data-testid="icp-page">
       <PageHeader />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
-        <div className="rounded-2xl bg-surface p-6 shadow-card lg:p-8" data-testid="icp-form-card">
-          <h2 className="text-[15px] font-semibold text-ink">Build Your Ideal Customer Profile</h2>
-          <p className="mt-1 text-sm text-body">Tell us about your product and audience — our engine will do the rest.</p>
-          <form onSubmit={onSubmit} className="mt-6 space-y-5" data-testid="icp-form">
-            <FormSection label="Product" tint>
+        <div className="relative overflow-hidden rounded-2xl border border-primary-100/70 bg-surface p-6 shadow-card lg:p-8" data-testid="icp-form-card">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-gradient-to-br from-primary-200/40 to-accent/10 blur-3xl" aria-hidden />
+          <div className="relative mb-6 flex items-center justify-between border-b border-border/80 pb-6">
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-primary-200/60 bg-primary-50 px-3 py-1 text-xs font-bold text-primary-600 shadow-sm">
+                <Sparkles className="h-3 w-3" strokeWidth={2} />
+                AI ICP Engine
+              </span>
+              <h2 className="mt-3 font-display text-xl font-extrabold text-ink">Build Your Ideal Customer Profile</h2>
+              <p className="mt-1 text-sm text-body">Tell us about your product and audience — our engine will do the rest.</p>
+            </div>
+          </div>
+          <form onSubmit={onSubmit} className="relative space-y-5" data-testid="icp-form">
+            <FormSection label="Product Identity" step="01" icon={Package} tint>
               <FieldInput
                 icon={Package}
                 value={form.productName}
@@ -62,7 +79,7 @@ export default function ICPEngine() {
                 required
               />
             </FormSection>
-            <FormSection label="Company">
+            <FormSection label="Company Context" step="02" icon={Building2}>
               <FieldInput
                 icon={Building2}
                 value={form.companyName}
@@ -80,7 +97,7 @@ export default function ICPEngine() {
                 required
               />
             </FormSection>
-            <FormSection label="Targeting" tint>
+            <FormSection label="Audience & Market Targeting" step="03" icon={Target} tint>
               <MultiSelectDropdown
                 icon={Globe2}
                 label="Target Country"
@@ -100,8 +117,17 @@ export default function ICPEngine() {
                 testId="icp-target-industry-select"
               />
             </FormSection>
-            <div className="flex justify-end pt-1">
-              <ButtonPrimary type="submit" loading={generatingIcp} icon={<Sparkles className="h-4 w-4" strokeWidth={1.5} />} data-testid="icp-generate-button">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-5">
+              <p className="text-xs text-muted">
+                <span className="font-semibold text-primary-600">{completeness}%</span> profile completeness
+              </p>
+              <ButtonPrimary
+                type="submit"
+                loading={generatingIcp}
+                icon={<Sparkles className="h-4 w-4" strokeWidth={1.5} />}
+                className="shadow-[0_8px_24px_-4px_rgba(249,98,44,0.4)]"
+                data-testid="icp-generate-button"
+              >
                 {generatingIcp ? "Analyzing your inputs…" : "Generate ICP"}
               </ButtonPrimary>
             </div>
@@ -109,67 +135,121 @@ export default function ICPEngine() {
         </div>
 
         <div className="lg:sticky lg:top-24 lg:self-start">
-          {!icp && !generatingIcp && (
-            <div className="rounded-2xl bg-gradient-to-b from-primary-50 to-white p-6 shadow-card" data-testid="icp-live-preview">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-primary-600">Live Preview</p>
-              <h3 className="mt-2 text-xl font-bold text-ink">{form.productName || "Your ICP Preview"}</h3>
-              <p className="mt-3 text-sm leading-relaxed text-body">{summarySentence}</p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                {[...selectedIndustries, ...selectedCountries].map((c) => (
-                  <span key={c} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-primary-600 shadow-soft">
-                    {c}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {generatingIcp && (
-            <div className="space-y-3 rounded-2xl bg-surface p-6 shadow-card" data-testid="icp-loading-skeleton">
-              <div className="h-4 w-1/3 rounded-full bg-[linear-gradient(90deg,#F1E9E3_25%,#FFE6D6_50%,#F1E9E3_75%)] bg-[length:200%_100%] animate-shimmer" />
-              <div className="mt-4 space-y-3">
-                <div className="h-3 w-full rounded-full bg-[linear-gradient(90deg,#F1E9E3_25%,#FFE6D6_50%,#F1E9E3_75%)] bg-[length:200%_100%] animate-shimmer" />
-                <div className="h-3 w-5/6 rounded-full bg-[linear-gradient(90deg,#F1E9E3_25%,#FFE6D6_50%,#F1E9E3_75%)] bg-[length:200%_100%] animate-shimmer" />
-                <div className="h-3 w-2/3 rounded-full bg-[linear-gradient(90deg,#F1E9E3_25%,#FFE6D6_50%,#F1E9E3_75%)] bg-[length:200%_100%] animate-shimmer" />
-              </div>
-            </div>
-          )}
-
-          {icp && !generatingIcp && (
-            <div className="rounded-2xl bg-surface p-6 shadow-card" data-testid="icp-results-card">
-              <div className="flex items-center gap-2 text-primary-500">
-                <Sparkles className="h-4 w-4" strokeWidth={1.5} />
-                <h2 className="text-[15px] font-semibold text-ink">Your Ideal Customer Profile</h2>
-              </div>
-              {resultGroups.map(({ key, label }) => (
-                <div key={key} className="mt-5">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {icp[key].map((it) => (
-                      <span key={it} className="rounded-full bg-primary-50 px-3 py-1.5 text-sm text-primary-600">
-                        {it}
-                      </span>
-                    ))}
+          <AnimatePresence mode="wait">
+            {!icp && !generatingIcp && (
+              <motion.div
+                key="preview"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="relative overflow-hidden rounded-2xl border border-primary-400/30 bg-gradient-to-b from-primary-500 via-primary-600 to-ink p-6 text-white shadow-[0_12px_36px_-8px_rgba(249,98,44,0.35)]"
+                data-testid="icp-live-preview"
+              >
+                <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl motion-safe:animate-drift" aria-hidden />
+                <div className="pointer-events-none absolute -bottom-16 -left-10 h-40 w-40 rounded-full bg-accent/20 blur-2xl motion-safe:animate-drift" aria-hidden />
+                <span className="relative inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-bold uppercase tracking-widest text-white backdrop-blur-md">
+                  <Radar className="h-3.5 w-3.5" strokeWidth={2} />
+                  Live Preview
+                </span>
+                <h3 className="relative mt-3 text-xl font-bold">{form.productName || "Your ICP Preview"}</h3>
+                <p className="relative mt-3 text-sm leading-relaxed text-white/85">{summarySentence}</p>
+                <div className="relative mt-5">
+                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-white/70">
+                    <span>Profile Match</span>
+                    <span>{completeness}%</span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/20">
+                    <motion.div
+                      className="h-full rounded-full bg-gradient-to-r from-amber-300 to-white"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${completeness}%` }}
+                      transition={{ duration: 0.5 }}
+                    />
                   </div>
                 </div>
-              ))}
-              <div className="mt-6 flex flex-col gap-3">
-                <ButtonPrimary
-                  fullWidth
-                  onClick={() => {
-                    toast.success("ICP saved");
-                    navigate("/leads");
-                  }}
-                  data-testid="icp-save-and-use-button"
-                >
-                  Save &amp; Use in Lead Management
-                </ButtonPrimary>
-                <ButtonOutline fullWidth onClick={() => generateIcp(form)} data-testid="icp-regenerate-button">
-                  Regenerate
-                </ButtonOutline>
-              </div>
-            </div>
-          )}
+                <div className="relative mt-5 flex flex-wrap gap-2">
+                  {[...selectedIndustries, ...selectedCountries].map((c) => (
+                    <span key={c} className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md transition-colors hover:bg-white/20">
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {generatingIcp && (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="space-y-4 rounded-2xl border border-primary-200/70 bg-surface p-6 shadow-card"
+                data-testid="icp-loading-skeleton"
+              >
+                <div className="flex items-center gap-2 text-xs font-bold text-primary-600">
+                  <Sparkles className="h-4 w-4 animate-pulse" strokeWidth={2} />
+                  <span className="animate-pulse">Analyzing your inputs…</span>
+                </div>
+                <div className="space-y-3">
+                  <div className="h-4 w-1/3 rounded-full bg-[linear-gradient(90deg,#FFE6D6_25%,#F9622C_50%,#FFE6D6_75%)] bg-[length:200%_100%] animate-shimmer" />
+                  <div className="h-3 w-full rounded-full bg-[linear-gradient(90deg,#FFE6D6_25%,#F9622C_50%,#FFE6D6_75%)] bg-[length:200%_100%] animate-shimmer" />
+                  <div className="h-3 w-5/6 rounded-full bg-[linear-gradient(90deg,#FFE6D6_25%,#F9622C_50%,#FFE6D6_75%)] bg-[length:200%_100%] animate-shimmer" />
+                  <div className="h-3 w-2/3 rounded-full bg-[linear-gradient(90deg,#FFE6D6_25%,#F9622C_50%,#FFE6D6_75%)] bg-[length:200%_100%] animate-shimmer" />
+                </div>
+              </motion.div>
+            )}
+
+            {icp && !generatingIcp && (
+              <motion.div
+                key="results"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="rounded-2xl border border-primary-200/70 bg-surface p-6 shadow-card"
+                data-testid="icp-results-card"
+              >
+                <div className="flex items-center justify-between border-b border-border/80 pb-3">
+                  <div className="flex items-center gap-2 text-primary-500">
+                    <Sparkles className="h-4 w-4" strokeWidth={1.5} />
+                    <h2 className="font-display text-[15px] font-bold text-ink">Your Ideal Customer Profile</h2>
+                  </div>
+                </div>
+                {resultGroups.map(({ key, label }, i) => (
+                  <motion.div
+                    key={key}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.06 * i, duration: 0.3 }}
+                    className="mt-4 rounded-xl border border-primary-100/60 bg-primary-50/50 p-3.5"
+                  >
+                    <p className="text-[11px] font-extrabold uppercase tracking-wider text-primary-700">{label}</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {icp[key].map((it) => (
+                        <span key={it} className="rounded-lg border border-primary-200/80 bg-white px-3 py-1.5 text-sm font-medium text-ink shadow-soft transition-colors hover:bg-primary-50 hover:text-primary-600">
+                          {it}
+                        </span>
+                      ))}
+                    </div>
+                  </motion.div>
+                ))}
+                <div className="mt-6 flex flex-col gap-3">
+                  <ButtonPrimary
+                    fullWidth
+                    onClick={() => {
+                      toast.success("ICP saved");
+                      navigate("/leads");
+                    }}
+                    data-testid="icp-save-and-use-button"
+                  >
+                    Save &amp; Use in Lead Management
+                  </ButtonPrimary>
+                  <ButtonOutline fullWidth onClick={() => generateIcp(form)} data-testid="icp-regenerate-button">
+                    Regenerate
+                  </ButtonOutline>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>

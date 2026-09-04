@@ -1,0 +1,213 @@
+{
+  "identity_and_theme": {
+    "app_name": "Pursora (code name Smady)",
+    "app_type": "B2B SaaS Outbound & CRM Workspace Dashboard",
+    "theme_archetype": "Warm Orange Playful Premium",
+    "design_philosophy": "Bold, energetic, and visually rich B2B CRM experience using warm terracotta and vibrant orange accents, tactile step cards, animated micro-interactions, glowing badges, and staggered motion, breaking away from flat boxy admin forms.",
+    "core_aesthetic_rules": [
+      "Never use generic flat muted tint boxes with plain divider lines for forms.",
+      "Replace flat FormSection borders with rounded-2xl cards with soft warm gradient fills, animated step badges (e.g. 01, 02, 03), and glowing icon headers.",
+      "Enhance all inputs with tactile focus rings (ring-2 ring-primary-500/20 border-primary-500), subtle icon color shifts, and warm inner shadows.",
+      "Right-side ICP Live Preview must feel like an active AI Pulse Radar with energetic gradients, live match completeness meters, and drifting pill badges.",
+      "Leads Search Summary must serve as an active dynamic 'Match Gauge' with live pulse indicators and pill counters.",
+      "Keep all existing 2-pane structure on ICP Engine and vertical layout structure on Leads page completely intact.",
+      "Preserve all existing data-testid attributes and React state/handlers without breaking functionality."
+    ]
+  },
+  "typography": {
+    "font_family": {
+      "body": "Inter, sans-serif",
+      "display": "Manrope, sans-serif"
+    },
+    "hierarchy": {
+      "page_title": "text-2xl sm:text-3xl font-extrabold font-display tracking-tight text-ink",
+      "section_title": "text-lg sm:text-xl font-bold font-display text-ink flex items-center gap-2.5",
+      "card_title": "text-base sm:text-lg font-bold font-display text-ink",
+      "form_label": "text-xs font-bold uppercase tracking-wider text-primary-700 font-display flex items-center gap-2",
+      "input_text": "text-sm text-ink placeholder:text-muted font-sans",
+      "body_text": "text-sm text-body leading-relaxed font-sans",
+      "caption": "text-xs text-muted font-sans"
+    }
+  },
+  "colors": {
+    "primary": {
+      "DEFAULT": "#F9622C",
+      "foreground": "#FFFFFF",
+      "50": "#FFF4EE",
+      "100": "#FFE6D6",
+      "200": "#FFC9A8",
+      "300": "#FFA870",
+      "400": "#FB8544",
+      "500": "#F9622C",
+      "600": "#E24D1B",
+      "700": "#BC3B14",
+      "800": "#8F2C10",
+      "900": "#5F1D0A"
+    },
+    "accent": {
+      "DEFAULT": "#FF8A4C",
+      "foreground": "#FFFFFF"
+    },
+    "neutrals": {
+      "ink": "#171412",
+      "body": "#6B645F",
+      "muted": "#A39A93",
+      "surface": "#FFFFFF",
+      "bg": "#FBF7F4",
+      "border": "#F1E9E3"
+    },
+    "semantic": {
+      "success": "#22C55E",
+      "success_bg": "#F0FDF4",
+      "warning": "#F59E0B",
+      "danger": "#EF4444"
+    },
+    "gradients": {
+      "warm_hero": "bg-gradient-to-br from-[#FFF4EE] via-[#FFE6D6]/60 to-[#FFFFFF]",
+      "vivid_orange": "bg-gradient-to-r from-[#F9622C] to-[#FF8A4C]",
+      "card_accent_glow": "bg-gradient-to-r from-[#F9622C]/10 via-[#FF8A4C]/5 to-transparent",
+      "dark_cta": "bg-gradient-to-r from-[#171412] via-[#26211E] to-[#171412]"
+    }
+  },
+  "icp_engine_blueprint": {
+    "left_pane_form": {
+      "card_wrapper": "bg-surface rounded-2xl p-6 sm:p-8 shadow-card border border-primary-100/80 relative overflow-hidden",
+      "header_banner": "flex items-center justify-between pb-6 border-b border-border/80 mb-6",
+      "header_badge": "inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-50 text-primary-600 text-xs font-bold font-display shadow-sm border border-primary-200/50",
+      "form_sections": {
+        "step_1_product": {
+          "step_number": "01",
+          "title": "Product Identity",
+          "icon": "Package",
+          "bg_gradient": "bg-gradient-to-br from-primary-50/70 via-white to-primary-50/20 border border-primary-100/80 shadow-soft"
+        },
+        "step_2_company": {
+          "step_number": "02",
+          "title": "Company Context",
+          "icon": "Building2",
+          "bg_gradient": "bg-gradient-to-br from-amber-50/40 via-white to-primary-50/20 border border-primary-100/80 shadow-soft"
+        },
+        "step_3_targeting": {
+          "step_number": "03",
+          "title": "Audience & Market Targeting",
+          "icon": "Target",
+          "bg_gradient": "bg-gradient-to-br from-orange-50/50 via-white to-primary-50/30 border border-primary-200/80 shadow-soft"
+        }
+      },
+      "submit_area": "pt-4 flex items-center justify-between border-t border-border mt-6",
+      "submit_button": "bg-gradient-to-r from-primary-500 to-accent hover:from-primary-600 hover:to-accent/90 text-white font-bold py-3.5 px-7 rounded-xl shadow-[0_4px_20px_rgba(249,98,44,0.35)] hover:shadow-[0_6px_24px_rgba(249,98,44,0.45)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
+    },
+    "right_pane_sticky_preview": {
+      "sticky_wrapper": "lg:sticky lg:top-24 lg:self-start space-y-4",
+      "before_generation_card": {
+        "wrapper": "rounded-2xl bg-gradient-to-b from-primary-500 via-primary-600 to-ink p-6 text-white shadow-[0_12px_36px_-8px_rgba(249,98,44,0.35)] relative overflow-hidden border border-primary-400/30",
+        "live_pulse_badge": "inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-bold text-white border border-white/20 uppercase tracking-widest",
+        "progress_meter": "mt-4 h-1.5 w-full bg-white/20 rounded-full overflow-hidden",
+        "progress_bar": "h-full bg-gradient-to-r from-amber-300 to-white rounded-full transition-all duration-500",
+        "tag_cloud": "flex flex-wrap gap-2 mt-4",
+        "tag_item": "rounded-full bg-white/10 backdrop-blur-md px-3 py-1 text-xs font-semibold text-white border border-white/15 hover:bg-white/20 transition-all"
+      },
+      "during_generation_skeleton": {
+        "wrapper": "rounded-2xl bg-surface p-6 shadow-card border border-primary-200/80 relative overflow-hidden space-y-4",
+        "shimmer_bar": "rounded-full bg-[linear-gradient(90deg,#FFE6D6_25%,#F9622C_50%,#FFE6D6_75%)] bg-[length:200%_100%] animate-shimmer",
+        "status_ticker": "flex items-center gap-2 text-xs font-bold text-primary-600 animate-pulse"
+      },
+      "after_generation_results": {
+        "wrapper": "rounded-2xl bg-surface p-6 shadow-card border border-primary-200/80 space-y-5 relative",
+        "title_banner": "flex items-center justify-between pb-3 border-b border-border/80",
+        "tag_group_item": "p-3.5 rounded-xl bg-primary-50/50 border border-primary-100/60 space-y-2",
+        "group_label": "text-[11px] font-extrabold uppercase tracking-wider text-primary-700 flex items-center gap-1.5",
+        "group_chips": "flex flex-wrap gap-1.5",
+        "chip": "rounded-lg bg-white px-3 py-1 text-xs font-bold text-ink border border-primary-200/80 shadow-soft hover:bg-primary-50 hover:text-primary-600 transition-all"
+      }
+    }
+  },
+  "leads_page_blueprint": {
+    "filter_form_card": {
+      "wrapper": "bg-surface rounded-2xl p-6 sm:p-8 shadow-card border border-primary-100/80 space-y-6",
+      "header_area": "flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/80",
+      "sections": {
+        "industry_roles": "bg-gradient-to-br from-primary-50/70 via-white to-primary-50/20 border border-primary-100/80 rounded-2xl p-5 sm:p-6 shadow-soft space-y-4",
+        "location": "bg-gradient-to-br from-amber-50/30 via-white to-primary-50/20 border border-primary-100/80 rounded-2xl p-5 sm:p-6 shadow-soft space-y-4",
+        "company_size": "bg-gradient-to-br from-orange-50/40 via-white to-primary-50/30 border border-primary-100/80 rounded-2xl p-5 sm:p-6 shadow-soft space-y-4"
+      },
+      "search_summary_gauge": {
+        "wrapper": "flex flex-wrap items-center justify-between gap-4 rounded-xl border border-primary-200/80 bg-gradient-to-r from-primary-50/80 via-white to-amber-50/60 p-4 shadow-soft",
+        "match_counter_badge": "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary-500 text-white font-extrabold text-sm shadow-md shadow-primary-500/20 animate-pulse"
+      }
+    },
+    "stat_cards_row": {
+      "grid": "grid grid-cols-1 gap-5 sm:grid-cols-3 mt-6",
+      "card_style": "rounded-2xl bg-surface p-5 border border-primary-100/80 shadow-card hover:border-primary-300 hover:shadow-[0_12px_32px_-8px_rgba(249,98,44,0.15)] transition-all duration-200 group relative overflow-hidden",
+      "icon_container": "h-11 w-11 rounded-xl bg-gradient-to-br from-primary-500 to-accent text-white flex items-center justify-center shadow-md shadow-primary-500/25 group-hover:scale-110 transition-transform duration-200"
+    },
+    "leads_data_table": {
+      "wrapper": "rounded-2xl bg-surface p-6 shadow-card border border-primary-100/80 mt-6 overflow-hidden",
+      "row_hover": "hover:bg-primary-50/30 transition-colors duration-150",
+      "avatar": "h-9 w-9 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-white font-extrabold text-xs flex items-center justify-center shadow-sm"
+    },
+    "bulk_action_bar": {
+      "wrapper": "fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-4 rounded-full bg-ink/95 backdrop-blur-md border border-primary-500/40 px-6 py-3.5 shadow-[0_16px_40px_rgba(0,0,0,0.35)] text-white"
+    },
+    "upload_modal": {
+      "dropzone": "flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-primary-300 bg-primary-50/30 hover:bg-primary-50/60 transition-all py-10 text-center cursor-pointer group"
+    }
+  },
+  "component_level_guidelines": {
+    "FormSection": {
+      "file_path": "/app/frontend/src/components/smady/FormSection.tsx",
+      "treatment": "Transform into visually rich, numbered step cards with rounded-2xl corners, subtle gradient backgrounds, warm orange border accent lines, and animated step badges."
+    },
+    "FieldInput": {
+      "file_path": "/app/frontend/src/components/smady/FieldInput.tsx",
+      "treatment": "Enhance inputs with crisp 1px borders, smooth focus rings (focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500), and animated icon color shifts on focus."
+    },
+    "MultiSelectDropdown": {
+      "file_path": "/app/frontend/src/components/smady/MultiSelectDropdown.tsx",
+      "treatment": "Provide vivid pill chips with spring animations, warm subtle hover states, and smooth multi-select popover triggers."
+    },
+    "StatCard": {
+      "file_path": "/app/frontend/src/components/smady/StatCard.tsx",
+      "treatment": "Add vibrant gradient icon badges, smooth hover lift (-translate-y-1), and clear tabular font counts."
+    },
+    "DataTable": {
+      "file_path": "/app/frontend/src/components/smady/DataTable.tsx",
+      "treatment": "Ensure clean zebra borders, active checkbox styling, and subtle hover row highlight with warm orange tint."
+    }
+  },
+  "motion_and_animations": {
+    "stagger_container": {
+      "hidden": { "opacity": 0 },
+      "show": {
+        "opacity": 1,
+        "transition": {
+          "staggerChildren": 0.08
+        }
+      }
+    },
+    "fade_up_item": {
+      "hidden": { "opacity": 0, "y": 14 },
+      "show": { "opacity": 1, "y": 0, "transition": { "type": "spring", "stiffness": 300, "damping": 24 } }
+    },
+    "hover_lift": "hover:-translate-y-0.5 active:translate-y-0 transition-transform duration-200",
+    "shimmer_keyframes": "shimmer 2s infinite linear"
+  },
+  "accessibility_and_testids": {
+    "contrast_policy": "All body text must achieve > 4.5:1 APCA contrast ratio against surface (#FFFFFF) and background (#FBF7F4). Primary buttons use white text (#FFFFFF) over #F9622C for high legibility.",
+    "data_testid_preservation": "CRITICAL: Under no circumstances alter or remove any existing data-testid attributes (such as icp-page, icp-form, icp-product-name-input, icp-generate-button, icp-live-preview, icp-results-card, leads-page, leads-filter-form, leads-search-summary, leads-table, etc.). All automated tests depend on these exact strings."
+  },
+  "instructions_to_main_agent": [
+    "1. Do NOT redesign page layouts or routing — strictly keep the 2-pane structure for ICP Engine and the vertical filter-stats-table flow for Leads.",
+    "2. Upgrade FormSection component (/app/frontend/src/components/smady/FormSection.tsx) to support visual step badges, gradient backgrounds, and icon headers while retaining all existing props.",
+    "3. Revamp ICPEngine page (/app/frontend/src/pages/ICPEngine.tsx) with high-energy warm orange gradients, live preview radar styling, and staggered Framer Motion entrances for results.",
+    "4. Revamp Leads page (/app/frontend/src/pages/Leads.tsx) with dynamic search summary match gauge, vibrant stat cards, and rich table row styling.",
+    "5. Ensure all data-testid attributes remain exactly as defined in the original components.",
+    "6. Verify build passes without TypeScript or JSX errors."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": {
+    "no_ai_slop": "Avoid generic centered white box layouts. Use warm orange gradient accents, depth with z-index hierarchy, soft inner borders, and energetic step indicators.",
+    "micro_interactions": "Every button and input must have clear hover, active, and focus micro-states.",
+    "spacing": "Maintain generous padding (p-6 to p-8) inside cards to prevent content collision.",
+    "toasts": "Use Sonner for toast notifications (imported from '@/components/ui/sonner')."
+  }
+}

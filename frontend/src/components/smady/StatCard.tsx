@@ -24,13 +24,18 @@ export function StatCard({ label, value, icon: Icon, highlighted, sparkline, tre
       transition={{ duration: 0.5 }}
       data-testid={`stat-card-${slug(label)}`}
       className={cn(
-        "rounded-2xl p-7 shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-nav",
+        "group rounded-2xl p-7 shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-nav",
         highlighted ? "bg-gradient-to-br from-primary-400 to-primary-600 text-white" : "bg-surface",
       )}
     >
       <div className="flex items-center justify-between">
-        <div className={cn("flex h-11 w-11 items-center justify-center rounded-full", highlighted ? "bg-white/20" : "bg-gradient-to-br from-primary-50 to-primary-100")}>
-          <Icon className={cn("h-5 w-5", highlighted ? "text-white" : "text-primary-500")} strokeWidth={1.5} />
+        <div
+          className={cn(
+            "flex h-11 w-11 items-center justify-center rounded-xl shadow-md transition-transform duration-200 group-hover:scale-110",
+            highlighted ? "bg-white/20 shadow-none" : "bg-gradient-to-br from-primary-500 to-accent shadow-primary-500/25",
+          )}
+        >
+          <Icon className="h-5 w-5 text-white" strokeWidth={1.5} />
         </div>
         <button
           className={cn("flex h-8 w-8 items-center justify-center rounded-full border transition-colors", highlighted ? "border-white/40 text-white hover:bg-white/10" : "border-border text-ink hover:bg-bg")}

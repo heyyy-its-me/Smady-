@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Users, ShieldCheck, Send, Upload, Download, Linkedin, UploadCloud, Building2, Factory, UserRound, Globe2, MapPin } from "lucide-react";
+import { Users, ShieldCheck, Send, Upload, Download, Linkedin, UploadCloud, Building2, Factory, UserRound, Globe2, MapPin, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageHeader } from "@/layouts/PageHeader";
 import { FormSection } from "@/components/smady/FormSection";
@@ -22,7 +22,7 @@ const countries = ["United States", "United Kingdom", "Canada", "Germany", "Indi
 const cities = ["New York", "London", "Toronto", "Berlin", "Bengaluru"];
 const companySizes = ["1-50", "50-200", "200-1000", "1000+"];
 
-const shimmerBar = "rounded-full bg-[linear-gradient(90deg,#F1E9E3_25%,#FFE6D6_50%,#F1E9E3_75%)] bg-[length:200%_100%] animate-shimmer";
+const shimmerBar = "rounded-full bg-[linear-gradient(90deg,#FFE6D6_25%,#F9622C_50%,#FFE6D6_75%)] bg-[length:200%_100%] animate-shimmer";
 
 export default function Leads() {
   const { leads, generatingLeads, generateLeads, uploadLeads, sendToOutreach } = useAppData();
@@ -101,26 +101,33 @@ export default function Leads() {
     <div data-testid="leads-page">
       <PageHeader />
 
-      <div ref={formRef} className="rounded-2xl bg-surface p-6 shadow-card lg:p-8" data-testid="leads-filter-form-card">
-        <h2 className="text-[15px] font-semibold text-ink">Find Leads Matching Your ICP</h2>
-        <p className="mt-1 text-sm text-body">Filter by audience and location to source your next batch of leads.</p>
-        <form onSubmit={onGenerate} className="mt-6 space-y-5" data-testid="leads-filter-form">
-          <FormSection label="Industry & Roles" tint>
+      <div ref={formRef} className="relative overflow-hidden rounded-2xl border border-primary-100/70 bg-surface p-6 shadow-card lg:p-8" data-testid="leads-filter-form-card">
+        <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-gradient-to-br from-primary-200/40 to-accent/10 blur-3xl" aria-hidden />
+        <div className="relative">
+          <span className="inline-flex items-center gap-2 rounded-full border border-primary-200/60 bg-primary-50 px-3 py-1 text-xs font-bold text-primary-600 shadow-sm">
+            <Sparkles className="h-3 w-3" strokeWidth={2} />
+            Lead Sourcing Agent
+          </span>
+          <h2 className="mt-3 font-display text-xl font-extrabold text-ink">Find Leads Matching Your ICP</h2>
+          <p className="mt-1 text-sm text-body">Filter by audience and location to source your next batch of leads.</p>
+        </div>
+        <form onSubmit={onGenerate} className="relative mt-6 space-y-5" data-testid="leads-filter-form">
+          <FormSection label="Industry & Roles" step="01" icon={Factory} tint>
             <MultiSelectDropdown icon={Factory} label="Industry" placeholder="Type or select an industry..." options={industries} value={selectedIndustries} onChange={setSelectedIndustries} testId="leads-industry-select" />
             <MultiSelectDropdown icon={UserRound} label="Target Roles" placeholder="Type or select a role..." options={roles} value={selectedRoles} onChange={setSelectedRoles} testId="leads-roles-select" />
           </FormSection>
-          <FormSection label="Location">
+          <FormSection label="Location" step="02" icon={Globe2}>
             <MultiSelectDropdown icon={Globe2} label="Countries" placeholder="Type or select a country..." options={countries} value={selectedCountries} onChange={setSelectedCountries} testId="leads-countries-select" />
             <MultiSelectDropdown icon={MapPin} label="Cities" placeholder="Type or select a city..." options={cities} value={selectedCities} onChange={setSelectedCities} testId="leads-cities-select" />
           </FormSection>
-          <FormSection label="Company Size" tint>
-            <div className="relative sm:col-span-2">
-              <Building2 className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" strokeWidth={1.5} />
+          <FormSection label="Company Size" step="03" icon={Building2} tint>
+            <div className="group relative sm:col-span-2">
+              <Building2 className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted transition-colors duration-150 group-focus-within:text-primary-500" strokeWidth={1.5} />
               <select
                 value={companySize}
                 onChange={(e) => setCompanySize(e.target.value)}
                 data-testid="leads-company-size-select"
-                className="h-11 w-full rounded-xl border border-border bg-white pl-10 pr-4 text-sm text-ink shadow-[inset_0_1px_2px_rgba(23,20,18,0.04)] transition-all duration-150 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                className="h-11 w-full rounded-xl border border-border bg-white pl-10 pr-4 text-sm text-ink shadow-[inset_0_1px_2px_rgba(23,20,18,0.04)] transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-4 focus:ring-primary-500/10"
               >
                 {companySizes.map((s) => (
                   <option key={s} value={s}>
@@ -131,21 +138,29 @@ export default function Leads() {
             </div>
           </FormSection>
 
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-bg/60 p-4" data-testid="leads-search-summary">
+          <div
+            className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-primary-200/70 bg-gradient-to-r from-primary-50/80 via-white to-orange-50/60 p-4 shadow-soft"
+            data-testid="leads-search-summary"
+          >
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Search Summary:</span>
+              <span className="text-[11px] font-extrabold uppercase tracking-wide text-primary-700">Search Summary:</span>
               {allSelectedFilters.length === 0 ? (
                 <span className="text-sm text-muted">No filters selected yet</span>
               ) : (
                 allSelectedFilters.map((c) => (
-                  <span key={c} className="rounded-full bg-primary-50 px-3 py-1 text-xs font-medium text-primary-600">
+                  <span key={c} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-primary-600 shadow-soft">
                     {c}
                   </span>
                 ))
               )}
             </div>
-            <span className="text-sm font-semibold text-ink" data-testid="leads-estimated-matches">
-              ~{estimatedMatches} leads match these filters
+            <span
+              className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-extrabold text-white shadow-md shadow-primary-500/20 ${
+                allSelectedFilters.length > 0 ? "bg-primary-500 animate-pulse" : "bg-muted"
+              }`}
+              data-testid="leads-estimated-matches"
+            >
+              ~{estimatedMatches} leads match
             </span>
           </div>
 
@@ -164,7 +179,13 @@ export default function Leads() {
                 Download Leads
               </ButtonOutline>
             </div>
-            <ButtonPrimary type="submit" loading={generatingLeads} icon={<Users className="h-4 w-4" strokeWidth={1.5} />} data-testid="leads-generate-button">
+            <ButtonPrimary
+              type="submit"
+              loading={generatingLeads}
+              icon={<Users className="h-4 w-4" strokeWidth={1.5} />}
+              className="shadow-[0_8px_24px_-4px_rgba(249,98,44,0.4)]"
+              data-testid="leads-generate-button"
+            >
               {generatingLeads ? "Sourcing leads…" : "Generate Leads"}
             </ButtonPrimary>
           </div>
@@ -179,7 +200,7 @@ export default function Leads() {
 
       <div className="mt-6">
         {generatingLeads && (
-          <div className="space-y-3 rounded-2xl bg-surface p-6 shadow-card" data-testid="leads-loading-skeleton">
+          <div className="space-y-3 rounded-2xl border border-primary-200/70 bg-surface p-6 shadow-card" data-testid="leads-loading-skeleton">
             <div className={`h-4 w-1/4 ${shimmerBar}`} />
             <div className="mt-4 space-y-3">
               <div className={`h-3 w-full ${shimmerBar}`} />
@@ -198,7 +219,7 @@ export default function Leads() {
           />
         )}
         {!generatingLeads && leads.length > 0 && (
-          <div className="rounded-2xl bg-surface p-6 shadow-card">
+          <div className="rounded-2xl border border-primary-100/70 bg-surface p-6 shadow-card">
             <DataTable columns={columns} rows={leads} testId="leads-table" />
           </div>
         )}
@@ -210,7 +231,7 @@ export default function Leads() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 40 }}
-            className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-4 rounded-full bg-ink px-6 py-3 shadow-nav"
+            className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-4 rounded-full border border-primary-500/40 bg-ink/95 px-6 py-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-md"
             data-testid="leads-bulk-action-bar"
           >
             <span className="text-sm text-white">{selected.length} selected</span>
@@ -233,8 +254,8 @@ export default function Leads() {
           <DialogHeader>
             <DialogTitle>Upload Leads</DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border py-10 text-center">
-            <UploadCloud className="h-8 w-8 text-primary-500" strokeWidth={1.5} />
+          <div className="group flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-primary-300 bg-primary-50/30 py-10 text-center transition-colors hover:bg-primary-50/60">
+            <UploadCloud className="h-8 w-8 text-primary-500 transition-transform duration-200 group-hover:-translate-y-1" strokeWidth={1.5} />
             <p className="mt-3 text-sm text-body">Drag & drop a CSV file, or click to browse</p>
           </div>
           <ButtonPrimary

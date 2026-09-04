@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn, slug } from "@/lib/utils";
 
 interface MultiSelectDropdownProps {
@@ -34,30 +35,40 @@ export function MultiSelectDropdown({ options, value, onChange, label, placehold
   const removeTag = (opt: string) => onChange(value.filter((v) => v !== opt));
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="group relative">
       {label && <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</label>}
       <div
         onClick={() => setOpen(true)}
         data-testid={testId}
-        className="flex min-h-[44px] w-full cursor-text flex-wrap items-center gap-1.5 rounded-xl border border-border bg-white px-3 py-2 shadow-[inset_0_1px_2px_rgba(23,20,18,0.04)] transition-all duration-150 focus-within:border-primary-400 focus-within:ring-2 focus-within:ring-primary-200"
+        className="flex min-h-[44px] w-full cursor-text flex-wrap items-center gap-1.5 rounded-xl border border-border bg-white px-3 py-2 shadow-[inset_0_1px_2px_rgba(23,20,18,0.04)] transition-all duration-200 focus-within:border-primary-500 focus-within:ring-4 focus-within:ring-primary-500/10 focus-within:shadow-[0_4px_16px_-4px_rgba(249,98,44,0.25)]"
       >
-        {Icon && <Icon className="h-4 w-4 shrink-0 text-muted" strokeWidth={1.5} />}
-        {value.map((v) => (
-          <span key={v} data-testid={`tag-${slug(v)}`} className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-600">
-            {v}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                removeTag(v);
-              }}
-              data-testid={`remove-tag-${slug(v)}`}
-              className="hover:text-primary-800"
+        {Icon && <Icon className="h-4 w-4 shrink-0 text-muted transition-colors duration-150 group-focus-within:text-primary-500" strokeWidth={1.5} />}
+        <AnimatePresence initial={false}>
+          {value.map((v) => (
+            <motion.span
+              key={v}
+              initial={{ opacity: 0, scale: 0.7 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.7 }}
+              transition={{ type: "spring", stiffness: 400, damping: 24 }}
+              data-testid={`tag-${slug(v)}`}
+              className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-primary-500 to-accent px-2.5 py-1 text-xs font-semibold text-white shadow-sm"
             >
-              <X className="h-3 w-3" strokeWidth={2} />
-            </button>
-          </span>
-        ))}
+              {v}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeTag(v);
+                }}
+                data-testid={`remove-tag-${slug(v)}`}
+                className="hover:text-white/70"
+              >
+                <X className="h-3 w-3" strokeWidth={2} />
+              </button>
+            </motion.span>
+          ))}
+        </AnimatePresence>
         <input
           value={query}
           onChange={(e) => {
