@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date, timedelta
 
 from database import get_db
-from models import leads, outreach_campaigns, outreach_emails, icp_profiles, lead_runs
+from models import lead_results, outreach_campaigns, outreach_emails, company_profiles, lead_runs, meetings, proposal_review_log
 from auth import get_current_user
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -15,11 +15,11 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
     uid = user["id"]
     today = date.today()
 
-    total_leads_r = await db.execute(select(func.count()).select_from(leads).where(leads.c.user_id == uid))
+    total_leads_r = await db.execute(select(func.count()).select_from(lead_results).where(lead_results.c.user_id == uid))
     total_leads = total_leads_r.scalar() or 0
 
     leads_today_r = await db.execute(
-        select(func.count()).select_from(leads).where(leads.c.user_id == uid, func.date(leads.c.created_at) == today)
+        select(func.count()).select_from(lead_results).where(lead_results.c.user_id == uid, func.date(lead_results.c.created_at) == today)
     )
     leads_today = leads_today_r.scalar() or 0
 
@@ -33,14 +33,14 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
         emails_sent = emails_sent_r.scalar() or 0
 
     meetings_booked_r = await db.execute(
-        select(func.count()).select_from(leads).where(leads.c.user_id == uid, leads.c.status == "Meeting Booked")
+        select(func.count()).select_from(meetings).where(meetings.c.user_id == uid, meetings.c.outcome.in_(["Confirmed", "Auto-Booked"]))
     )
     meetings_booked = meetings_booked_r.scalar() or 0
 
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     growth_r = await db.execute(
-        select(func.date_trunc("month", leads.c.created_at).label("m"), func.count().label("c"))
-        .where(leads.c.user_id == uid).group_by("m").order_by("m")
+        select(func.date_trunc("month", lead_results.c.created_at).label("m"), func.count().label("c"))
+        .where(lead_results.c.user_id == uid).group_by("m").order_by("m")
     )
     growth_map = {r.m.strftime("%b"): r.c for r in growth_r.fetchall()}
     leads_growth = [{"label": m, "value": growth_map.get(m, 0)} for m in months]
@@ -48,18 +48,18 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
     funnel_stages = [("New", "New Leads"), ("Contacted", "Contacted"), ("Interested", "Interested"), ("Meeting Booked", "Meeting Booked")]
     pipeline_funnel = []
     for status_value, label in funnel_stages:
-        r = await db.execute(select(func.count()).select_from(leads).where(leads.c.user_id == uid, leads.c.status == status_value))
+        r = await db.execute(select(func.count()).select_from(lead_results).where(lead_results.c.user_id == uid, lead_results.c.status == status_value))
         pipeline_funnel.append({"stage": label, "value": r.scalar() or 0})
 
     source_r = await db.execute(
-        select(leads.c.source, func.count().label("c")).where(leads.c.user_id == uid).group_by(leads.c.source)
+        select(lead_results.c.source, func.count().label("c")).where(lead_results.c.user_id == uid).group_by(lead_results.c.source)
     )
     source_rows = source_r.fetchall()
     source_total = sum(r.c for r in source_rows) or 1
     lead_source_breakdown = [{"name": r.source or "Unknown", "value": round(r.c / source_total * 100)} for r in source_rows]
 
     activity = []
-    icp_r = await db.execute(select(icp_profiles).where(icp_profiles.c.user_id == uid).order_by(icp_profiles.c.created_at.desc()).limit(3))
+    icp_r = await db.execute(select(company_profiles).where(company_profiles.c.user_id == uid).order_by(company_profiles.c.created_at.desc()).limit(3))
     for r in icp_r.fetchall():
         activity.append({"id": f"icp-{r.id}", "type": "lead", "title": "ICP profile generated", "subtitle": r.status, "time": r.created_at.isoformat()})
     lead_run_r = await db.execute(select(lead_runs).where(lead_runs.c.user_id == uid).order_by(lead_runs.c.created_at.desc()).limit(3))
@@ -68,6 +68,12 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
     camp_r = await db.execute(select(outreach_campaigns).where(outreach_campaigns.c.user_id == uid).order_by(outreach_campaigns.c.created_at.desc()).limit(3))
     for r in camp_r.fetchall():
         activity.append({"id": f"camp-{r.id}", "type": "email", "title": f"Campaign '{r.name}' {r.status.lower()}", "subtitle": f"{r.leads_count} leads", "time": r.created_at.isoformat()})
+    meet_r = await db.execute(select(meetings).where(meetings.c.user_id == uid).order_by(meetings.c.created_at.desc()).limit(3))
+    for r in meet_r.fetchall():
+        activity.append({"id": f"meet-{r.id}", "type": "meeting", "title": f"Meeting {r.outcome.lower()} with {r.lead_name or 'a lead'}", "subtitle": r.company or "", "time": r.created_at.isoformat()})
+    prop_r = await db.execute(select(proposal_review_log).where(proposal_review_log.c.user_id == uid).order_by(proposal_review_log.c.created_at.desc()).limit(3))
+    for r in prop_r.fetchall():
+        activity.append({"id": f"prop-{r.id}", "type": "proposal", "title": f"Proposal for {r.lead_name or 'a lead'} — {r.final_status}", "subtitle": r.company or "", "time": r.created_at.isoformat()})
     activity.sort(key=lambda a: a["time"], reverse=True)
 
     async def week_daily(status: str, week_start: date):

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Plus, Mail, MousePointerClick, MessageSquareReply, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/layouts/PageHeader";
 import { StatCard } from "@/components/smady/StatCard";
@@ -18,6 +19,9 @@ import type { Campaign } from "@/types";
 export default function Outreach() {
   const { campaigns, addCampaign, outreachStats } = useAppData();
   const { weeklyEmailsSent } = outreachStats;
+  const [searchParams] = useSearchParams();
+  const filterRequestId = searchParams.get("request_id");
+  const visibleCampaigns = filterRequestId ? campaigns.filter((c) => c.requestId.replace("#", "").toLowerCase().startsWith(filterRequestId.slice(0, 8).toLowerCase())) : campaigns;
   const [open, setOpen] = useState(false);
   const [recipientSource, setRecipientSource] = useState("all");
   const [name, setName] = useState("");
@@ -76,8 +80,13 @@ export default function Outreach() {
 
       <div className="mt-6 rounded-2xl bg-surface p-6 shadow-card">
         <h2 className="text-[15px] font-semibold text-ink">Recent Requests</h2>
+        {filterRequestId && (
+          <p className="mt-1 text-xs text-muted" data-testid="outreach-run-filter-banner">
+            Filtered to campaign run #{filterRequestId.slice(0, 8).toUpperCase()}
+          </p>
+        )}
         <div className="mt-4">
-          <DataTable columns={columns} rows={campaigns} testId="outreach-requests-table" />
+          <DataTable columns={columns} rows={visibleCampaigns} testId="outreach-requests-table" />
         </div>
       </div>
 

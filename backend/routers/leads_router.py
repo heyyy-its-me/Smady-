@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from sqlalchemy import select, insert, update
@@ -6,9 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 
 from database import get_db
-from models import lead_runs, leads
+from models import lead_runs, lead_results
 from auth import get_current_user
-from webhooks import trigger_webhook, is_webhook_configured, verify_callback_secret
+from webhooks import trigger_webhook, is_webhook_configured, verify_callback_secret, get_callback_url
 
 router = APIRouter(prefix="/api/leads", tags=["leads"])
 
@@ -67,8 +67,20 @@ def serialize_lead(row) -> Dict[str, Any]:
 
 
 @router.get("")
-async def list_leads(user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(leads).where(leads.c.user_id == user["id"]).order_by(leads.c.created_at.desc()))
+async def list_leads(
+    request_id: Optional[str] = Query(None),
+    user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(lead_results).where(lead_results.c.user_id == user["id"])
+    if request_id:
+        run_result = await db.execute(select(lead_runs.c.id).where(lead_runs.c.request_id == request_id, lead_runs.c.user_id == user["id"]))
+        run_row = run_result.first()
+        if not run_row:
+            raise HTTPException(status_code=404, detail="Lead run not found")
+        query = query.where(lead_results.c.lead_run_id == run_row.id)
+    query = query.order_by(lead_results.c.created_at.desc())
+    result = await db.execute(query)
     return [serialize_lead(r) for r in result.fetchall()]
 
 
@@ -79,6 +91,7 @@ async def generate_leads(body: LeadsGenerateRequest, user: dict = Depends(get_cu
     await db.execute(
         insert(lead_runs).values(
             user_id=user["id"],
+            customer_id=user["id"],
             request_id=request_id,
             status="pending" if configured else "webhook_not_configured",
             filters=body.model_dump(),
@@ -86,7 +99,7 @@ async def generate_leads(body: LeadsGenerateRequest, user: dict = Depends(get_cu
     )
     await db.commit()
     if configured:
-        await trigger_webhook("leads", {"request_id": str(request_id), "user_id": user["id"], **body.model_dump()})
+        await trigger_webhook("leads", {"request_id": str(request_id), "user_id": user["id"], "callback_url": get_callback_url("/api/leads/callback"), **body.model_dump()})
     return {"request_id": str(request_id), "status": "pending" if configured else "webhook_not_configured"}
 
 
@@ -109,8 +122,9 @@ async def leads_callback(body: LeadsCallbackRequest, x_callback_secret: Optional
 
     for item in body.leads:
         await db.execute(
-            insert(leads).values(
+            insert(lead_results).values(
                 user_id=run_row.user_id,
+                customer_id=run_row.customer_id,
                 lead_run_id=run_row.id,
                 name=item.name, title=item.title, company=item.company, domain=item.domain,
                 email=item.email, linkedin=item.linkedin, status=item.status, source=item.source,
@@ -128,13 +142,14 @@ async def upload_leads(body: UploadLeadsRequest, user: dict = Depends(get_curren
     inserted = []
     for i in range(count):
         result = await db.execute(
-            insert(leads).values(
+            insert(lead_results).values(
                 user_id=user["id"],
+                customer_id=user["id"],
                 name=f"Uploaded Contact {i + 1}",
                 title="Unknown", company="Unknown Company", domain="", email="",
                 linkedin="", status="New", source="Uploaded", about="Imported from CSV upload.",
                 assigned=[], sequence_progress=0,
-            ).returning(leads)
+            ).returning(lead_results)
         )
         inserted.append(serialize_lead(result.first()))
     await db.commit()
@@ -152,7 +167,7 @@ async def send_to_outreach(body: SendToOutreachRequest, user: dict = Depends(get
     if not valid_ids:
         raise HTTPException(status_code=400, detail="No valid lead ids provided")
     result = await db.execute(
-        update(leads).where(leads.c.id.in_(valid_ids), leads.c.user_id == user["id"]).values(status="Contacted")
+        update(lead_results).where(lead_results.c.id.in_(valid_ids), lead_results.c.user_id == user["id"]).values(status="Contacted")
     )
     await db.commit()
     if result.rowcount == 0:

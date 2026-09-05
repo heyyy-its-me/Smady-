@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from pydantic import BaseModel
 from typing import Optional, List
 from sqlalchemy import select, insert, update, func
@@ -7,9 +7,9 @@ from datetime import datetime, timezone, date, timedelta
 import uuid
 
 from database import get_db
-from models import outreach_campaigns, outreach_emails, leads
+from models import outreach_campaigns, outreach_emails, lead_results
 from auth import get_current_user
-from webhooks import trigger_webhook, is_webhook_configured, verify_callback_secret
+from webhooks import trigger_webhook, is_webhook_configured, verify_callback_secret, get_callback_url
 
 router = APIRouter(prefix="/api/outreach", tags=["outreach"])
 
@@ -47,17 +47,19 @@ def serialize_campaign(row):
 
 
 @router.get("/campaigns")
-async def list_campaigns(user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(outreach_campaigns).where(outreach_campaigns.c.user_id == user["id"]).order_by(outreach_campaigns.c.created_at.desc())
-    )
+async def list_campaigns(request_id: Optional[str] = Query(None), user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    query = select(outreach_campaigns).where(outreach_campaigns.c.user_id == user["id"])
+    if request_id:
+        query = query.where(outreach_campaigns.c.request_id == request_id)
+    query = query.order_by(outreach_campaigns.c.created_at.desc())
+    result = await db.execute(query)
     return [serialize_campaign(r) for r in result.fetchall()]
 
 
 @router.post("/campaigns")
 async def create_campaign(body: CampaignCreateRequest, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     count_result = await db.execute(
-        select(func.count()).select_from(leads).where(leads.c.user_id == user["id"], leads.c.status.in_(["New", "Verified", "Contacted"]))
+        select(func.count()).select_from(lead_results).where(lead_results.c.user_id == user["id"], lead_results.c.status.in_(["New", "Verified", "Contacted"]))
     )
     leads_count = count_result.scalar() or 0
 
@@ -66,7 +68,7 @@ async def create_campaign(body: CampaignCreateRequest, user: dict = Depends(get_
     status = "Queued" if configured else "Failed"
     result = await db.execute(
         insert(outreach_campaigns).values(
-            user_id=user["id"], request_id=request_id, name=body.name, leads_count=leads_count,
+            user_id=user["id"], customer_id=user["id"], request_id=request_id, name=body.name, leads_count=leads_count,
             status=status, subject=body.subject, body=body.body,
             sent_date=date.today() if configured else None,
         ).returning(outreach_campaigns)
@@ -76,11 +78,11 @@ async def create_campaign(body: CampaignCreateRequest, user: dict = Depends(get_
 
     if configured:
         leads_result = await db.execute(
-            select(leads).where(leads.c.user_id == user["id"], leads.c.status.in_(["New", "Verified", "Contacted"]))
+            select(lead_results).where(lead_results.c.user_id == user["id"], lead_results.c.status.in_(["New", "Verified", "Contacted"]))
         )
         recipient_leads = [{"lead_id": str(l.id), "email": l.email, "name": l.name} for l in leads_result.fetchall()]
         await trigger_webhook("outreach", {
-            "request_id": str(request_id), "user_id": user["id"],
+            "request_id": str(request_id), "user_id": user["id"], "callback_url": get_callback_url("/api/outreach/callback"),
             "subject": body.subject, "body": body.body, "leads": recipient_leads,
         })
     return serialize_campaign(row)

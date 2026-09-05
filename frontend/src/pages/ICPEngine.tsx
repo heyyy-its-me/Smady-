@@ -1,48 +1,62 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Package, FileText, Building2, Info, Globe2, Factory, Target, Radar } from "lucide-react";
+import { Sparkles, Package, FileText, Building2, Globe2, Target as TargetIcon, Radar, Gauge } from "lucide-react";
 import { PageHeader } from "@/layouts/PageHeader";
 import { FormSection } from "@/components/smady/FormSection";
 import { FieldInput, FieldTextarea } from "@/components/smady/FieldInput";
-import { MultiSelectDropdown } from "@/components/smady/MultiSelectDropdown";
 import { ButtonPrimary, ButtonOutline } from "@/components/smady/Button";
 import { useAppData } from "@/context/AppDataContext";
 import { toast } from "@/components/ui/sonner";
 
-const countries = ["United States", "United Kingdom", "Canada", "Germany", "India"];
-const industries = ["B2B SaaS", "Fintech", "Healthtech", "E-commerce", "Manufacturing"];
+const businessStages = ["Idea / Pre-launch", "MVP", "Early Traction", "Growth", "Scale"];
+const priorities = ["Speed", "Quality", "Cost Efficiency", "Personalization"];
 
-const resultGroups: { key: "industry" | "targetRoles" | "companySize" | "geography" | "painPoints"; label: string }[] = [
-  { key: "industry", label: "Industry" },
-  { key: "targetRoles", label: "Target Roles" },
-  { key: "companySize", label: "Company Size" },
-  { key: "geography", label: "Geography" },
-  { key: "painPoints", label: "Key Pain Points" },
+const chipGroups: { key: "industries" | "roles" | "painPoints" | "goals" | "countries" | "channels"; label: string }[] = [
+  { key: "industries", label: "Industries" },
+  { key: "roles", label: "Buyer Roles" },
+  { key: "painPoints", label: "Buyer Pain Points" },
+  { key: "goals", label: "Buyer Goals" },
+  { key: "countries", label: "Target Countries" },
+  { key: "channels", label: "Recommended Channels" },
 ];
 
 export default function ICPEngine() {
-  const { icp, generatingIcp, generateIcp } = useAppData();
+  const { icp, generatingIcp, generateIcp, fetchIcpByRequestId } = useAppData();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ productName: "", productDescription: "", companyName: "", companyDetails: "" });
-  const [selectedCountries, setSelectedCountries] = useState<string[]>(["United States"]);
-  const [selectedIndustries, setSelectedIndustries] = useState<string[]>(["B2B SaaS"]);
+  const [form, setForm] = useState({ productName: "", productDescription: "", companyName: "", targetGeography: "" });
+  const [businessStage, setBusinessStage] = useState(businessStages[2]);
+  const [priority, setPriority] = useState(priorities[0]);
+
+  useEffect(() => {
+    const requestId = searchParams.get("request_id");
+    if (requestId) fetchIcpByRequestId(requestId);
+  }, [searchParams, fetchIcpByRequestId]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await generateIcp({ ...form, countries: selectedCountries, industries: selectedIndustries });
+    await generateIcp({ ...form, businessStage, priority });
   };
 
-  const summarySentence = `${form.productName || "Your product"} helps ${form.companyName || "your company"} reach ${
-    selectedIndustries.length ? selectedIndustries.join(", ") : "target industries"
-  } companies across ${selectedCountries.length ? selectedCountries.join(", ") : "selected regions"}.`;
+  const summarySentence = `${form.productName || "Your product"} helps ${form.companyName || "your company"} reach customers in ${
+    form.targetGeography || "your target region"
+  }.`;
 
   const totalFields = 6;
-  const filledFields =
-    [form.productName, form.productDescription, form.companyName, form.companyDetails].filter(Boolean).length +
-    (selectedIndustries.length > 0 ? 1 : 0) +
-    (selectedCountries.length > 0 ? 1 : 0);
+  const filledFields = [form.productName, form.productDescription, form.companyName, form.targetGeography, businessStage, priority].filter(Boolean).length;
   const completeness = Math.round((filledFields / totalFields) * 100);
+
+  const chipData: Record<string, string[]> = icp
+    ? {
+        industries: icp.analysis.industries,
+        roles: icp.buyer_persona.role,
+        painPoints: icp.buyer_persona.pain_points,
+        goals: icp.buyer_persona.goals,
+        countries: icp.gtm_strategy.target_countries,
+        channels: icp.gtm_strategy.recommended_channels,
+      }
+    : {};
 
   return (
     <div data-testid="icp-page">
@@ -88,34 +102,46 @@ export default function ICPEngine() {
                 data-testid="icp-company-name-input"
                 required
               />
-              <FieldTextarea
-                icon={Info}
-                value={form.companyDetails}
-                onChange={(e) => setForm({ ...form, companyDetails: e.target.value })}
-                placeholder="Company Details"
-                data-testid="icp-company-details-input"
+              <FieldInput
+                icon={Globe2}
+                value={form.targetGeography}
+                onChange={(e) => setForm({ ...form, targetGeography: e.target.value })}
+                placeholder="Target Geography (e.g. United States)"
+                data-testid="icp-target-geography-input"
                 required
               />
             </FormSection>
-            <FormSection label="Audience & Market Targeting" step="03" icon={Target} tint>
-              <MultiSelectDropdown
-                icon={Globe2}
-                label="Target Country"
-                placeholder="Type or select a country..."
-                options={countries}
-                value={selectedCountries}
-                onChange={setSelectedCountries}
-                testId="icp-target-country-select"
-              />
-              <MultiSelectDropdown
-                icon={Factory}
-                label="Target Industry"
-                placeholder="Type or select an industry..."
-                options={industries}
-                value={selectedIndustries}
-                onChange={setSelectedIndustries}
-                testId="icp-target-industry-select"
-              />
+            <FormSection label="Business Context" step="03" icon={TargetIcon} tint>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Business Stage</label>
+                <select
+                  value={businessStage}
+                  onChange={(e) => setBusinessStage(e.target.value)}
+                  data-testid="icp-business-stage-select"
+                  className="h-11 w-full rounded-xl border border-border bg-white px-4 text-sm text-ink shadow-[inset_0_1px_2px_rgba(23,20,18,0.04)] transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-4 focus:ring-primary-500/10"
+                >
+                  {businessStages.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="mt-3">
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Priority</label>
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value)}
+                  data-testid="icp-priority-select"
+                  className="h-11 w-full rounded-xl border border-border bg-white px-4 text-sm text-ink shadow-[inset_0_1px_2px_rgba(23,20,18,0.04)] transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-4 focus:ring-primary-500/10"
+                >
+                  {priorities.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </FormSection>
             <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-5">
               <p className="text-xs text-muted">
@@ -168,7 +194,7 @@ export default function ICPEngine() {
                   </div>
                 </div>
                 <div className="relative mt-5 flex flex-wrap gap-2">
-                  {[...selectedIndustries, ...selectedCountries].map((c) => (
+                  {[businessStage, priority, form.targetGeography].filter(Boolean).map((c) => (
                     <span key={c} className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md transition-colors hover:bg-white/20">
                       {c}
                     </span>
@@ -213,8 +239,51 @@ export default function ICPEngine() {
                     <Sparkles className="h-4 w-4" strokeWidth={1.5} />
                     <h2 className="font-display text-[15px] font-bold text-ink">Your Ideal Customer Profile</h2>
                   </div>
+                  <span className="flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-xs font-bold text-success">
+                    <Gauge className="h-3.5 w-3.5" strokeWidth={2} />
+                    {Math.round(icp.confidence_score * 100)}% confidence
+                  </span>
                 </div>
-                {resultGroups.map(({ key, label }, i) => (
+
+                <div className="mt-4 rounded-xl border border-primary-100/60 bg-primary-50/50 p-3.5">
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-primary-700">Positioning</p>
+                  <p className="mt-1.5 text-sm italic text-body">"{icp.analysis.positioning}"</p>
+                  <p className="mt-2 text-xs text-muted">{icp.analysis.differentiator}</p>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-primary-200/80 bg-white p-3.5 shadow-soft">
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-primary-700">Primary ICP</p>
+                  <p className="mt-1.5 text-sm font-semibold text-ink">{icp.primary_icp.icp}</p>
+                  <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+                    {[
+                      { label: "Pain", value: icp.primary_icp.pain_severity },
+                      { label: "Market", value: icp.primary_icp.market_size },
+                      { label: "Ease", value: icp.primary_icp.ease_of_sales },
+                      { label: "Score", value: icp.primary_icp.score },
+                    ].map((m) => (
+                      <div key={m.label} className="rounded-lg bg-primary-50 py-2">
+                        <p className="text-sm font-bold text-primary-600">{m.value}</p>
+                        <p className="text-[10px] font-semibold uppercase text-muted">{m.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {icp.secondary_icps.length > 0 && (
+                  <div className="mt-4 rounded-xl border border-primary-100/60 bg-primary-50/50 p-3.5">
+                    <p className="text-[11px] font-extrabold uppercase tracking-wider text-primary-700">Secondary ICPs</p>
+                    <div className="mt-2 space-y-2">
+                      {icp.secondary_icps.map((s) => (
+                        <div key={s.icp} className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-sm">
+                          <span className="text-ink">{s.icp}</span>
+                          <span className="font-bold text-primary-600">{s.score}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {chipGroups.map(({ key, label }, i) => (
                   <motion.div
                     key={key}
                     initial={{ opacity: 0, y: 12 }}
@@ -224,7 +293,7 @@ export default function ICPEngine() {
                   >
                     <p className="text-[11px] font-extrabold uppercase tracking-wider text-primary-700">{label}</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
-                      {icp[key].map((it) => (
+                      {(chipData[key] || []).map((it) => (
                         <span key={it} className="rounded-lg border border-primary-200/80 bg-white px-3 py-1.5 text-sm font-medium text-ink shadow-soft transition-colors hover:bg-primary-50 hover:text-primary-600">
                           {it}
                         </span>
@@ -243,7 +312,7 @@ export default function ICPEngine() {
                   >
                     Save &amp; Use in Lead Management
                   </ButtonPrimary>
-                  <ButtonOutline fullWidth onClick={() => generateIcp(form)} data-testid="icp-regenerate-button">
+                  <ButtonOutline fullWidth onClick={(e) => onSubmit(e)} data-testid="icp-regenerate-button">
                     Regenerate
                   </ButtonOutline>
                 </div>

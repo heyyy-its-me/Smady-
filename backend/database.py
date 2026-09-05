@@ -1,4 +1,5 @@
 import os
+import ssl
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy import MetaData, text
 
@@ -14,7 +15,10 @@ DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT
 
 connect_args = {"server_settings": {"search_path": DB_SCHEMA}}
 if DB_SSLMODE in ("require", "verify-full", "verify-ca"):
-    connect_args["ssl"] = True
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    connect_args["ssl"] = ssl_context
 
 engine = create_async_engine(
     DATABASE_URL,

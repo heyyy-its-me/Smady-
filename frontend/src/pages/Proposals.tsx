@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Send, Clock, CheckCircle2, Eye, Check, X, Pencil } from "lucide-react";
 import { PageHeader } from "@/layouts/PageHeader";
 import { FormCard } from "@/components/smady/FormCard";
@@ -9,17 +10,22 @@ import { ButtonPrimary, ButtonOutline } from "@/components/smady/Button";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/smady/SearchableSelect";
 import { useAppData } from "@/context/AppDataContext";
-import { leadPool } from "@/mock/leads";
 import { toast } from "@/components/ui/sonner";
 
 const templates = ["Standard Growth Package", "Enterprise Rollout", "Starter Plan"];
 
 export default function Proposals() {
-  const { proposals, generatingProposal, generateProposal, approveProposal, rejectProposal } = useAppData();
+  const { proposals, generatingProposal, generateProposal, approveProposal, rejectProposal, leads } = useAppData();
+  const [searchParams] = useSearchParams();
   const [leadId, setLeadId] = useState("");
   const [template, setTemplate] = useState(templates[0]);
   const [notes, setNotes] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  useEffect(() => {
+    const id = searchParams.get("id");
+    if (id && proposals.some((p) => p.id === id)) setExpanded(id);
+  }, [searchParams, proposals]);
 
   const autoSent = proposals.filter((p) => p.status === "Sent").length;
   const pendingReview = proposals.filter((p) => p.status === "Needs Review").length;
@@ -27,13 +33,12 @@ export default function Proposals() {
 
   const onGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const lead = leadPool.find((l) => l.id === leadId);
+    const lead = leads.find((l) => l.id === leadId);
     if (!lead) {
       toast.error("Select a lead first");
       return;
     }
-    await generateProposal({ leadName: lead.name, company: lead.company, notes });
-    toast.success("Proposal drafted");
+    await generateProposal({ leadId: lead.id, leadName: lead.name, company: lead.company, notes });
   };
 
   return (
@@ -45,7 +50,7 @@ export default function Proposals() {
           <div>
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Select Lead / Company</label>
             <SearchableSelect
-              options={leadPool.map((l) => ({ label: l.name, value: l.id, subtitle: l.company }))}
+              options={leads.map((l) => ({ label: l.name, value: l.id, subtitle: l.company }))}
               value={leadId}
               onChange={setLeadId}
               placeholder="Search leads..."
@@ -114,7 +119,7 @@ export default function Proposals() {
               )}
               {p.status === "Needs Review" && (
                 <div className="mt-3 flex gap-2">
-                  <ButtonPrimary icon={<Check className="h-4 w-4" strokeWidth={1.5} />} className="px-4 py-2 text-xs" onClick={() => { approveProposal(p.id); toast.success("Proposal approved"); }} data-testid={`proposal-approve-${p.id}`}>
+                  <ButtonPrimary icon={<Check className="h-4 w-4" strokeWidth={1.5} />} className="px-4 py-2 text-xs" onClick={() => approveProposal(p.id)} data-testid={`proposal-approve-${p.id}`}>
                     Approve
                   </ButtonPrimary>
                   <ButtonOutline icon={<Pencil className="h-4 w-4" strokeWidth={1.5} />} className="px-4 py-2 text-xs" data-testid={`proposal-edit-${p.id}`}>
@@ -123,7 +128,7 @@ export default function Proposals() {
                   <ButtonOutline
                     icon={<X className="h-4 w-4 text-danger" strokeWidth={1.5} />}
                     className="px-4 py-2 text-xs text-danger"
-                    onClick={() => { rejectProposal(p.id); toast.success("Proposal rejected"); }}
+                    onClick={() => rejectProposal(p.id)}
                     data-testid={`proposal-reject-${p.id}`}
                   >
                     Reject

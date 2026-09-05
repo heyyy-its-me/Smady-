@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ExternalLink, Plus } from "lucide-react";
 import { PageHeader } from "@/layouts/PageHeader";
 import { CalendarBlock } from "@/components/smady/CalendarBlock";
@@ -9,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/smady/SearchableSelect";
 import { useAppData } from "@/context/AppDataContext";
-import { leadPool } from "@/mock/leads";
 import { toast } from "@/components/ui/sonner";
 
 const legend = [
@@ -19,31 +19,63 @@ const legend = [
 ];
 
 export default function Meetings() {
-  const { meetings, addMeeting } = useAppData();
+  const { meetings, scheduleMeeting, schedulingMeeting, leads } = useAppData();
+  const [searchParams] = useSearchParams();
   const [open, setOpen] = useState(false);
   const [leadId, setLeadId] = useState("");
+  const [clientName, setClientName] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const [duration, setDuration] = useState("30");
+  const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    const id = searchParams.get("id");
+    if (id && meetings.some((m) => m.id === id)) {
+      toast.info("Viewing meeting from Reports history");
+    }
+  }, [searchParams, meetings]);
 
   const upcoming = [...meetings]
     .filter((m) => new Date(m.date) >= new Date(new Date().toDateString()))
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 6);
 
-  const onConfirm = () => {
-    const lead = leadPool.find((l) => l.id === leadId);
-    if (!lead || !date || !time) {
-      toast.error("Please fill in all fields");
+  const onSelectLead = (id: string) => {
+    setLeadId(id);
+    const lead = leads.find((l) => l.id === id);
+    if (lead) {
+      setClientName(lead.name);
+      setClientEmail(lead.email);
+    }
+  };
+
+  const onConfirm = async () => {
+    if (!clientName || !clientEmail || !date || !time || !title) {
+      toast.error("Please fill in all required fields");
       return;
     }
-    addMeeting({ leadName: lead.name, company: lead.company, date, time, status: "Confirmed", link: notes || "https://meet.smady.ai/new" });
+    await scheduleMeeting({
+      leadId: leadId || undefined,
+      clientName,
+      clientEmail,
+      date,
+      time,
+      durationMinutes: parseInt(duration, 10) || 30,
+      title,
+      notes,
+    });
     setOpen(false);
     setLeadId("");
+    setClientName("");
+    setClientEmail("");
     setDate("");
     setTime("");
+    setDuration("30");
+    setTitle("");
     setNotes("");
-    toast.success("Meeting scheduled");
   };
 
   return (
@@ -89,32 +121,50 @@ export default function Meetings() {
           <DialogHeader>
             <DialogTitle>Schedule Meeting</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
             <div>
-              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Select Lead</label>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Select Lead (optional autofill)</label>
               <SearchableSelect
-                options={leadPool.map((l) => ({ label: l.name, value: l.id, subtitle: l.company }))}
+                options={leads.map((l) => ({ label: l.name, value: l.id, subtitle: l.company }))}
                 value={leadId}
-                onChange={setLeadId}
+                onChange={onSelectLead}
                 placeholder="Search leads..."
                 testId="meeting-lead-select"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Client Name</label>
+                <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Jane Doe" data-testid="meeting-client-name-input" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Client Email</label>
+                <Input type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder="jane@acme.com" data-testid="meeting-client-email-input" />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Meeting Title</label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Discovery Call" data-testid="meeting-title-input" />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
                 <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Date</label>
                 <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} data-testid="meeting-date-input" />
               </div>
               <div>
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Time</label>
-                <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} data-testid="meeting-time-input" />
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Time (IST, 24hr)</label>
+                <Input value={time} onChange={(e) => setTime(e.target.value)} placeholder="14:30" data-testid="meeting-time-input" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Duration (min)</label>
+                <Input type="number" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="30" data-testid="meeting-duration-input" />
               </div>
             </div>
             <div>
-              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Meeting Link / Notes</label>
-              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="https://meet.smady.ai/..." data-testid="meeting-notes-input" />
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Notes / Description</label>
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional context for this meeting" data-testid="meeting-notes-input" />
             </div>
-            <ButtonPrimary fullWidth onClick={onConfirm} data-testid="meeting-confirm-button">
+            <ButtonPrimary fullWidth loading={schedulingMeeting} onClick={onConfirm} data-testid="meeting-confirm-button">
               Confirm Meeting
             </ButtonPrimary>
           </div>

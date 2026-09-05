@@ -1,14 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+import os
+import httpx
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import Optional, List
 from sqlalchemy import select, insert, update
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 
 from database import get_db
-from models import icp_profiles
+from models import company_profiles
 from auth import get_current_user
-from webhooks import trigger_webhook, is_webhook_configured, verify_callback_secret
 
 router = APIRouter(prefix="/api/icp", tags=["icp"])
 
@@ -17,23 +17,9 @@ class ICPGenerateRequest(BaseModel):
     productName: str
     productDescription: str
     companyName: str
-    companyDetails: str
-    countries: List[str] = []
-    industries: List[str] = []
-
-
-class ICPResult(BaseModel):
-    industry: List[str]
-    targetRoles: List[str]
-    companySize: List[str]
-    geography: List[str]
-    painPoints: List[str]
-
-
-class ICPCallbackRequest(BaseModel):
-    request_id: str
-    status: str
-    result: Optional[ICPResult] = None
+    targetGeography: str
+    businessStage: str
+    priority: str
 
 
 def serialize(row):
@@ -49,24 +35,51 @@ def serialize(row):
 @router.post("/generate")
 async def generate_icp(body: ICPGenerateRequest, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     request_id = uuid.uuid4()
-    configured = is_webhook_configured("icp")
+    icp_url = os.environ.get("ICP_ENGINE_API_URL", "").strip()
+
+    if not icp_url:
+        await db.execute(
+            insert(company_profiles).values(
+                user_id=user["id"], customer_id=user["id"], request_id=request_id,
+                status="webhook_not_configured", input=body.model_dump(),
+            )
+        )
+        await db.commit()
+        return {"request_id": str(request_id), "status": "webhook_not_configured"}
+
+    payload = {
+        "product_description": body.productDescription,
+        "target_geography": body.targetGeography,
+        "business_stage": body.businessStage,
+        "priority": body.priority,
+        "company_name": body.companyName,
+        "product_name": body.productName,
+    }
     await db.execute(
-        insert(icp_profiles).values(
-            user_id=user["id"],
-            request_id=request_id,
-            status="pending" if configured else "webhook_not_configured",
-            input=body.model_dump(),
+        insert(company_profiles).values(
+            user_id=user["id"], customer_id=user["id"], request_id=request_id, status="pending", input=payload,
         )
     )
     await db.commit()
-    if configured:
-        await trigger_webhook("icp", {"request_id": str(request_id), "user_id": user["id"], **body.model_dump()})
-    return {"request_id": str(request_id), "status": "pending" if configured else "webhook_not_configured"}
+
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(icp_url, json=payload)
+            resp.raise_for_status()
+            result = resp.json()
+    except Exception as e:
+        await db.execute(update(company_profiles).where(company_profiles.c.request_id == request_id).values(status="failed"))
+        await db.commit()
+        raise HTTPException(status_code=502, detail=f"ICP engine request failed: {e}")
+
+    await db.execute(update(company_profiles).where(company_profiles.c.request_id == request_id).values(status="completed", result=result))
+    await db.commit()
+    return {"request_id": str(request_id), "status": "completed", "result": result}
 
 
 @router.get("/status/{request_id}")
 async def get_icp_status(request_id: str, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(icp_profiles).where(icp_profiles.c.request_id == request_id, icp_profiles.c.user_id == user["id"]))
+    result = await db.execute(select(company_profiles).where(company_profiles.c.request_id == request_id, company_profiles.c.user_id == user["id"]))
     row = result.first()
     if not row:
         raise HTTPException(status_code=404, detail="ICP request not found")
@@ -76,25 +89,9 @@ async def get_icp_status(request_id: str, user: dict = Depends(get_current_user)
 @router.get("/latest")
 async def get_latest_icp(user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(icp_profiles).where(icp_profiles.c.user_id == user["id"]).order_by(icp_profiles.c.created_at.desc()).limit(1)
+        select(company_profiles).where(company_profiles.c.user_id == user["id"]).order_by(company_profiles.c.created_at.desc()).limit(1)
     )
     row = result.first()
     if not row:
         return None
     return serialize(row)
-
-
-@router.post("/callback")
-async def icp_callback(body: ICPCallbackRequest, x_callback_secret: Optional[str] = Header(None), db: AsyncSession = Depends(get_db)):
-    verify_callback_secret(x_callback_secret)
-    result = await db.execute(select(icp_profiles).where(icp_profiles.c.request_id == body.request_id))
-    row = result.first()
-    if not row:
-        raise HTTPException(status_code=404, detail="ICP request not found")
-    await db.execute(
-        update(icp_profiles).where(icp_profiles.c.request_id == body.request_id).values(
-            status=body.status, result=body.result.model_dump() if body.result else None
-        )
-    )
-    await db.commit()
-    return {"message": "ICP profile updated"}

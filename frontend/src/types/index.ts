@@ -51,12 +51,39 @@ export interface Proposal {
   content: string;
 }
 
+export interface ICPScoreCard {
+  icp: string;
+  pain_severity: number;
+  market_size: number;
+  ease_of_sales: number;
+  score: number;
+}
+
 export interface ICPResult {
-  industry: string[];
-  targetRoles: string[];
-  companySize: string[];
-  geography: string[];
-  painPoints: string[];
+  analysis: {
+    company_name: string;
+    product_name: string;
+    positioning: string;
+    differentiator: string;
+    industries: string[];
+    core_problem: string;
+    buyer_pain: string;
+    technical_complexity: string;
+    recommended_segment: string;
+  };
+  gtm_strategy: {
+    target_countries: string[];
+    target_regions: string[];
+    recommended_channels: string[];
+  };
+  primary_icp: ICPScoreCard;
+  secondary_icps: ICPScoreCard[];
+  buyer_persona: {
+    role: string[];
+    pain_points: string[];
+    goals: string[];
+  };
+  confidence_score: number;
 }
 
 export interface User {
@@ -69,4 +96,12 @@ export interface User {
 export interface StatDatum {
   label: string;
   value: number;
+}
+
+export interface HistoryItem {
+  request_id: string;
+  type: "icp" | "leads" | "outreach" | "meeting" | "proposal";
+  status: string;
+  title: string;
+  created_at: string;
 }

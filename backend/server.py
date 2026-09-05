@@ -10,7 +10,7 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 from database import init_db, engine
-from routers import auth_router, icp_router, leads_router, outreach_router, dashboard_router
+from routers import auth_router, icp_router, leads_router, outreach_router, dashboard_router, meetings_router, proposals_router, history_router
 
 
 @asynccontextmanager
@@ -36,6 +36,9 @@ app.include_router(icp_router.router)
 app.include_router(leads_router.router)
 app.include_router(outreach_router.router)
 app.include_router(dashboard_router.router)
+app.include_router(meetings_router.router)
+app.include_router(proposals_router.router)
+app.include_router(history_router.router)
 
 app.add_middleware(
     CORSMiddleware,

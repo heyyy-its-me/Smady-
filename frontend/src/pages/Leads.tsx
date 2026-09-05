@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Users, ShieldCheck, Send, Upload, Download, Linkedin, UploadCloud, Building2, Factory, UserRound, Globe2, MapPin, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageHeader } from "@/layouts/PageHeader";
@@ -26,7 +27,9 @@ const companySizes = ["1-50", "50-200", "200-1000", "1000+"];
 const shimmerBar = "rounded-full bg-[linear-gradient(90deg,#FFE6D6_25%,#F9622C_50%,#FFE6D6_75%)] bg-[length:200%_100%] animate-shimmer";
 
 export default function Leads() {
-  const { leads, generatingLeads, generateLeads, uploadLeads, sendToOutreach } = useAppData();
+  const { leads, generatingLeads, generateLeads, uploadLeads, sendToOutreach, refreshLeads } = useAppData();
+  const [searchParams] = useSearchParams();
+  const filterRequestId = searchParams.get("request_id");
   const formRef = useRef<HTMLDivElement>(null);
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
@@ -37,6 +40,10 @@ export default function Leads() {
   const [selected, setSelected] = useState<string[]>([]);
 
   const toggleSelect = (id: string) => setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  useEffect(() => {
+    if (filterRequestId) refreshLeads(filterRequestId).catch(() => {});
+  }, [filterRequestId, refreshLeads]);
 
   const allSelectedFilters = [...selectedIndustries, ...selectedRoles, ...selectedCountries, ...selectedCities];
   const estimatedMatches = allSelectedFilters.length === 0 ? 0 : Math.min(500, allSelectedFilters.length * 35 + 40);
@@ -101,6 +108,15 @@ export default function Leads() {
   return (
     <div data-testid="leads-page">
       <PageHeader />
+
+      {filterRequestId && (
+        <div className="mb-4 flex items-center justify-between rounded-xl border border-primary-200 bg-primary-50 px-4 py-2.5 text-sm text-primary-700" data-testid="leads-run-filter-banner">
+          <span>Showing results for run #{filterRequestId.slice(0, 8).toUpperCase()}</span>
+          <button className="font-semibold underline" onClick={() => refreshLeads()} data-testid="leads-clear-run-filter">
+            Show all leads
+          </button>
+        </div>
+      )}
 
       <div ref={formRef} className="relative overflow-hidden rounded-2xl border border-primary-100/70 bg-surface p-6 shadow-card lg:p-8" data-testid="leads-filter-form-card">
         <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-gradient-to-br from-primary-200/40 to-accent/10 blur-3xl" aria-hidden />
