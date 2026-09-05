@@ -1,5 +1,7 @@
-import { useRef, useState } from "react";
-import { Users, ShieldCheck, Send, Upload, Download, Linkedin, UploadCloud, Building2, Factory, UserRound, Globe2, MapPin, Sparkles } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import * as XLSX from "xlsx";
+import { Users, ShieldCheck, Send, Upload, Download, Linkedin, UploadCloud, Building2, Factory, UserRound, Globe2, MapPin, Sparkles, Coffee, RefreshCw, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageHeader } from "@/layouts/PageHeader";
 import { FormSection } from "@/components/smady/FormSection";
@@ -15,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppData } from "@/context/AppDataContext";
 import { toast } from "@/components/ui/sonner";
+import { api } from "@/lib/api";
 import type { Lead } from "@/types";
 
 const industries = ["B2B SaaS", "Fintech", "Healthtech", "E-commerce", "Manufacturing"];
@@ -26,7 +29,19 @@ const companySizes = ["1-50", "50-200", "200-1000", "1000+"];
 const shimmerBar = "rounded-full bg-[linear-gradient(90deg,#FFE6D6_25%,#F9622C_50%,#FFE6D6_75%)] bg-[length:200%_100%] animate-shimmer";
 
 export default function Leads() {
-  const { leads, generatingLeads, generateLeads, uploadLeads, sendToOutreach } = useAppData();
+  const {
+    leads,
+    generatingLeads,
+    leadsTimedOut,
+    generateLeads,
+    checkLeadsAgain,
+    uploadLeads,
+    sendToOutreach,
+    refreshLeads,
+  } = useAppData();
+  const [searchParams] = useSearchParams();
+  const requestIdParam = searchParams.get("request_id");
+
   const formRef = useRef<HTMLDivElement>(null);
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
@@ -35,6 +50,21 @@ export default function Leads() {
   const [companySize, setCompanySize] = useState(companySizes[1]);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
+  const [runInfo, setRunInfo] = useState<{ status: string; run_id: string; created_at: string } | null>(null);
+
+  // When navigating here with ?request_id, verify ownership and filter leads
+  useEffect(() => {
+    if (!requestIdParam) return;
+    api.get(`/leads/status/${requestIdParam}`)
+      .then(({ data }) => {
+        setRunInfo(data);
+        // Load leads filtered to this specific run
+        if (data.run_id) refreshLeads(data.run_id);
+      })
+      .catch(() => {
+        // 404 = no access or not found, just ignore
+      });
+  }, [requestIdParam, refreshLeads]);
 
   const toggleSelect = (id: string) => setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
@@ -98,9 +128,49 @@ export default function Leads() {
   const verified = leads.filter((l) => l.status !== "New").length;
   const readyForOutreach = leads.filter((l) => l.status === "New" || l.status === "Verified").length;
 
+  const onDownload = () => {
+    if (leads.length === 0) return;
+    const rows = leads.map((l) => ({
+      Name: l.name,
+      Title: l.title,
+      Company: l.company,
+      Domain: l.domain,
+      Email: l.email,
+      LinkedIn: l.linkedin,
+      Status: l.status,
+      Source: l.source,
+      "Sequence Progress": l.sequenceProgress,
+      About: l.about,
+    }));
+    const sheet = XLSX.utils.json_to_sheet(rows);
+    sheet["!cols"] = Object.keys(rows[0]).map(() => ({ wch: 22 }));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, "Leads");
+    XLSX.writeFile(workbook, `smady-leads-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success(`Exported ${leads.length} leads to Excel`);
+  };
+
   return (
     <div data-testid="leads-page">
       <PageHeader />
+
+      {/* Run context banner when navigated from history */}
+      {runInfo && (
+        <div className="mb-5 flex items-center gap-3 rounded-xl border border-primary-200/70 bg-primary-50/50 px-4 py-3">
+          <Clock className="h-4 w-4 text-primary-600" strokeWidth={1.5} />
+          <span className="text-sm text-primary-700">
+            Showing leads from run ·{" "}
+            <strong>{new Date(runInfo.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}</strong>
+            {" "}· Status: <StatusBadge status={runInfo.status} />
+          </span>
+          <button
+            className="ml-auto text-xs text-primary-600 underline underline-offset-2"
+            onClick={() => { setRunInfo(null); refreshLeads(); }}
+          >
+            Show all leads
+          </button>
+        </div>
+      )}
 
       <div ref={formRef} className="relative overflow-hidden rounded-2xl border border-primary-100/70 bg-surface p-6 shadow-card lg:p-8" data-testid="leads-filter-form-card">
         <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-gradient-to-br from-primary-200/40 to-accent/10 blur-3xl" aria-hidden />
@@ -177,7 +247,7 @@ export default function Leads() {
                 type="button"
                 disabled={leads.length === 0}
                 icon={<Download className="h-4 w-4" strokeWidth={1.5} />}
-                onClick={() => toast.success("Downloading leads.csv")}
+                onClick={onDownload}
                 data-testid="leads-download-button"
               >
                 Download Leads
@@ -203,17 +273,56 @@ export default function Leads() {
       </div>
 
       <div className="mt-6">
+        {/* Generating state — show coffee message + skeleton */}
         {generatingLeads && (
-          <div className="space-y-3 rounded-2xl border border-primary-200/70 bg-surface p-6 shadow-card" data-testid="leads-loading-skeleton">
-            <div className={`h-4 w-1/4 ${shimmerBar}`} />
-            <div className="mt-4 space-y-3">
-              <div className={`h-3 w-full ${shimmerBar}`} />
-              <div className={`h-3 w-full ${shimmerBar}`} />
-              <div className={`h-3 w-2/3 ${shimmerBar}`} />
+          <div className="space-y-4 rounded-2xl border border-primary-200/70 bg-surface p-6 shadow-card" data-testid="leads-loading-skeleton">
+            <div className="flex items-center gap-3">
+              <Coffee className="h-5 w-5 shrink-0 text-primary-500" strokeWidth={1.5} />
+              <div>
+                <p className="text-sm font-semibold text-ink">Request sent to the Agent</p>
+                <p className="text-xs text-muted">We’re getting you the best leads — this usually takes 3–5 minutes. Perfect time for a coffee ☕</p>
+              </div>
+            </div>
+            <div className="space-y-3 pt-2">
+              <div className={`h-4 w-1/4 ${shimmerBar}`} />
+              <div className="mt-4 space-y-3">
+                <div className={`h-3 w-full ${shimmerBar}`} />
+                <div className={`h-3 w-full ${shimmerBar}`} />
+                <div className={`h-3 w-2/3 ${shimmerBar}`} />
+              </div>
             </div>
           </div>
         )}
-        {!generatingLeads && leads.length === 0 && (
+
+        {/* Timed-out state */}
+        {leadsTimedOut && !generatingLeads && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-6 shadow-soft" data-testid="leads-timeout-card">
+            <div className="flex items-start gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                <Clock className="h-5 w-5 text-amber-600" strokeWidth={1.5} />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-ink">This is taking longer than expected</p>
+                <p className="mt-1 text-sm text-muted">
+                  The agent is still working on your request. n8n will call back as soon as it’s done.
+                  You can check now or come back in a few minutes.
+                </p>
+                <div className="mt-4 flex gap-3">
+                  <ButtonPrimary
+                    onClick={checkLeadsAgain}
+                    icon={<RefreshCw className="h-4 w-4" strokeWidth={1.5} />}
+                    data-testid="leads-check-again-button"
+                  >
+                    Check Again
+                  </ButtonPrimary>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!generatingLeads && !leadsTimedOut && leads.length === 0 && (
           <EmptyState
             icon={Users}
             title="No leads yet"
@@ -222,6 +331,8 @@ export default function Leads() {
             onAction={() => formRef.current?.scrollIntoView({ behavior: "smooth" })}
           />
         )}
+
+        {/* Leads table */}
         {!generatingLeads && leads.length > 0 && (
           <div className="rounded-2xl border border-primary-100/70 bg-surface p-6 shadow-card">
             <DataTable columns={columns} rows={leads} testId="leads-table" />

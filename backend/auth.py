@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
-from models import users, login_attempts
+from models import users, login_attempts, customers
 
 JWT_ALGORITHM = "HS256"
 MAX_ATTEMPTS = 5
@@ -47,14 +47,23 @@ def clear_auth_cookies(response):
     response.delete_cookie("refresh_token", path="/")
 
 
-def user_public(row) -> dict:
+def user_public(row, company: str | None = None) -> dict:
     return {
         "id": str(row.id),
         "name": row.full_name,
         "email": row.email,
-        "company": row.company_name,
-        "plan": row.plan,
+        "company": company,
+        "plan": "Pro Plan",
+        "customer_id": str(row.customer_id) if row.customer_id else None,
     }
+
+
+async def fetch_company_name(db: AsyncSession, customer_id) -> str | None:
+    if not customer_id:
+        return None
+    result = await db.execute(select(customers.c.name).where(customers.c.id == customer_id))
+    row = result.first()
+    return row.name if row else None
 
 
 async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
@@ -78,7 +87,8 @@ async def get_current_user(request: Request, db: AsyncSession = Depends(get_db))
     row = result.first()
     if not row:
         raise HTTPException(status_code=401, detail="User not found")
-    return user_public(row)
+    company = await fetch_company_name(db, row.customer_id)
+    return user_public(row, company)
 
 
 async def check_lockout(db: AsyncSession, identifier: str):

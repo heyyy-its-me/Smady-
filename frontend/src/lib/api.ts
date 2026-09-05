@@ -3,7 +3,7 @@ import axios from "axios";
 export const API_BASE = import.meta.env.REACT_APP_BACKEND_URL;
 
 export const api = axios.create({
-  baseURL: `${API_BASE}/api`,
+  baseURL: API_BASE,
   withCredentials: true,
 });
 

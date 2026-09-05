@@ -8,6 +8,8 @@ WEBHOOK_ENV_MAP = {
     "icp": "N8N_ICP_WEBHOOK_URL",
     "leads": "N8N_LEADS_WEBHOOK_URL",
     "outreach": "N8N_OUTREACH_WEBHOOK_URL",
+    "meetings": "N8N_MEETINGS_WEBHOOK_URL",
+    "proposals": "N8N_PROPOSALS_WEBHOOK_URL",
 }
 
 

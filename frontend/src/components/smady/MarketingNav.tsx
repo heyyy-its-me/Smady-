@@ -7,10 +7,9 @@ import { Logo } from "./Logo";
 import { ButtonPrimary } from "./Button";
 
 const marketingLinks = [
-  { label: "Home", href: "#home" },
+  { label: "Product", href: "#features" },
   { label: "How it Works", href: "#how-it-works" },
   { label: "Features", href: "#features" },
-  { label: "Pricing", href: "#pricing" },
 ];
 
 export function MarketingNav() {
@@ -26,7 +25,7 @@ export function MarketingNav() {
   return (
     <div className="sticky top-4 z-40 mx-auto max-w-6xl px-4">
       <motion.header
-        className={cn("flex items-center justify-between rounded-full bg-white px-4 shadow-nav transition-all", scrolled ? "py-1.5" : "py-2.5")}
+        className={cn("flex items-center justify-between rounded-full border border-border/60 bg-white/80 px-4 backdrop-blur-xl transition-all", scrolled ? "py-1.5 shadow-nav" : "py-2.5 shadow-sm")}
         data-testid="marketing-pill-nav"
       >
         <Link to="/" className="flex items-center gap-2">
@@ -39,9 +38,12 @@ export function MarketingNav() {
             </a>
           ))}
         </nav>
-        <div className="hidden lg:block">
+        <div className="hidden items-center gap-5 lg:flex">
+          <Link to="/login" className="text-sm font-semibold text-body hover:text-ink" data-testid="nav-login-link">
+            Log In
+          </Link>
           <Link to="/signup">
-            <ButtonPrimary data-testid="nav-book-demo-button">Book a Demo</ButtonPrimary>
+            <ButtonPrimary className="px-5 py-2.5 text-sm" data-testid="nav-start-free-button">Start Free</ButtonPrimary>
           </Link>
         </div>
         <button className="rounded-full p-2 text-ink lg:hidden" onClick={() => setOpen((o) => !o)} data-testid="marketing-mobile-menu-toggle">
@@ -67,8 +69,11 @@ export function MarketingNav() {
                 {l.label}
               </a>
             ))}
+            <Link to="/login" onClick={() => setOpen(false)} className="block py-2 text-sm font-semibold text-body">
+              Log In
+            </Link>
             <Link to="/signup" onClick={() => setOpen(false)}>
-              <ButtonPrimary className="mt-2 w-full">Book a Demo</ButtonPrimary>
+              <ButtonPrimary className="mt-2 w-full">Start Free</ButtonPrimary>
             </Link>
           </motion.div>
         )}

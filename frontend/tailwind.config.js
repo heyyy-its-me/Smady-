@@ -6,17 +6,18 @@ module.exports = {
     extend: {
       fontFamily: {
         sans: ["Inter", "sans-serif"],
-        display: ["Manrope", "sans-serif"],
+        display: ["Clash Display", "Inter", "sans-serif"],
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
-        "2xl": "20px",
+        "2xl": "24px",
       },
       boxShadow: {
         soft: "0 2px 12px -4px rgba(23,20,18,0.06)",
-        card: "0 8px 30px -8px rgba(23,20,18,0.08)",
+        card: "0 20px 60px -20px rgba(23,20,18,0.15)",
+        "card-hover": "0 30px 70px -15px rgba(249,98,44,0.22)",
         nav: "0 10px 40px -12px rgba(23,20,18,0.12)",
       },
       colors: {
@@ -48,13 +49,15 @@ module.exports = {
           700: "#BC3B14",
           800: "#8F2C10",
           900: "#5F1D0A",
+          light: "#FFEDE0",
         },
+        "accent-yellow": "#FFC94A",
         accent: { DEFAULT: "#FF8A4C", foreground: "#FFFFFF" },
         ink: { DEFAULT: "#171412" },
         body: { DEFAULT: "#6B645F" },
         muted: { DEFAULT: "#A39A93", foreground: "#6B645F" },
         surface: { DEFAULT: "#FFFFFF" },
-        bg: { DEFAULT: "#FBF7F4" },
+        bg: { DEFAULT: "#FFF8F1" },
         border: { DEFAULT: "#F1E9E3" },
         success: { DEFAULT: "#22C55E" },
         danger: { DEFAULT: "#EF4444" },

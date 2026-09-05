@@ -10,6 +10,49 @@ body {
   scroll-behavior: smooth;
 }
 
+/* Kinetic ticker ribbon marquee */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.blob-field {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.blob {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(100px);
+}
+.blob-orange {
+  background: radial-gradient(circle, #F9622C 0%, transparent 70%);
+  opacity: 0.5;
+}
+.blob-yellow {
+  background: radial-gradient(circle, #FFC94A 0%, transparent 70%);
+  opacity: 0.45;
+}
+.highlighter-mark {
+  position: relative;
+  display: inline-block;
+}
+.highlighter-mark::after {
+  content: "";
+  position: absolute;
+  left: -2%;
+  right: -2%;
+  bottom: 0.08em;
+  height: 0.32em;
+  background: #FFC94A;
+  opacity: 0.75;
+  transform: rotate(-1.2deg);
+  z-index: -1;
+  border-radius: 2px;
+}
+
 @layer base {
   :root {
     --background: 24 33% 97%;

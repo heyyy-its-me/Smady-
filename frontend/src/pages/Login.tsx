@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Sparkles } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { ButtonPrimary, ButtonOutline } from "@/components/smady/Button";
@@ -16,6 +16,22 @@ const schema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 type FormData = z.infer<typeof schema>;
+
+function RightPanel() {
+  return (
+    <div data-testid="login-right-panel">
+      <div className="flex items-center gap-2 text-primary-500">
+        <Sparkles className="h-4 w-4" strokeWidth={1.5} />
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Customer Story</span>
+      </div>
+      <p className="mt-3 font-display text-lg font-semibold leading-snug text-ink">
+        "Smady found us 340 qualified leads in our first month — without adding a single person to the team."
+      </p>
+      {/* Placeholder: replace with a real customer quote once available */}
+      <p className="mt-3 text-xs italic text-muted">— Placeholder quote, to be replaced with a real customer testimonial before launch</p>
+    </div>
+  );
+}
 
 export default function Login() {
   const { login } = useAuth();
@@ -38,9 +54,9 @@ export default function Login() {
   };
 
   return (
-    <AuthLayout>
-      <h1 className="font-display text-3xl font-extrabold text-ink">Welcome back</h1>
-      <p className="mt-2 text-sm text-body">Log in to keep your outbound running.</p>
+    <AuthLayout rightPanel={<RightPanel />}>
+      <h1 className="font-display text-[32px] font-semibold text-ink">Welcome back.</h1>
+      <p className="mt-2 text-sm text-body">Log in to keep your pipeline moving.</p>
       <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-4" data-testid="login-form">
         <div>
           <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted">Email</label>
@@ -94,9 +110,9 @@ export default function Login() {
         </ButtonOutline>
       </div>
       <p className="mt-8 text-center text-sm text-body">
-        Don't have an account?{" "}
+        New to Smady?{" "}
         <Link to="/signup" className="font-semibold text-primary-500" data-testid="login-signup-link">
-          Sign up
+          Create an account
         </Link>
       </p>
     </AuthLayout>

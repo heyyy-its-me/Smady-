@@ -13,11 +13,16 @@ export function AppShell() {
   }
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return (
-    <div className="min-h-screen bg-bg">
-      <AppPillNav />
-      <main className="mx-auto max-w-7xl px-4 py-8">
-        <Outlet />
-      </main>
+    <div className="relative min-h-screen bg-bg">
+      <div className="blob-field" style={{ opacity: 0.25 }}>
+        <div className="blob blob-orange" style={{ width: 420, height: 420, top: "-160px", right: "-120px" }} />
+      </div>
+      <div className="relative z-[1]">
+        <AppPillNav />
+        <main className="mx-auto max-w-7xl px-4 py-8">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

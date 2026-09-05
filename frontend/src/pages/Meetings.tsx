@@ -7,9 +7,7 @@ import { AvatarInitial } from "@/components/smady/AvatarStack";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { SearchableSelect } from "@/components/smady/SearchableSelect";
 import { useAppData } from "@/context/AppDataContext";
-import { leadPool } from "@/mock/leads";
 import { toast } from "@/components/ui/sonner";
 
 const legend = [
@@ -19,37 +17,54 @@ const legend = [
 ];
 
 export default function Meetings() {
-  const { meetings, addMeeting } = useAppData();
+  const { meetings, scheduleMeeting } = useAppData();
   const [open, setOpen] = useState(false);
-  const [leadId, setLeadId] = useState("");
+  const [leadName, setLeadName] = useState("");
+  const [leadEmail, setLeadEmail] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const [link, setLink] = useState("");
   const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const upcoming = [...meetings]
-    .filter((m) => new Date(m.date) >= new Date(new Date().toDateString()))
-    .sort((a, b) => a.date.localeCompare(b.date))
+    .filter((m) => new Date(m.meeting_date) >= new Date(new Date().toDateString()))
+    .sort((a, b) => a.meeting_date.localeCompare(b.meeting_date))
     .slice(0, 6);
 
-  const onConfirm = () => {
-    const lead = leadPool.find((l) => l.id === leadId);
-    if (!lead || !date || !time) {
+  const onConfirm = async () => {
+    if (!leadName || !leadEmail || !date || !time) {
       toast.error("Please fill in all fields");
       return;
     }
-    addMeeting({ leadName: lead.name, company: lead.company, date, time, status: "Confirmed", link: notes || "https://meet.smady.ai/new" });
-    setOpen(false);
-    setLeadId("");
-    setDate("");
-    setTime("");
-    setNotes("");
-    toast.success("Meeting scheduled");
+    setSubmitting(true);
+    try {
+      await scheduleMeeting({
+        lead_name: leadName,
+        lead_email: leadEmail,
+        meeting_date: new Date(`${date}T${time}:00`).toISOString(),
+        meeting_link: link || undefined,
+        notes: notes || undefined,
+      });
+      setOpen(false);
+      setLeadName("");
+      setLeadEmail("");
+      setDate("");
+      setTime("");
+      setLink("");
+      setNotes("");
+      toast.success("Meeting scheduled");
+    } catch {
+      // error toast already shown by context
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <div data-testid="meetings-page">
       <PageHeader />
-      <div className="mb-5 flex flex-wrap gap-3">
+      <div className="mb-5 flex flex-wrap gap-3" data-testid="meetings-legend">
         {legend.map((l) => (
           <span key={l.label} className="flex items-center gap-2 rounded-full bg-surface px-3 py-1.5 text-xs font-medium text-body shadow-card">
             <span className={`h-2 w-2 rounded-full ${l.color}`} />
@@ -64,16 +79,19 @@ export default function Meetings() {
           <div className="mt-4 space-y-3">
             {upcoming.map((m) => (
               <div key={m.id} className="flex items-center gap-3 rounded-xl border border-border p-3" data-testid={`upcoming-meeting-${m.id}`}>
-                <AvatarInitial name={m.leadName} size={32} />
+                <AvatarInitial name={m.lead_name} size={32} />
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-ink">{m.leadName}</p>
+                  <p className="text-sm font-semibold text-ink">{m.lead_name}</p>
                   <p className="text-xs text-muted">
-                    {m.company} · {m.date} · {m.time}
+                    {new Date(m.meeting_date).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                    {m.source === "agent" && <span className="ml-1.5 font-semibold text-primary-600">· Auto-booked</span>}
                   </p>
                 </div>
-                <a href={m.link} target="_blank" rel="noreferrer" className="text-primary-500" data-testid={`join-meeting-${m.id}`}>
-                  <ExternalLink className="h-4 w-4" strokeWidth={1.5} />
-                </a>
+                {m.meeting_link && (
+                  <a href={m.meeting_link} target="_blank" rel="noreferrer" className="text-primary-500" data-testid={`join-meeting-${m.id}`}>
+                    <ExternalLink className="h-4 w-4" strokeWidth={1.5} />
+                  </a>
+                )}
               </div>
             ))}
             {upcoming.length === 0 && <p className="text-sm text-muted">No upcoming meetings.</p>}
@@ -90,15 +108,15 @@ export default function Meetings() {
             <DialogTitle>Schedule Meeting</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Select Lead</label>
-              <SearchableSelect
-                options={leadPool.map((l) => ({ label: l.name, value: l.id, subtitle: l.company }))}
-                value={leadId}
-                onChange={setLeadId}
-                placeholder="Search leads..."
-                testId="meeting-lead-select"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Lead Name</label>
+                <Input value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="Jordan Blake" data-testid="meeting-lead-name-input" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Lead Email</label>
+                <Input value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} placeholder="jordan@company.com" data-testid="meeting-lead-email-input" />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -111,10 +129,14 @@ export default function Meetings() {
               </div>
             </div>
             <div>
-              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Meeting Link / Notes</label>
-              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="https://meet.smady.ai/..." data-testid="meeting-notes-input" />
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Meeting Link</label>
+              <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://meet.smady.ai/..." data-testid="meeting-link-input" />
             </div>
-            <ButtonPrimary fullWidth onClick={onConfirm} data-testid="meeting-confirm-button">
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Notes</label>
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything to prepare for this meeting..." data-testid="meeting-notes-input" />
+            </div>
+            <ButtonPrimary fullWidth loading={submitting} onClick={onConfirm} data-testid="meeting-confirm-button">
               Confirm Meeting
             </ButtonPrimary>
           </div>

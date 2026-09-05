@@ -8,10 +8,10 @@ import jwt
 from datetime import datetime, timezone, timedelta
 
 from database import get_db
-from models import users, password_reset_tokens
+from models import users, password_reset_tokens, customers
 from auth import (
     hash_password, verify_password, create_access_token, create_refresh_token,
-    set_auth_cookies, clear_auth_cookies, user_public, get_current_user,
+    set_auth_cookies, clear_auth_cookies, user_public, fetch_company_name, get_current_user,
     check_lockout, record_failed_attempt, clear_attempts, get_jwt_secret,
 )
 
@@ -45,13 +45,15 @@ async def signup(body: SignupRequest, response: Response, db: AsyncSession = Dep
     if len(body.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
     try:
+        customer_result = await db.execute(insert(customers).values(name=body.company).returning(customers))
+        customer_row = customer_result.first()
         result = await db.execute(
             insert(users).values(
                 email=email,
                 password_hash=hash_password(body.password),
                 full_name=body.fullName,
-                company_name=body.company,
-                plan="Pro Plan",
+                customer_id=customer_row.id,
+                is_active=True,
             ).returning(users)
         )
         row = result.first()
@@ -63,7 +65,7 @@ async def signup(body: SignupRequest, response: Response, db: AsyncSession = Dep
     access_token = create_access_token(str(row.id), row.email)
     refresh_token = create_refresh_token(str(row.id))
     set_auth_cookies(response, access_token, refresh_token)
-    return user_public(row)
+    return user_public(row, body.company)
 
 
 @router.post("/login")
@@ -82,7 +84,8 @@ async def login(body: LoginRequest, request: Request, response: Response, db: As
     access_token = create_access_token(str(row.id), row.email)
     refresh_token = create_refresh_token(str(row.id))
     set_auth_cookies(response, access_token, refresh_token)
-    return user_public(row)
+    company = await fetch_company_name(db, row.customer_id)
+    return user_public(row, company)
 
 
 @router.post("/logout")

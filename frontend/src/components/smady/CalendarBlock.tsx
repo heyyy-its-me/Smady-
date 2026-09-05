@@ -63,8 +63,8 @@ function CustomToolbar(toolbar: any) {
 export function CalendarBlock({ meetings }: { meetings: Meeting[] }) {
   const [view, setView] = useState<View>(Views.MONTH);
   const events = meetings.map((m) => {
-    const start = new Date(`${m.date}T00:00:00`);
-    return { id: m.id, title: m.leadName, start, end: start, status: m.status };
+    const start = new Date(m.meeting_date);
+    return { id: m.id, title: m.lead_name, start, end: start, status: m.status, source: m.source };
   });
 
   return (

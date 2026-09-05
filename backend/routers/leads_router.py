@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from sqlalchemy import select, insert, update
@@ -63,12 +63,24 @@ def serialize_lead(row) -> Dict[str, Any]:
         "about": row.about,
         "assigned": row.assigned or [],
         "sequenceProgress": row.sequence_progress,
+        "leadRunId": str(row.lead_run_id) if row.lead_run_id else None,
     }
 
 
 @router.get("")
-async def list_leads(user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(leads).where(leads.c.user_id == user["id"]).order_by(leads.c.created_at.desc()))
+async def list_leads(
+    run_id: Optional[str] = Query(None),
+    user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(leads).where(leads.c.user_id == user["id"])
+    if run_id:
+        try:
+            run_uuid = uuid.UUID(run_id)
+            query = query.where(leads.c.lead_run_id == run_uuid)
+        except ValueError:
+            pass
+    result = await db.execute(query.order_by(leads.c.created_at.desc()))
     return [serialize_lead(r) for r in result.fetchall()]
 
 
@@ -96,7 +108,7 @@ async def get_leads_status(request_id: str, user: dict = Depends(get_current_use
     row = result.first()
     if not row:
         raise HTTPException(status_code=404, detail="Lead run not found")
-    return {"request_id": str(row.request_id), "status": row.status}
+    return {"request_id": str(row.request_id), "run_id": str(row.id), "status": row.status, "created_at": row.created_at.isoformat()}
 
 
 @router.post("/callback")

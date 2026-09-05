@@ -1,12 +1,11 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Sparkles } from "lucide-react";
 import { Logo } from "@/components/smady/Logo";
 
-export function AuthLayout({ children }: { children: React.ReactNode }) {
+export function AuthLayout({ children, rightPanel }: { children: React.ReactNode; rightPanel?: React.ReactNode }) {
   return (
-    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
+    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[55fr_45fr]" style={{ background: "#FFFFFF" }}>
       <div className="flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-20">
         <Link to="/" className="mb-10 inline-block">
           <Logo />
@@ -15,26 +14,24 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
           {children}
         </motion.div>
       </div>
-      <div className="relative hidden overflow-hidden lg:block" style={{ background: "radial-gradient(circle at 50% 0%, #FFE9DA 0%, #FFD3B0 35%, #FBF7F4 70%)" }}>
+      <div className="relative hidden overflow-hidden lg:flex lg:items-center lg:justify-center">
+        <div
+          className="absolute inset-0"
+          style={{ background: "radial-gradient(circle at 30% 20%, #FFC94A 0%, #F9622C 55%, #E24D1B 100%)" }}
+        />
+        <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(circle at 80% 80%, #FFC94A 0%, transparent 60%)" }} />
         <motion.div
           animate={{ x: [0, 20, 0], y: [0, -20, 0] }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -right-10 top-24 h-64 w-64 rounded-full bg-primary-200/40 blur-3xl"
+          className="absolute -right-16 top-16 h-72 w-72 rounded-full bg-white/10 blur-3xl"
         />
-        <div className="relative flex h-full flex-col items-center justify-center gap-6 p-12">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-card">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Meetings Booked</p>
-            <p className="mt-1 text-3xl font-bold text-ink">142</p>
-            <p className="mt-2 text-sm text-success">+18% this month</p>
-          </div>
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-card">
-            <div className="flex items-center gap-2 text-primary-500">
-              <Sparkles className="h-4 w-4" strokeWidth={1.5} />
-              <span className="text-[11px] font-semibold uppercase tracking-wide">Testimonial</span>
-            </div>
-            <p className="mt-3 text-sm text-body">"Smady books more demos in a week than our SDR team did in a month."</p>
-            <p className="mt-2 text-xs font-semibold text-ink">— Head of Sales, Northwind Analytics</p>
-          </div>
+        <motion.div
+          animate={{ x: [0, -16, 0], y: [0, 18, 0] }}
+          transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -left-16 bottom-10 h-64 w-64 rounded-full bg-white/10 blur-3xl"
+        />
+        <div className="relative z-[1] w-full max-w-sm rounded-3xl bg-white p-7" style={{ boxShadow: "0 20px 60px -20px rgba(23,20,18,0.35)" }} data-testid="auth-right-panel-card">
+          {rightPanel}
         </div>
       </div>
     </div>

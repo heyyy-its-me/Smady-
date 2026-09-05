@@ -36,6 +36,8 @@ const statusStyles: Record<string, string> = {
   "Auto-Booked": "bg-primary-50 text-primary-600",
   "Needs Review": "bg-[#FDE68A]/40 text-amber-700",
   Approved: "bg-success/10 text-success",
+  Rejected: "bg-danger/10 text-danger",
+  webhook_not_configured: "bg-muted/15 text-body",
   Agent: "bg-primary-50 text-primary-600",
   Uploaded: "bg-muted/15 text-body",
 };

@@ -70,6 +70,19 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
         activity.append({"id": f"camp-{r.id}", "type": "email", "title": f"Campaign '{r.name}' {r.status.lower()}", "subtitle": f"{r.leads_count} leads", "time": r.created_at.isoformat()})
     activity.sort(key=lambda a: a["time"], reverse=True)
 
+    # Daily activity for heatmap (last 84 days = 12 weeks)
+    daily_start = today - timedelta(days=83)
+    daily_r = await db.execute(
+        select(func.date(leads.c.created_at).label("d"), func.count().label("c"))
+        .where(leads.c.user_id == uid, func.date(leads.c.created_at) >= daily_start)
+        .group_by("d")
+    )
+    daily_map = {str(r.d): r.c for r in daily_r.fetchall()}
+    daily_activity = {}
+    for i in range(84):
+        day = daily_start + timedelta(days=i)
+        daily_activity[day.isoformat()] = daily_map.get(day.isoformat(), 0)
+
     async def week_daily(status: str, week_start: date):
         daily = [0] * 7
         if campaign_ids:
@@ -109,6 +122,7 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
         "pipelineFunnel": pipeline_funnel,
         "leadSourceBreakdown": lead_source_breakdown,
         "activityFeed": activity[:6],
+        "dailyActivity": daily_activity,
         "emailsSentComparison": {
             "percent": pct_change(sum(sent_this), sum(sent_last)),
             "trend": "up" if sum(sent_this) >= sum(sent_last) else "down",
@@ -119,4 +133,65 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
             "trend": "up" if sum(replied_this) >= sum(replied_last) else "down",
             "thisWeek": replied_this, "lastWeek": replied_last, "totalPerWeek": sum(replied_this),
         },
+    }
+
+
+@router.get("/history")
+async def get_history(user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    uid = user["id"]
+
+    # Lead runs
+    runs_r = await db.execute(
+        select(lead_runs).where(lead_runs.c.user_id == uid).order_by(lead_runs.c.created_at.desc()).limit(20)
+    )
+    lead_run_history = []
+    for r in runs_r.fetchall():
+        count_r = await db.execute(
+            select(func.count()).select_from(leads).where(leads.c.lead_run_id == r.id)
+        )
+        lead_count = count_r.scalar() or 0
+        lead_run_history.append({
+            "id": str(r.id),
+            "request_id": str(r.request_id),
+            "type": "leads",
+            "status": r.status,
+            "filters": r.filters or {},
+            "lead_count": lead_count,
+            "created_at": r.created_at.isoformat(),
+        })
+
+    # ICP profiles
+    icp_r = await db.execute(
+        select(icp_profiles).where(icp_profiles.c.user_id == uid).order_by(icp_profiles.c.created_at.desc()).limit(10)
+    )
+    icp_history = []
+    for r in icp_r.fetchall():
+        icp_history.append({
+            "id": str(r.id),
+            "request_id": str(r.request_id),
+            "type": "icp",
+            "status": r.status,
+            "created_at": r.created_at.isoformat(),
+        })
+
+    # Campaigns
+    camp_r = await db.execute(
+        select(outreach_campaigns).where(outreach_campaigns.c.user_id == uid).order_by(outreach_campaigns.c.created_at.desc()).limit(10)
+    )
+    campaign_history = []
+    for r in camp_r.fetchall():
+        campaign_history.append({
+            "id": str(r.id),
+            "request_id": str(r.request_id),
+            "type": "outreach",
+            "name": r.name,
+            "status": r.status,
+            "leads_count": r.leads_count,
+            "created_at": r.created_at.isoformat(),
+        })
+
+    return {
+        "lead_runs": lead_run_history,
+        "icp_profiles": icp_history,
+        "campaigns": campaign_history,
     }

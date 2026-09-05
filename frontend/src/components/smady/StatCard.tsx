@@ -24,8 +24,8 @@ export function StatCard({ label, value, icon: Icon, highlighted, sparkline, tre
       transition={{ duration: 0.5 }}
       data-testid={`stat-card-${slug(label)}`}
       className={cn(
-        "group rounded-2xl p-7 shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-nav",
-        highlighted ? "bg-gradient-to-br from-primary-400 to-primary-600 text-white" : "bg-surface",
+        "group rounded-2xl border p-7 shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-hover",
+        highlighted ? "border-primary-600 bg-gradient-to-br from-primary-400 to-primary-600 text-white" : "border-border bg-surface",
       )}
     >
       <div className="flex items-center justify-between">

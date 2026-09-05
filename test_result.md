@@ -101,3 +101,159 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "Continuation: Polling Fix (exponential backoff + Page Visibility API + 15min timeout), Calendar Confirmation, Reports History (GET /api/history + click-through to leads), Premium Redesign (Landing page + Dashboard bento grid)"
+
+backend:
+  - task: "GET /api/dashboard/history endpoint"
+    implemented: true
+    working: true
+    file: "backend/routers/dashboard_router.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Returns lead_runs, icp_profiles, campaigns with user isolation"
+
+  - task: "Daily activity heatmap data in dashboard stats"
+    implemented: true
+    working: true
+    file: "backend/routers/dashboard_router.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Added dailyActivity field - 84 days of lead counts keyed by date string"
+
+  - task: "GET /api/leads/status returns run_id + created_at"
+    implemented: true
+    working: true
+    file: "backend/routers/leads_router.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Status endpoint now returns run_id + created_at for drill-through"
+
+  - task: "GET /api/leads?run_id filter"
+    implemented: true
+    working: true
+    file: "backend/routers/leads_router.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Added optional run_id query param to filter leads by lead_run_id"
+
+frontend:
+  - task: "Smart Polling Fix - phase-based backoff + Page Visibility + timeout"
+    implemented: true
+    working: true
+    file: "frontend/src/context/AppDataContext.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "smartPoll: 0-1min=20s, 1-3min=15s, 3-8min=5s, >8min=20s, 15min timeout, Page Visibility API, AbortController"
+
+  - task: "Premium Landing Page Redesign"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/landing/Hero.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Fraunces font, warm cream bg, grain texture, asymmetric hero, numbered 01-04 process, alternating feature rows, editorial POV section"
+
+  - task: "Dashboard Bento Grid"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/Dashboard.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "12-col grid: stats row, chart+comparisons, heatmap+AI insight, funnel+donut+activity, recent leads"
+
+  - task: "HeatmapCard Component"
+    implemented: true
+    working: true
+    file: "frontend/src/components/smady/HeatmapCard.tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "GitHub-style 12-week activity heatmap in orange intensity shades"
+
+  - task: "AIInsightCard Component"
+    implemented: true
+    working: true
+    file: "frontend/src/components/smady/AIInsightCard.tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Natural language insights computed from real dashboard data"
+
+  - task: "Leads timeout UI + request_id param handling"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/Leads.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Coffee message while generating, timeout card with Check Again button, run context banner"
+
+  - task: "Reports History Table with drill-through"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/Reports.tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Execution History shows lead runs/ICP/campaigns, View Leads navigates to /leads?request_id=<id>"
+
+metadata:
+  created_by: "main_agent"
+  version: "2.0"
+  test_sequence: 1
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "Premium Landing Page Redesign"
+    - "Dashboard Bento Grid"
+    - "Smart Polling Fix"
+    - "GET /api/dashboard/history endpoint"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: "Implemented all 4 sections from continuation prompt. Backend: PostgreSQL installed+configured, history endpoint, heatmap data, leads run_id filter. Frontend: smart polling with backoff (Phase-based), landing page rebuild (Fraunces font, grain texture, asymmetric hero, numbered process, alternating features, editorial), dashboard bento grid (HeatmapCard, AIInsightCard), leads timeout UI, reports history. Test credentials: test@smady.ai / Test123456!"
