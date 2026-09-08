@@ -20,7 +20,9 @@ import { toast } from "@/components/ui/sonner";
 import { api } from "@/lib/api";
 import type { Lead } from "@/types";
 import { LeadDetailModal } from "@/components/smady/LeadDetailModal";
+import { EditLeadModal } from "@/components/smady/EditLeadModal";
 import { RunHistoryPicker } from "@/components/smady/RunHistoryPicker";
+import { IcpPickerButton } from "@/components/smady/IcpPickerButton";
 
 const industries = ["B2B SaaS", "Fintech", "Healthtech", "E-commerce", "Manufacturing"];
 const roles = ["VP of Sales", "Head of Growth", "CRO", "Founder", "Director of Marketing"];
@@ -45,8 +47,9 @@ export default function Leads() {
     uploadLeads,
     sendToOutreach,
     sendRunToOutreach,
+    updateLead,
+    deleteLead,
     refreshLeads,
-    icp,
   } = useAppData();
   const [searchParams] = useSearchParams();
   const requestIdParam = searchParams.get("request_id");
@@ -61,6 +64,7 @@ export default function Leads() {
   const [selected, setSelected] = useState<string[]>([]);
   const [runInfo, setRunInfo] = useState<{ status: string; run_id: string; created_at: string } | null>(null);
   const [viewLead, setViewLead] = useState<Lead | null>(null);
+  const [editLead, setEditLead] = useState<Lead | null>(null);
   const [page, setPage] = useState(1);
 
   // Normalize the initial app-wide fetch to this page's PAGE_SIZE, unless viewing a specific run
@@ -99,19 +103,14 @@ export default function Leads() {
       });
   }, [requestIdParam, refreshLeads]);
 
-  // Reuse the latest saved ICP profile as a starting point for lead filters (only when the
-  // user hasn't picked anything yet, and we're not viewing a specific historical run).
-  useEffect(() => {
-    if (requestIdParam || !icp) return;
-    const hasUserFilters = selectedIndustries.length > 0 || selectedRoles.length > 0 || selectedCountries.length > 0;
-    if (hasUserFilters) return;
-    if (!icp.industry?.length && !icp.targetRoles?.length && !icp.geography?.length) return;
-    if (icp.industry?.length) setSelectedIndustries(icp.industry);
-    if (icp.targetRoles?.length) setSelectedRoles(icp.targetRoles);
-    if (icp.geography?.length) setSelectedCountries(icp.geography);
-    toast.success("Filters pre-filled from your latest ICP profile");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [icp, requestIdParam]);
+  // Reuse a saved ICP's Industry/Roles/Countries as a starting point for lead filters —
+  // done explicitly via the "Apply Saved ICP" picker now, not silently forced on every load.
+  const applyIcp = (result: { industry: string[]; targetRoles: string[]; geography: string[] }) => {
+    setSelectedIndustries(result.industry || []);
+    setSelectedRoles(result.targetRoles || []);
+    setSelectedCountries(result.geography || []);
+    toast.success("ICP filters applied");
+  };
 
 
   const toggleSelect = (id: string) => setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -162,18 +161,43 @@ export default function Leads() {
     {
       key: "linkedin",
       label: "LinkedIn",
-      render: (l) => (
-        <a href={l.linkedin} target="_blank" rel="noreferrer" className="text-primary-500" data-testid={`lead-linkedin-${l.id}`}>
-          <Linkedin className="h-4 w-4" strokeWidth={1.5} />
-        </a>
-      ),
+      render: (l) =>
+        l.linkedin ? (
+          <a
+            href={l.linkedin.startsWith("http") ? l.linkedin : `https://${l.linkedin}`}
+            target="_blank"
+            rel="noreferrer"
+            className="max-w-[180px] truncate text-sm text-primary-600 hover:underline"
+            data-testid={`lead-linkedin-${l.id}`}
+          >
+            {l.linkedin.replace(/^https?:\/\//, "")}
+          </a>
+        ) : (
+          <span className="text-sm text-muted">—</span>
+        ),
     },
     { key: "status", label: "Status", render: (l) => <StatusBadge status={l.status} /> },
     { key: "source", label: "Source", render: (l) => <StatusBadge status={l.source} /> },
     {
       key: "kebab",
       label: "",
-      render: (l) => <KebabMenu testId={`lead-kebab-${l.id}`} items={[{ label: "View lead", onClick: () => setViewLead(l) }, { label: "Send to outreach", onClick: () => sendToOutreach([l.id]) }]} />,
+      render: (l) => (
+        <KebabMenu
+          testId={`lead-kebab-${l.id}`}
+          items={[
+            { label: "View lead", onClick: () => setViewLead(l) },
+            { label: "Edit", onClick: () => setEditLead(l) },
+            { label: "Send to outreach", onClick: () => sendToOutreach([l.id]) },
+            {
+              label: "Remove",
+              danger: true,
+              onClick: () => {
+                if (window.confirm(`Remove ${l.name || "this lead"}? This cannot be undone.`)) deleteLead(l.id);
+              },
+            },
+          ]}
+        />
+      ),
     },
   ];
 
@@ -206,7 +230,7 @@ export default function Leads() {
       "Personalization Hook": l.personalizationHook || "",
       "Recommended Action": l.recommendedAction || "",
       "Sequence Progress": l.sequenceProgress,
-      About: l.about,
+      About: l.companyDescription || l.about,
     }));
     const sheet = XLSX.utils.json_to_sheet(rows);
     sheet["!cols"] = Object.keys(rows[0]).map(() => ({ wch: 22 }));
@@ -218,7 +242,14 @@ export default function Leads() {
 
   return (
     <div data-testid="leads-page">
-      <PageHeader actions={<RunHistoryPicker selectedRunId={leadsRunId} onSelect={onSelectRun} />} />
+      <PageHeader
+        actions={
+          <>
+            <IcpPickerButton onApply={applyIcp} />
+            <RunHistoryPicker selectedRunId={leadsRunId} onSelect={onSelectRun} />
+          </>
+        }
+      />
 
       {/* Run context banner when navigated from history */}
       {runInfo && (
@@ -487,6 +518,7 @@ export default function Leads() {
       </Dialog>
 
       <LeadDetailModal lead={viewLead} open={!!viewLead} onOpenChange={(v) => !v && setViewLead(null)} />
+      <EditLeadModal lead={editLead} open={!!editLead} onOpenChange={(v) => !v && setEditLead(null)} onSave={updateLead} />
     </div>
   );
 }

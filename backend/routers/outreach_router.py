@@ -82,7 +82,7 @@ async def create_campaign(body: CampaignCreateRequest, user: dict = Depends(get_
     status = "Queued" if configured else "Failed"
     result = await db.execute(
         insert(outreach_campaigns).values(
-            user_id=user["id"], request_id=request_id, name=body.name, leads_count=leads_count,
+            user_id=user["id"], customer_id=user["customer_id"], request_id=request_id, name=body.name, leads_count=leads_count,
             status=status, subject=body.subject, body=body.body,
             sent_date=date.today() if configured else None,
         ).returning(outreach_campaigns)

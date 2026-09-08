@@ -17,9 +17,12 @@ import { KebabMenu } from "@/components/smady/KebabMenu";
 import { useAppData } from "@/context/AppDataContext";
 import type { Lead } from "@/types";
 import { toast } from "@/components/ui/sonner";
+import { useState } from "react";
+import { LeadDetailModal } from "@/components/smady/LeadDetailModal";
+import { EditLeadModal } from "@/components/smady/EditLeadModal";
 
 export default function Dashboard() {
-  const { dashboardStats, leads } = useAppData();
+  const { dashboardStats, leads, updateLead, deleteLead } = useAppData();
   const {
     leadsGrowth,
     emailsSentComparison,
@@ -30,6 +33,8 @@ export default function Dashboard() {
     dailyActivity,
   } = dashboardStats;
   const recentLeads = leads.slice(0, 6);
+  const [viewLead, setViewLead] = useState<Lead | null>(null);
+  const [editLead, setEditLead] = useState<Lead | null>(null);
 
   const columns: Column<Lead>[] = [
     {
@@ -49,7 +54,19 @@ export default function Dashboard() {
       ),
     },
     { key: "status", label: "Status", render: (l) => <StatusBadge status={l.status} /> },
-    { key: "about", label: "About", render: (l) => <p className="max-w-[220px] text-sm text-body">{l.about}</p> },
+    {
+      key: "about",
+      label: "About",
+      render: (l) => (
+        <p
+          data-testid={`recent-lead-about-${l.id}`}
+          title={l.about}
+          className="max-w-[220px] truncate text-sm text-body"
+        >
+          {l.about}
+        </p>
+      ),
+    },
     { key: "assigned", label: "Assigned", render: (l) => <AvatarStack names={l.assigned} /> },
     { key: "progress", label: "Sequence Progress", render: (l) => <ProgressBar value={l.sequenceProgress} /> },
     {
@@ -58,7 +75,17 @@ export default function Dashboard() {
       render: (l) => (
         <KebabMenu
           testId={`recent-lead-kebab-${l.id}`}
-          items={[{ label: "View lead" }, { label: "Edit" }, { label: "Remove", danger: true }]}
+          items={[
+            { label: "View lead", onClick: () => setViewLead(l) },
+            { label: "Edit", onClick: () => setEditLead(l) },
+            {
+              label: "Remove",
+              danger: true,
+              onClick: () => {
+                if (window.confirm(`Remove ${l.name || "this lead"}? This cannot be undone.`)) deleteLead(l.id);
+              },
+            },
+          ]}
         />
       ),
     },
@@ -149,6 +176,8 @@ export default function Dashboard() {
           <DataTable columns={columns} rows={recentLeads} testId="dashboard-recent-leads-table" />
         </div>
       </div>
+      <LeadDetailModal lead={viewLead} open={!!viewLead} onOpenChange={(v) => !v && setViewLead(null)} />
+      <EditLeadModal lead={editLead} open={!!editLead} onOpenChange={(v) => !v && setEditLead(null)} onSave={updateLead} />
     </div>
   );
 }

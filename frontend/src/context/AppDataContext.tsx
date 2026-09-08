@@ -143,6 +143,8 @@ interface AppDataContextType {
   uploadLeads: (count: number) => Promise<void>;
   sendToOutreach: (ids: string[]) => Promise<void>;
   sendRunToOutreach: (runId: string) => Promise<void>;
+  updateLead: (id: string, patch: Partial<Lead>) => Promise<void>;
+  deleteLead: (id: string) => Promise<void>;
   refreshLeads: (runId?: string, offset?: number, limit?: number) => Promise<void>;
 
   campaigns: Campaign[];
@@ -422,6 +424,28 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateLead = async (id: string, patch: Partial<Lead>) => {
+    try {
+      const { data } = await api.patch(`/leads/${id}`, patch);
+      setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...data } : l)));
+      toast.success("Lead updated");
+    } catch (e) {
+      toast.error(formatApiError(e));
+      throw e;
+    }
+  };
+
+  const deleteLead = async (id: string) => {
+    try {
+      await api.delete(`/leads/${id}`);
+      setLeads((prev) => prev.filter((l) => l.id !== id));
+      setLeadsTotal((prev) => Math.max(0, prev - 1));
+      toast.success("Lead deleted");
+    } catch (e) {
+      toast.error(formatApiError(e));
+    }
+  };
+
   const addCampaign = async (data: { name: string; subject: string; body: string; recipientSource?: string; runId?: string }) => {
     try {
       const { data: campaign } = await api.post("/outreach/campaigns", data);
@@ -503,6 +527,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         uploadLeads,
         sendToOutreach,
         sendRunToOutreach,
+        updateLead,
+        deleteLead,
         refreshLeads,
         campaigns,
         addCampaign,

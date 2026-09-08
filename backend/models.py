@@ -184,6 +184,7 @@ outreach_campaigns = Table(
     "outreach_campaigns", metadata,
     Column("id", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4),
     Column("user_id", UUID(as_uuid=True), ForeignKey("public.users.id"), nullable=False),
+    Column("customer_id", UUID(as_uuid=True), nullable=False),
     Column("request_id", UUID(as_uuid=True), nullable=False, unique=True),
     Column("name", String),
     Column("leads_count", Integer, server_default="0"),

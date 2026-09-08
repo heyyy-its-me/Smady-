@@ -17,13 +17,13 @@ export function ButtonPrimary({ children, loading, fullWidth, icon, className, d
       transition={{ duration: 0.15 }}
       disabled={disabled || loading}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 px-6 py-3 text-sm font-semibold text-white shadow-md transition-all hover:brightness-110 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex items-center justify-center gap-2 whitespace-normal rounded-full bg-gradient-to-br from-primary-400 to-primary-600 px-6 py-3 text-center text-sm font-semibold leading-tight text-white shadow-md transition-all hover:brightness-110 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60",
         fullWidth && "w-full",
         className,
       )}
       {...(props as any)}
     >
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}
+      {loading ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : icon && <span className="shrink-0">{icon}</span>}
       {children}
     </motion.button>
   );
@@ -37,13 +37,13 @@ export function ButtonDark({ children, loading, fullWidth, icon, className, disa
       transition={{ duration: 0.15 }}
       disabled={disabled || loading}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-ink to-black px-6 py-3 text-sm font-semibold text-white shadow-md transition-all hover:brightness-125 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex items-center justify-center gap-2 whitespace-normal rounded-full bg-gradient-to-br from-ink to-black px-6 py-3 text-center text-sm font-semibold leading-tight text-white shadow-md transition-all hover:brightness-125 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60",
         fullWidth && "w-full",
         className,
       )}
       {...(props as any)}
     >
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}
+      {loading ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : icon && <span className="shrink-0">{icon}</span>}
       {children}
     </motion.button>
   );
@@ -57,13 +57,13 @@ export function ButtonOutline({ children, loading, fullWidth, icon, className, d
       transition={{ duration: 0.15 }}
       disabled={disabled || loading}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-full border border-border bg-white px-6 py-3 text-sm font-semibold text-ink shadow-soft transition-all hover:-translate-y-0.5 hover:border-primary-200 hover:bg-primary-50 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex items-center justify-center gap-2 whitespace-normal rounded-full border border-border bg-white px-6 py-3 text-center text-sm font-semibold leading-tight text-ink shadow-soft transition-all hover:-translate-y-0.5 hover:border-primary-200 hover:bg-primary-50 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60",
         fullWidth && "w-full",
         className,
       )}
       {...(props as any)}
     >
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}
+      {loading ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : icon && <span className="shrink-0">{icon}</span>}
       {children}
     </motion.button>
   );

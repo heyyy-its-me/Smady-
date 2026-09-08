@@ -1,29 +1,47 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import date, timedelta
+from datetime import date, datetime, timezone, timedelta
 
 from database import get_db
-from models import leads, outreach_campaigns, outreach_emails, icp_profiles, lead_runs
+from models import outreach_campaigns, outreach_emails, icp_profiles, lead_runs, lead_results, meetings
 from auth import get_current_user
+from routers.leads_router import _normalize_lead
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
+def _ms_to_date(ms) -> date:
+    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).date()
+
+
+async def _flatten_user_leads(db: AsyncSession, uid: str):
+    """All of this user's leads across every execution, flattened from public.lead_results JSONB,
+    each tagged with the day its run landed - this is the real source of truth for dashboard stats."""
+    runs_r = await db.execute(select(lead_results).where(lead_results.c.user_id == uid))
+    all_leads, leads_by_day = [], {}
+    for run in runs_r.fetchall():
+        run_day = _ms_to_date(run.created_at) if run.created_at else None
+        items = run.leads or []
+        for i, item in enumerate(items):
+            lead = _normalize_lead(item, run.request_id, i)
+            lead["_day"] = run_day
+            all_leads.append(lead)
+        if run_day and items:
+            leads_by_day[run_day] = leads_by_day.get(run_day, 0) + len(items)
+    return all_leads, leads_by_day
+
+
 @router.get("/stats")
 async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    uid = user["id"]
+    uid = str(user["id"])
     today = date.today()
 
-    total_leads_r = await db.execute(select(func.count()).select_from(leads).where(leads.c.user_id == uid))
-    total_leads = total_leads_r.scalar() or 0
+    all_leads, leads_by_day = await _flatten_user_leads(db, uid)
+    total_leads = len(all_leads)
+    leads_today = leads_by_day.get(today, 0)
 
-    leads_today_r = await db.execute(
-        select(func.count()).select_from(leads).where(leads.c.user_id == uid, func.date(leads.c.created_at) == today)
-    )
-    leads_today = leads_today_r.scalar() or 0
-
-    campaign_ids_r = await db.execute(select(outreach_campaigns.c.id).where(outreach_campaigns.c.user_id == uid))
+    campaign_ids_r = await db.execute(select(outreach_campaigns.c.id).where(outreach_campaigns.c.user_id == user["id"]))
     campaign_ids = [r.id for r in campaign_ids_r.fetchall()]
     emails_sent = 0
     if campaign_ids:
@@ -32,56 +50,46 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
         )
         emails_sent = emails_sent_r.scalar() or 0
 
-    meetings_booked_r = await db.execute(
-        select(func.count()).select_from(leads).where(leads.c.user_id == uid, leads.c.status == "Meeting Booked")
-    )
-    meetings_booked = meetings_booked_r.scalar() or 0
+    meetings_count_r = await db.execute(select(func.count()).select_from(meetings).where(meetings.c.user_id == user["id"]))
+    meetings_booked = meetings_count_r.scalar() or 0
 
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    growth_r = await db.execute(
-        select(func.date_trunc("month", leads.c.created_at).label("m"), func.count().label("c"))
-        .where(leads.c.user_id == uid).group_by("m").order_by("m")
-    )
-    growth_map = {r.m.strftime("%b"): r.c for r in growth_r.fetchall()}
+    growth_map = {}
+    for day, count in leads_by_day.items():
+        m = day.strftime("%b")
+        growth_map[m] = growth_map.get(m, 0) + count
     leads_growth = [{"label": m, "value": growth_map.get(m, 0)} for m in months]
 
     funnel_stages = [("New", "New Leads"), ("Contacted", "Contacted"), ("Interested", "Interested"), ("Meeting Booked", "Meeting Booked")]
-    pipeline_funnel = []
-    for status_value, label in funnel_stages:
-        r = await db.execute(select(func.count()).select_from(leads).where(leads.c.user_id == uid, leads.c.status == status_value))
-        pipeline_funnel.append({"stage": label, "value": r.scalar() or 0})
+    pipeline_funnel = [{"stage": label, "value": sum(1 for l in all_leads if l["status"] == sv)} for sv, label in funnel_stages]
 
-    source_r = await db.execute(
-        select(leads.c.source, func.count().label("c")).where(leads.c.user_id == uid).group_by(leads.c.source)
-    )
-    source_rows = source_r.fetchall()
-    source_total = sum(r.c for r in source_rows) or 1
-    lead_source_breakdown = [{"name": r.source or "Unknown", "value": round(r.c / source_total * 100)} for r in source_rows]
+    source_counts: dict = {}
+    for l in all_leads:
+        source_counts[l["source"]] = source_counts.get(l["source"], 0) + 1
+    source_total = sum(source_counts.values()) or 1
+    lead_source_breakdown = [{"name": k, "value": round(v / source_total * 100)} for k, v in source_counts.items()]
 
     activity = []
-    icp_r = await db.execute(select(icp_profiles).where(icp_profiles.c.user_id == uid).order_by(icp_profiles.c.created_at.desc()).limit(3))
+    icp_r = await db.execute(select(icp_profiles).where(icp_profiles.c.user_id == user["id"]).order_by(icp_profiles.c.created_at.desc()).limit(3))
     for r in icp_r.fetchall():
         activity.append({"id": f"icp-{r.id}", "type": "lead", "title": "ICP profile generated", "subtitle": r.status, "time": r.created_at.isoformat()})
-    lead_run_r = await db.execute(select(lead_runs).where(lead_runs.c.user_id == uid).order_by(lead_runs.c.created_at.desc()).limit(3))
+    lead_run_r = await db.execute(select(lead_runs).where(lead_runs.c.user_id == user["id"]).order_by(lead_runs.c.created_at.desc()).limit(3))
     for r in lead_run_r.fetchall():
         activity.append({"id": f"run-{r.id}", "type": "lead", "title": "Lead sourcing run created", "subtitle": r.status, "time": r.created_at.isoformat()})
-    camp_r = await db.execute(select(outreach_campaigns).where(outreach_campaigns.c.user_id == uid).order_by(outreach_campaigns.c.created_at.desc()).limit(3))
+    camp_r = await db.execute(select(outreach_campaigns).where(outreach_campaigns.c.user_id == user["id"]).order_by(outreach_campaigns.c.created_at.desc()).limit(3))
     for r in camp_r.fetchall():
         activity.append({"id": f"camp-{r.id}", "type": "email", "title": f"Campaign '{r.name}' {r.status.lower()}", "subtitle": f"{r.leads_count} leads", "time": r.created_at.isoformat()})
+    meeting_r = await db.execute(select(meetings).where(meetings.c.user_id == user["id"]).order_by(meetings.c.created_at.desc()).limit(3))
+    for r in meeting_r.fetchall():
+        activity.append({"id": f"meeting-{r.id}", "type": "meeting", "title": f"Meeting booked with {r.lead_name}", "subtitle": r.status, "time": r.created_at.isoformat()})
     activity.sort(key=lambda a: a["time"], reverse=True)
 
     # Daily activity for heatmap (last 84 days = 12 weeks)
     daily_start = today - timedelta(days=83)
-    daily_r = await db.execute(
-        select(func.date(leads.c.created_at).label("d"), func.count().label("c"))
-        .where(leads.c.user_id == uid, func.date(leads.c.created_at) >= daily_start)
-        .group_by("d")
-    )
-    daily_map = {str(r.d): r.c for r in daily_r.fetchall()}
     daily_activity = {}
     for i in range(84):
         day = daily_start + timedelta(days=i)
-        daily_activity[day.isoformat()] = daily_map.get(day.isoformat(), 0)
+        daily_activity[day.isoformat()] = leads_by_day.get(day, 0)
 
     async def week_daily(status: str, week_start: date):
         daily = [0] * 7
@@ -140,27 +148,23 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
 async def get_history(user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     uid = user["id"]
 
-    # Lead runs
     runs_r = await db.execute(
         select(lead_runs).where(lead_runs.c.user_id == uid).order_by(lead_runs.c.created_at.desc()).limit(20)
     )
     lead_run_history = []
     for r in runs_r.fetchall():
-        count_r = await db.execute(
-            select(func.count()).select_from(leads).where(leads.c.lead_run_id == r.id)
-        )
-        lead_count = count_r.scalar() or 0
+        count_r = await db.execute(select(lead_results.c.total_count).where(lead_results.c.request_id == str(r.request_id)))
+        count_row = count_r.first()
         lead_run_history.append({
             "id": str(r.id),
             "request_id": str(r.request_id),
             "type": "leads",
             "status": r.status,
             "filters": r.filters or {},
-            "lead_count": lead_count,
+            "lead_count": (count_row.total_count if count_row else 0) or 0,
             "created_at": r.created_at.isoformat(),
         })
 
-    # ICP profiles
     icp_r = await db.execute(
         select(icp_profiles).where(icp_profiles.c.user_id == uid).order_by(icp_profiles.c.created_at.desc()).limit(10)
     )
@@ -174,7 +178,6 @@ async def get_history(user: dict = Depends(get_current_user), db: AsyncSession =
             "created_at": r.created_at.isoformat(),
         })
 
-    # Campaigns
     camp_r = await db.execute(
         select(outreach_campaigns).where(outreach_campaigns.c.user_id == uid).order_by(outreach_campaigns.c.created_at.desc()).limit(10)
     )

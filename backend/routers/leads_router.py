@@ -43,6 +43,34 @@ class UploadLeadsRequest(BaseModel):
     count: int = 5
 
 
+class LeadUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    title: Optional[str] = None
+    company: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    status: Optional[str] = None
+    priority: Optional[str] = None
+
+
+FIELD_TO_RAW_KEYS = {
+    "name": ["name", "full_name", "lead_name", "Contact Name"],
+    "title": ["title", "job_title", "position", "Designation"],
+    "company": ["Company Name", "company", "organization", "company_name"],
+    "email": ["email", "email_address", "Email"],
+    "phone": ["Phone"],
+    "status": ["status", "Qualification Status"],
+    "priority": ["Priority"],
+}
+
+
+def _parse_composite_id(composite_id: str):
+    request_id, sep, idx = composite_id.rpartition("-")
+    if not sep:
+        raise ValueError("Invalid lead id")
+    return request_id, int(idx)
+
+
 def _naive_now():
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -72,7 +100,7 @@ def _normalize_lead(raw: Dict[str, Any], request_id: str, index: int) -> Dict[st
         "linkedin": pick("linkedin", "linkedin_url", "linkedin_profile", "LinkedIn"),
         "status": pick("status", "Qualification Status", default="New"),
         "source": pick("source", default="Agent"),
-        "about": pick("about", "summary", "description", "AI Insight", "Company Description"),
+        "about": pick("about", "summary", "description", "Company Description", "AI Insight"),
         "assigned": raw.get("assigned") or [],
         "sequenceProgress": raw.get("sequenceProgress", raw.get("sequence_progress", 0)),
         "leadRunId": request_id,
@@ -359,3 +387,45 @@ async def send_run_to_outreach(request_id: str, user: dict = Depends(get_current
     await db.execute(update(lead_results).where(lead_results.c.request_id == request_id).values(leads=leads_list))
     await db.commit()
     return {"message": f"{len(leads_list)} lead(s) from this run sent to outreach"}
+
+
+@router.patch("/{composite_id}")
+async def update_lead(composite_id: str, body: LeadUpdateRequest, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    try:
+        request_id, idx = _parse_composite_id(composite_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid lead id")
+    result = await db.execute(select(lead_results).where(lead_results.c.request_id == request_id, lead_results.c.user_id == str(user["id"])))
+    row = result.first()
+    if not row or not row.leads or idx >= len(row.leads):
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    leads_list = list(row.leads)
+    item = dict(leads_list[idx])
+    for field, value in body.model_dump(exclude_unset=True).items():
+        for key in FIELD_TO_RAW_KEYS.get(field, [field]):
+            item[key] = value
+    leads_list[idx] = item
+    await db.execute(update(lead_results).where(lead_results.c.request_id == request_id).values(leads=leads_list))
+    await db.commit()
+    return _normalize_lead(item, request_id, idx)
+
+
+@router.delete("/{composite_id}")
+async def delete_lead(composite_id: str, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    try:
+        request_id, idx = _parse_composite_id(composite_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid lead id")
+    result = await db.execute(select(lead_results).where(lead_results.c.request_id == request_id, lead_results.c.user_id == str(user["id"])))
+    row = result.first()
+    if not row or not row.leads or idx >= len(row.leads):
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    leads_list = list(row.leads)
+    leads_list.pop(idx)
+    await db.execute(
+        update(lead_results).where(lead_results.c.request_id == request_id).values(leads=leads_list, total_count=len(leads_list))
+    )
+    await db.commit()
+    return {"message": "Lead deleted"}

@@ -7,9 +7,9 @@ import type { Lead } from "@/types";
 function DetailRow({ label, value }: { label: string; value?: string | number | null }) {
   if (value === undefined || value === null || value === "") return null;
   return (
-    <div data-testid={`lead-detail-row-${label.toLowerCase().replace(/\s+/g, "-")}`}>
+    <div className="min-w-0" data-testid={`lead-detail-row-${label.toLowerCase().replace(/\s+/g, "-")}`}>
       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</p>
-      <p className="mt-0.5 text-sm text-ink">{value}</p>
+      <p className="mt-0.5 break-words text-sm text-ink">{value}</p>
     </div>
   );
 }

@@ -145,3 +145,26 @@ async def get_latest_icp(user: dict = Depends(get_current_user), db: AsyncSessio
     if not row:
         return None
     return serialize(row)
+
+
+@router.get("/list")
+async def list_icps(user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """All of this user's completed ICP generations - lets the Leads page offer a picker instead
+    of silently always re-applying whichever one happens to be the most recent."""
+    result = await db.execute(
+        select(icp_profiles)
+        .where(icp_profiles.c.user_id == user["id"], icp_profiles.c.status == "completed")
+        .order_by(icp_profiles.c.created_at.desc())
+        .limit(30)
+    )
+    out = []
+    for row in result.fetchall():
+        input_data = row.input or {}
+        out.append({
+            "request_id": str(row.request_id),
+            "company_name": input_data.get("companyName", "Untitled"),
+            "product_name": input_data.get("productName", ""),
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+            "result": row.result,
+        })
+    return out
