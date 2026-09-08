@@ -13,6 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useAppData } from "@/context/AppDataContext";
 import { toast } from "@/components/ui/sonner";
+import { api } from "@/lib/api";
+import { RunHistoryPicker } from "@/components/smady/RunHistoryPicker";
 import type { Campaign } from "@/types";
 
 export default function Outreach() {
@@ -20,11 +22,19 @@ export default function Outreach() {
   const { weeklyEmailsSent } = outreachStats;
   const [open, setOpen] = useState(false);
   const [recipientSource, setRecipientSource] = useState("all");
+  const [runId, setRunId] = useState<string | null>(null);
+  const [runLeadCount, setRunLeadCount] = useState<number | null>(null);
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("Hi {first_name}, ...");
   const [scheduled, setScheduled] = useState(false);
   const [sending, setSending] = useState(false);
+
+  const onSelectRun = async (id: string) => {
+    setRunId(id);
+    const { data } = await api.get(`/leads?run_id=${id}&limit=1`);
+    setRunLeadCount(data.total);
+  };
 
   const columns: Column<Campaign>[] = [
     { key: "requestId", label: "Request ID", render: (c) => <span className="text-sm font-semibold text-ink">{c.requestId}</span> },
@@ -46,11 +56,13 @@ export default function Outreach() {
 
   const onSend = async () => {
     setSending(true);
-    await addCampaign({ name: name || "Untitled Campaign", subject, body, recipientSource });
+    await addCampaign({ name: name || "Untitled Campaign", subject, body, recipientSource, runId: recipientSource === "run" ? runId ?? undefined : undefined });
     setSending(false);
     setOpen(false);
     setName("");
     setSubject("");
+    setRunId(null);
+    setRunLeadCount(null);
   };
 
   return (
@@ -95,14 +107,31 @@ export default function Outreach() {
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Recipient Source</label>
               <select
                 value={recipientSource}
-                onChange={(e) => setRecipientSource(e.target.value)}
+                onChange={(e) => {
+                  setRecipientSource(e.target.value);
+                  if (e.target.value !== "run") {
+                    setRunId(null);
+                    setRunLeadCount(null);
+                  }
+                }}
                 className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm text-ink"
                 data-testid="campaign-recipient-source-select"
               >
-                <option value="all">All leads</option>
-                <option value="select">Select from Leads table</option>
+                <option value="all">All leads (every execution, ever)</option>
+                <option value="run">From a specific execution</option>
               </select>
             </div>
+            {recipientSource === "run" && (
+              <div className="space-y-2 rounded-xl border border-primary-100/70 bg-primary-50/40 p-3.5" data-testid="campaign-run-picker-wrapper">
+                <p className="text-xs text-muted">Pick which lead-generation run to target — even ones from days ago.</p>
+                <RunHistoryPicker selectedRunId={runId} onSelect={onSelectRun} />
+                {runId && (
+                  <p className="text-sm font-semibold text-primary-700" data-testid="campaign-run-lead-count">
+                    {runLeadCount === null ? "Loading..." : `${runLeadCount} lead(s) will be contacted from this run`}
+                  </p>
+                )}
+              </div>
+            )}
             <div>
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Subject Line</label>
               <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Quick question about {company}" data-testid="campaign-subject-input" />
@@ -115,7 +144,13 @@ export default function Outreach() {
               <span className="text-sm text-body">{scheduled ? "Schedule for later" : "Send Now"}</span>
               <Switch checked={scheduled} onCheckedChange={setScheduled} data-testid="campaign-schedule-toggle" />
             </div>
-            <ButtonPrimary fullWidth loading={sending} onClick={onSend} data-testid="campaign-send-button">
+            <ButtonPrimary
+              fullWidth
+              loading={sending}
+              disabled={recipientSource === "run" && !runId}
+              onClick={onSend}
+              data-testid="campaign-send-button"
+            >
               Send Campaign
             </ButtonPrimary>
           </div>

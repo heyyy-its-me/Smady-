@@ -131,6 +131,10 @@ interface AppDataContextType {
   checkIcpAgain: () => Promise<void>;
 
   leads: Lead[];
+  leadsTotal: number;
+  leadsRunId: string | null;
+  leadsVerifiedCount: number;
+  leadsReadyCount: number;
   generatingLeads: boolean;
   leadsTimedOut: boolean;
   pendingLeadsRequestId: string | null;
@@ -138,10 +142,11 @@ interface AppDataContextType {
   checkLeadsAgain: () => Promise<void>;
   uploadLeads: (count: number) => Promise<void>;
   sendToOutreach: (ids: string[]) => Promise<void>;
-  refreshLeads: (runId?: string) => Promise<void>;
+  sendRunToOutreach: (runId: string) => Promise<void>;
+  refreshLeads: (runId?: string, offset?: number, limit?: number) => Promise<void>;
 
   campaigns: Campaign[];
-  addCampaign: (data: { name: string; subject: string; body: string; recipientSource?: string }) => Promise<void>;
+  addCampaign: (data: { name: string; subject: string; body: string; recipientSource?: string; runId?: string }) => Promise<void>;
 
   meetings: Meeting[];
   refreshMeetings: () => Promise<void>;
@@ -175,6 +180,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const icpAbortRef = useRef<AbortController | null>(null);
 
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [leadsTotal, setLeadsTotal] = useState(0);
+  const [leadsRunId, setLeadsRunId] = useState<string | null>(null);
+  const [leadsVerifiedCount, setLeadsVerifiedCount] = useState(0);
+  const [leadsReadyCount, setLeadsReadyCount] = useState(0);
   const [generatingLeads, setGeneratingLeads] = useState(false);
   const [leadsTimedOut, setLeadsTimedOut] = useState(false);
   const [pendingLeadsRequestId, setPendingLeadsRequestId] = useState<string | null>(null);
@@ -189,10 +198,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [history, setHistory] = useState<HistoryData | null>(null);
   const [realHistory, setRealHistory] = useState<RealHistoryItem[]>([]);
 
-  const refreshLeads = useCallback(async (runId?: string) => {
-    const params = runId ? `?run_id=${runId}` : "";
-    const { data } = await api.get(`/leads${params}`);
-    setLeads(data);
+  const refreshLeads = useCallback(async (runId?: string, offset = 0, limit = 50) => {
+    const params = new URLSearchParams();
+    if (runId) params.set("run_id", runId);
+    params.set("offset", String(offset));
+    params.set("limit", String(limit));
+    const { data } = await api.get(`/leads?${params.toString()}`);
+    setLeads(data.leads);
+    setLeadsTotal(data.total);
+    setLeadsRunId(data.run_id);
+    setLeadsVerifiedCount(data.verified_count || 0);
+    setLeadsReadyCount(data.ready_count || 0);
   }, []);
 
   const refreshCampaigns = useCallback(async () => {
@@ -396,7 +412,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addCampaign = async (data: { name: string; subject: string; body: string; recipientSource?: string }) => {
+  const sendRunToOutreach = async (runId: string) => {
+    try {
+      const { data } = await api.post(`/leads/runs/${runId}/send-to-outreach`);
+      toast.success(data.message);
+      setLeads((prev) => prev.map((l) => (l.leadRunId === runId ? { ...l, status: "Contacted" as const } : l)));
+    } catch (e) {
+      toast.error(formatApiError(e));
+    }
+  };
+
+  const addCampaign = async (data: { name: string; subject: string; body: string; recipientSource?: string; runId?: string }) => {
     try {
       const { data: campaign } = await api.post("/outreach/campaigns", data);
       setCampaigns((prev) => [campaign, ...prev]);
@@ -465,6 +491,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         generateIcp,
         checkIcpAgain,
         leads,
+        leadsTotal,
+        leadsRunId,
+        leadsVerifiedCount,
+        leadsReadyCount,
         generatingLeads,
         leadsTimedOut,
         pendingLeadsRequestId,
@@ -472,6 +502,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         checkLeadsAgain,
         uploadLeads,
         sendToOutreach,
+        sendRunToOutreach,
         refreshLeads,
         campaigns,
         addCampaign,

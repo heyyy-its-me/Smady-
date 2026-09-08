@@ -1,4 +1,7 @@
 import os
+import base64
+import hashlib
+import secrets
 import bcrypt
 import jwt
 from datetime import datetime, timezone, timedelta
@@ -19,12 +22,38 @@ def get_jwt_secret() -> str:
     return os.environ["JWT_SECRET"]
 
 
+PBKDF2_ITERATIONS = 210000
+
+
+def _b64url_encode(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+
+
+def _b64url_decode(s: str) -> bytes:
+    padding = "=" * (-len(s) % 4)
+    return base64.urlsafe_b64decode(s + padding)
+
+
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    """Produces pbkdf2$<iterations>$<salt>$<hash> to match the existing production users."""
+    salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, PBKDF2_ITERATIONS, dklen=32)
+    return f"pbkdf2${PBKDF2_ITERATIONS}${_b64url_encode(salt)}${_b64url_encode(digest)}"
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    if hashed_password.startswith("pbkdf2$"):
+        try:
+            _, iterations, salt_part, hash_part = hashed_password.split("$")
+            salt = _b64url_decode(salt_part)
+            expected = _b64url_decode(hash_part)
+        except (ValueError, Exception):
+            return False
+        digest = hashlib.pbkdf2_hmac("sha256", plain_password.encode("utf-8"), salt, int(iterations), dklen=len(expected))
+        return secrets.compare_digest(digest, expected)
+    if hashed_password.startswith("$2"):
+        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    return False
 
 
 def create_access_token(user_id: str, email: str) -> str:

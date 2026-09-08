@@ -1,62 +1,64 @@
-# Smady - AI Outbound CRM
+# SMADY — Backend Integration PRD & Progress
 
-## Original Problem Statement
-Integrate a live n8n workflow instance into an existing fully-built React UI ("Smady",
-formerly "Pursora"). Build the database, a thin API layer to trigger n8n webhooks and
-receive async callbacks, and wire the UI to real data instead of mock data. 4 phases:
-1) Auth (JWT), 2) ICP Engine, 3) Lead Management, 4) Outreach, then Dashboard metrics.
+## Original problem statement
+Wire the ~95%-complete, FROZEN frontend UI to the real FastAPI backend, n8n workflows, custom
+auth, and AWS RDS Postgres database. 6 phases: Auth, ICP+Leads, Outreach, Meetings, Proposals,
+Reports/Dashboard. Ground rule: no assumptions — inspect and ask before wiring anything unclear.
 
 ## Architecture
-- /app/frontend: Vite + React + TS (port 3000). Uses `import.meta.env.REACT_APP_BACKEND_URL`
-  (vite.config.ts envPrefix includes 'REACT_APP_' to expose it).
-- /app/backend: FastAPI (port 8001) + PostgreSQL (SQLAlchemy async + asyncpg), schema "smady".
-  - NOTE: user's real DB is AWS RDS Postgres (smady-db.cb6c8wk4cue1.eu-north-1.rds.amazonaws.com,
-    user=postgres) but no password was given this session, so a LOCAL Postgres instance was
-    installed in this preview container for development. At deploy, set DB_HOST/DB_PASSWORD/
-    DB_SSLMODE=require env vars to point at the real RDS instance - no code changes needed.
-  - n8n webhook URLs (N8N_ICP_WEBHOOK_URL, N8N_LEADS_WEBHOOK_URL, N8N_OUTREACH_WEBHOOK_URL) are
-    intentionally empty - user will add them as deployment env vars. Code gracefully reports
-    "webhook_not_configured" / campaign status "Failed" instead of hanging when they're empty.
-  - Async pattern: generate endpoint creates a pending DB row + fires webhook (no waiting),
-    n8n calls back to /api/{icp,leads,outreach}/callback with header X-Callback-Secret
-    (value = N8N_CALLBACK_SECRET env var) to update the row; frontend polls a /status endpoint.
+- React (Vite) frontend, FastAPI backend, AWS RDS Postgres (external, pre-existing).
+- `public` schema = REAL data written by n8n + this app (users, customers, company_profiles,
+  lead_results, run_status, meetings, proposal_results).
+- `smady` schema = app-internal bookkeeping only (login_attempts, password_reset_tokens,
+  icp_profiles, lead_runs, plus legacy leads/outreach_campaigns/outreach_emails still used by
+  dashboard_router.py until Phase 6). See /app/DATA_MODEL.md for the full field-by-field map.
+- Full page/table/column reference: /app/DATA_MODEL.md
+- Deployment guides: /app/DEPLOY_VERCEL.md, /app/DEPLOY_AWS.md
 
-## Completed (2026-09-04)
-- Full Postgres schema: users, login_attempts, password_reset_tokens, icp_profiles, lead_runs,
-  leads, outreach_campaigns, outreach_emails (all under schema "smady")
-- Phase 1 Auth: JWT httpOnly cookies (access 15min/refresh 7day), bcrypt, brute-force lockout
-  (5 fails/15min, keyed on email), signup/login/logout/me/refresh/forgot-password/reset-password
-- Phase 2 ICP: POST /api/icp/generate -> webhook trigger, /api/icp/callback, /api/icp/status/{id},
-  /api/icp/latest. Frontend polls and shows result or "not configured" toast.
-- Phase 3 Leads: GET /api/leads, /api/leads/generate + callback + status, /api/leads/upload
-  (creates real rows, demo data - no real CSV parsing yet), /api/leads/send-to-outreach
-- Phase 4 Outreach: GET/POST /api/outreach/campaigns, /api/outreach/callback, /api/outreach/stats
-  (real open/reply/bounce rate % computed against emails sent)
-- Dashboard: GET /api/dashboard/stats - real Postgres aggregations for all stat cards, leads
-  growth (12mo), pipeline funnel, lead source breakdown (%), activity feed, week-over-week
-  email/reply comparison. Meetings/Proposals/Reports pages intentionally left on mock data
-  (out of the 4-phase scope).
-- Frontend: lib/api.ts (axios, withCredentials), AuthContext + AppDataContext fully rewired to
-  real API calls with polling, Login/Signup error toasts, AppShell loading state during auth check.
-- Tested via testing_agent (iteration_1): 33/34 backend pytest cases + full Playwright frontend
-  pass. Fixed after report: brute-force identifier bug (was keyed on rotating ingress IP),
-  lead source donut showing raw counts as "%", outreach open/reply/bounce rate denominator,
-  missing sent_date on Sent campaigns, contradictory success+error toast on failed campaign send,
-  "vs yesterday" mislabel, missing Jan tick on leads growth chart, native <select> replaced with
-  shadcn Select on company size filter, send-to-outreach now validates UUIDs + 404s on no match,
-  deprecated @app.on_event migrated to FastAPI lifespan, unused imports removed, race-safe
-  ON CONFLICT upsert for first failed login attempt.
+## Completed (this session, Sep 2026)
+- Phase 1 (Auth) - DONE, tested. Fixed pbkdf2 password hashing (was bcrypt-only, real prod
+  users use pbkdf2$210000$salt$hash). Fixed frontend/.env /api suffix bug causing 404s on every
+  API call (platform reset the env var; api.ts now appends /api itself, immune to future resets).
+- Phase 2 (ICP + Leads) - DONE, tested with a real live n8n run.
+  - ICP: real synchronous REST call to ICP Engine API (not a webhook), added required
+    Business Stage/Priority fields to the form, mapped response into frozen UI + public.company_profiles.
+  - Leads: real lead-management-V2 webhook + callback wired and live-tested (1 real lead:
+    Sean Clark @ shoes.com). Added Run History picker, pagination (25/page), Lead/ICP detail
+    modals (surfaces Lead Score/Priority/personalization hook/etc. not shown in the main table),
+    ICP->Leads auto-prefill, enriched Excel export.
+  - Found and fixed a real DB landmine: several smady.* FK constraints pointed at a stale,
+    orphaned smady.users table instead of public.users - would have broken password reset,
+    lead run history, and outreach campaigns for every real user. Fixed (NOT VALID, non-destructive).
+- Phase 3 (Outreach) - partially done. Fixed recipient sourcing to read real
+  public.lead_results (was reading the legacy/disconnected smady.leads table). Added
+  "target a specific past execution" recipient option + reused Run History picker. Added a
+  "Send All N to Outreach" bulk button on the Leads page (previously required selecting one row
+  at a time). NOT live-tested - creating a campaign fires a REAL n8n webhook that sends real
+  emails; deliberately held off pending explicit user go-ahead.
+- Phase 4 (Meetings) - DONE, tested. Manual scheduling -> public.meetings was already wired;
+  added double-booking prevention (409 + clear toast) since it was missing.
+- Deployment docs (Vercel+Render split, and all-AWS) written per user request.
 
-## Known/Deliberate Notes
-- Local Postgres is DEV ONLY. Production must supply real RDS password via DB_PASSWORD env var.
-- n8n webhooks are unconfigured by design in this env - "webhook_not_configured" / "Failed" states
-  are the CORRECT expected behavior here, not bugs.
-- /api/leads/upload still fabricates demo rows (no real file/CSV parsing) - matches old mock
-  UX (dropzone has no functioning file input), flagged as backlog if real CSV import is wanted.
+## Known gaps / not yet done
+- Outreach: campaign send flow not yet live-fire tested (needs user confirmation before any real trigger).
+- Outreach: outreach_emails/callback payload shape from n8n is unverified (built defensively,
+  same pattern as leads, but not confirmed against a real n8n send).
+- The n8n "Manual Meeting Scheduler" FORM url was inspected - it's a native n8n form, not
+  something our app should POST to programmatically. Our own /meetings/schedule -> public.meetings
+  is the correct integration point and is what's wired. Flagged, not blocking.
+- Phase 5 (Proposals) - not started (user said "don't block earlier phases waiting for those details").
+- Phase 6 (Reports/Dashboard) - not started; dashboard_router.py and mock Reports charts still
+  read the legacy schema / mock data.
 
-## Backlog / Next (P1)
-- Real CSV file upload + parsing for "Upload Leads" (currently demo-data insert only)
-- Wire ForgotPassword.tsx page to the already-built /api/auth/forgot-password + reset-password
-  endpoints (backend done, frontend page still uses a mock timeout)
-- When user provides real RDS password + n8n webhook URLs at deploy time, no code changes needed,
-  only env vars
+## Testing status
+- iteration_2.json: Auth (pbkdf2, signup/login/lockout), the /api 404 fix, ICP generation - PASS.
+- iteration_3.json: Run History picker, pagination, Lead/ICP detail modals, Outreach (read-only),
+  Meetings (booking + calendar) - PASS. Minor non-blocking code-review notes (a11y aria-describedby
+  on dialogs, non-atomic ICP upsert) - not yet applied, low priority.
+- Meeting conflict prevention (409) - self-tested via curl + screenshot, confirmed working.
+- Outreach campaign send - NOT tested (would trigger real emails).
+
+## Next up (pending user go-ahead)
+1. Live-fire test the Outreach campaign send (needs explicit confirmation - sends real emails).
+2. Phase 5 (Proposals) integration.
+3. Phase 6 (Dashboard/Reports) - migrate off legacy schema + mock chart data.

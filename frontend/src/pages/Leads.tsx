@@ -19,25 +19,34 @@ import { useAppData } from "@/context/AppDataContext";
 import { toast } from "@/components/ui/sonner";
 import { api } from "@/lib/api";
 import type { Lead } from "@/types";
+import { LeadDetailModal } from "@/components/smady/LeadDetailModal";
+import { RunHistoryPicker } from "@/components/smady/RunHistoryPicker";
 
 const industries = ["B2B SaaS", "Fintech", "Healthtech", "E-commerce", "Manufacturing"];
 const roles = ["VP of Sales", "Head of Growth", "CRO", "Founder", "Director of Marketing"];
 const countries = ["United States", "United Kingdom", "Canada", "Germany", "India"];
 const cities = ["New York", "London", "Toronto", "Berlin", "Bengaluru"];
 const companySizes = ["1-50", "50-200", "200-1000", "1000+"];
+const PAGE_SIZE = 25;
 
 const shimmerBar = "rounded-full bg-[linear-gradient(90deg,#FFE6D6_25%,#F9622C_50%,#FFE6D6_75%)] bg-[length:200%_100%] animate-shimmer";
 
 export default function Leads() {
   const {
     leads,
+    leadsTotal,
+    leadsRunId,
+    leadsVerifiedCount,
+    leadsReadyCount,
     generatingLeads,
     leadsTimedOut,
     generateLeads,
     checkLeadsAgain,
     uploadLeads,
     sendToOutreach,
+    sendRunToOutreach,
     refreshLeads,
+    icp,
   } = useAppData();
   const [searchParams] = useSearchParams();
   const requestIdParam = searchParams.get("request_id");
@@ -51,6 +60,30 @@ export default function Leads() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [runInfo, setRunInfo] = useState<{ status: string; run_id: string; created_at: string } | null>(null);
+  const [viewLead, setViewLead] = useState<Lead | null>(null);
+  const [page, setPage] = useState(1);
+
+  // Normalize the initial app-wide fetch to this page's PAGE_SIZE, unless viewing a specific run
+  useEffect(() => {
+    if (requestIdParam) return;
+    refreshLeads(undefined, 0, PAGE_SIZE);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Reset to page 1 whenever the displayed run changes (new generate, or a different run picked)
+  useEffect(() => {
+    setPage(1);
+  }, [leadsRunId]);
+
+  const goToPage = (p: number) => {
+    setPage(p);
+    refreshLeads(leadsRunId || undefined, (p - 1) * PAGE_SIZE, PAGE_SIZE);
+  };
+
+  const onSelectRun = (runId: string) => {
+    setPage(1);
+    refreshLeads(runId, 0, PAGE_SIZE);
+  };
 
   // When navigating here with ?request_id, verify ownership and filter leads
   useEffect(() => {
@@ -59,12 +92,27 @@ export default function Leads() {
       .then(({ data }) => {
         setRunInfo(data);
         // Load leads filtered to this specific run
-        if (data.run_id) refreshLeads(data.run_id);
+        if (data.run_id) refreshLeads(data.run_id, 0, PAGE_SIZE);
       })
       .catch(() => {
         // 404 = no access or not found, just ignore
       });
   }, [requestIdParam, refreshLeads]);
+
+  // Reuse the latest saved ICP profile as a starting point for lead filters (only when the
+  // user hasn't picked anything yet, and we're not viewing a specific historical run).
+  useEffect(() => {
+    if (requestIdParam || !icp) return;
+    const hasUserFilters = selectedIndustries.length > 0 || selectedRoles.length > 0 || selectedCountries.length > 0;
+    if (hasUserFilters) return;
+    if (!icp.industry?.length && !icp.targetRoles?.length && !icp.geography?.length) return;
+    if (icp.industry?.length) setSelectedIndustries(icp.industry);
+    if (icp.targetRoles?.length) setSelectedRoles(icp.targetRoles);
+    if (icp.geography?.length) setSelectedCountries(icp.geography);
+    toast.success("Filters pre-filled from your latest ICP profile");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [icp, requestIdParam]);
+
 
   const toggleSelect = (id: string) => setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
@@ -95,13 +143,18 @@ export default function Leads() {
       label: "Lead",
       sortable: true,
       render: (l) => (
-        <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setViewLead(l)}
+          data-testid={`lead-name-${l.id}`}
+          className="flex items-center gap-3 text-left"
+        >
           <AvatarInitial name={l.name} />
           <div>
-            <p className="text-sm font-semibold text-ink">{l.name}</p>
+            <p className="text-sm font-semibold text-ink hover:text-primary-600">{l.name}</p>
             <p className="text-xs text-muted">{l.title}</p>
           </div>
-        </div>
+        </button>
       ),
     },
     { key: "company", label: "Company", render: (l) => <span className="text-sm text-body">{l.company}</span> },
@@ -120,25 +173,38 @@ export default function Leads() {
     {
       key: "kebab",
       label: "",
-      render: (l) => <KebabMenu testId={`lead-kebab-${l.id}`} items={[{ label: "View lead" }, { label: "Send to outreach", onClick: () => sendToOutreach([l.id]) }]} />,
+      render: (l) => <KebabMenu testId={`lead-kebab-${l.id}`} items={[{ label: "View lead", onClick: () => setViewLead(l) }, { label: "Send to outreach", onClick: () => sendToOutreach([l.id]) }]} />,
     },
   ];
 
-  const totalFound = leads.length;
-  const verified = leads.filter((l) => l.status !== "New").length;
-  const readyForOutreach = leads.filter((l) => l.status === "New" || l.status === "Verified").length;
+  const totalFound = leadsTotal;
+  const verified = leadsVerifiedCount;
+  const readyForOutreach = leadsReadyCount;
 
-  const onDownload = () => {
-    if (leads.length === 0) return;
-    const rows = leads.map((l) => ({
+  const onDownload = async () => {
+    if (leadsTotal === 0) return;
+    const { data } = await api.get(`/leads?run_id=${leadsRunId}&limit=${leadsTotal}&offset=0`);
+    const rows = data.leads.map((l: Lead) => ({
       Name: l.name,
       Title: l.title,
       Company: l.company,
       Domain: l.domain,
       Email: l.email,
+      Phone: l.phone || "",
       LinkedIn: l.linkedin,
       Status: l.status,
       Source: l.source,
+      "Lead Score": l.leadScore ?? "",
+      Priority: l.priority || "",
+      "ICP Match": l.icpMatch || "",
+      Seniority: l.seniority || "",
+      Industry: l.industry || "",
+      Employees: l.employees || "",
+      Location: l.location || "",
+      "Funding Stage": l.fundingStage || "",
+      "Pain Points Matched": l.painPointsMatched || "",
+      "Personalization Hook": l.personalizationHook || "",
+      "Recommended Action": l.recommendedAction || "",
       "Sequence Progress": l.sequenceProgress,
       About: l.about,
     }));
@@ -147,12 +213,12 @@ export default function Leads() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, sheet, "Leads");
     XLSX.writeFile(workbook, `smady-leads-${new Date().toISOString().slice(0, 10)}.xlsx`);
-    toast.success(`Exported ${leads.length} leads to Excel`);
+    toast.success(`Exported ${rows.length} leads to Excel`);
   };
 
   return (
     <div data-testid="leads-page">
-      <PageHeader />
+      <PageHeader actions={<RunHistoryPicker selectedRunId={leadsRunId} onSelect={onSelectRun} />} />
 
       {/* Run context banner when navigated from history */}
       {runInfo && (
@@ -165,7 +231,7 @@ export default function Leads() {
           </span>
           <button
             className="ml-auto text-xs text-primary-600 underline underline-offset-2"
-            onClick={() => { setRunInfo(null); refreshLeads(); }}
+            onClick={() => { setRunInfo(null); refreshLeads(undefined, 0, PAGE_SIZE); }}
           >
             Show all leads
           </button>
@@ -252,6 +318,19 @@ export default function Leads() {
               >
                 Download Leads
               </ButtonOutline>
+              {leadsRunId && leadsTotal > 0 && (
+                <ButtonOutline
+                  type="button"
+                  icon={<Send className="h-4 w-4" strokeWidth={1.5} />}
+                  onClick={async () => {
+                    await sendRunToOutreach(leadsRunId);
+                    refreshLeads(leadsRunId, (page - 1) * PAGE_SIZE, PAGE_SIZE);
+                  }}
+                  data-testid="leads-send-run-to-outreach-button"
+                >
+                  Send All {leadsTotal} to Outreach
+                </ButtonOutline>
+              )}
             </div>
             <ButtonPrimary
               type="submit"
@@ -336,6 +415,25 @@ export default function Leads() {
         {!generatingLeads && leads.length > 0 && (
           <div className="rounded-2xl border border-primary-100/70 bg-surface p-6 shadow-card">
             <DataTable columns={columns} rows={leads} testId="leads-table" />
+            {leadsTotal > PAGE_SIZE && (
+              <div className="mt-5 flex items-center justify-between border-t border-border pt-4" data-testid="leads-pagination">
+                <p className="text-xs text-muted">
+                  Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, leadsTotal)} of {leadsTotal} leads
+                </p>
+                <div className="flex items-center gap-2">
+                  <ButtonOutline data-testid="leads-prev-page-button" disabled={page === 1} onClick={() => goToPage(page - 1)}>
+                    Previous
+                  </ButtonOutline>
+                  <ButtonOutline
+                    data-testid="leads-next-page-button"
+                    disabled={page * PAGE_SIZE >= leadsTotal}
+                    onClick={() => goToPage(page + 1)}
+                  >
+                    Next
+                  </ButtonOutline>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -387,6 +485,8 @@ export default function Leads() {
           </ButtonPrimary>
         </DialogContent>
       </Dialog>
+
+      <LeadDetailModal lead={viewLead} open={!!viewLead} onOpenChange={(v) => !v && setViewLead(null)} />
     </div>
   );
 }

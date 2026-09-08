@@ -5,17 +5,35 @@ from sqlalchemy import select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from database import get_db
 from models import meetings, users
 from auth import get_current_user
 from webhooks import verify_callback_secret
 
+MEETING_DURATION = timedelta(minutes=30)
+
 
 def parse_dt(value: str) -> datetime:
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid meeting_date format")
 
 router = APIRouter(prefix="/api/meetings", tags=["meetings"])
+
+
+async def _has_conflict(db: AsyncSession, user_id, start_dt: datetime) -> bool:
+    """Meetings are assumed to occupy a fixed 30-min slot (no duration field on the table yet)."""
+    end_dt = start_dt + MEETING_DURATION
+    result = await db.execute(
+        select(meetings.c.meeting_date).where(meetings.c.user_id == user_id, meetings.c.status != "Cancelled")
+    )
+    for row in result.fetchall():
+        existing_end = row.meeting_date + MEETING_DURATION
+        if row.meeting_date < end_dt and start_dt < existing_end:
+            return True
+    return False
 
 
 class ScheduleMeetingRequest(BaseModel):
@@ -62,12 +80,15 @@ async def list_meetings(user: dict = Depends(get_current_user), db: AsyncSession
 
 @router.post("/schedule")
 async def schedule_meeting(body: ScheduleMeetingRequest, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    meeting_dt = parse_dt(body.meeting_date)
+    if await _has_conflict(db, user["id"], meeting_dt):
+        raise HTTPException(status_code=409, detail="This time slot is already booked. Please choose a different time.")
     result = await db.execute(
         insert(meetings).values(
             user_id=user["id"],
             lead_name=body.lead_name,
             lead_email=body.lead_email,
-            meeting_date=parse_dt(body.meeting_date),
+            meeting_date=meeting_dt,
             meeting_link=body.meeting_link,
             notes=body.notes,
             status="Confirmed",

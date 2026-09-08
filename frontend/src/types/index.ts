@@ -14,6 +14,24 @@ export interface Lead {
   assigned: string[];
   sequenceProgress: number;
   leadRunId?: string | null;
+  leadScore?: number | null;
+  priority?: string;
+  icpMatch?: string;
+  icpTier?: string;
+  seniority?: string;
+  employees?: string;
+  foundedYear?: string;
+  fundingStage?: string;
+  annualRevenue?: string;
+  technologies?: string;
+  specialties?: string;
+  location?: string;
+  phone?: string;
+  industry?: string;
+  companyDescription?: string;
+  personalizationHook?: string;
+  painPointsMatched?: string;
+  recommendedAction?: string;
 }
 
 export type CampaignStatus = "Queued" | "Sending" | "Sent" | "Failed";
@@ -66,6 +84,14 @@ export interface ICPResult {
   companySize: string[];
   geography: string[];
   painPoints: string[];
+  positioning?: string;
+  differentiator?: string;
+  coreProblem?: string;
+  buyerPain?: string;
+  confidenceScore?: number;
+  gtmChannels?: string[];
+  gtmRegions?: string[];
+  secondaryIcps?: { icp: string; score: number }[];
 }
 
 export interface User {

@@ -1,17 +1,21 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Package, FileText, Building2, Info, Globe2, Factory, Target, Radar } from "lucide-react";
+import { Sparkles, Package, FileText, Building2, Info, Globe2, Factory, Target, Radar, Rocket, Gauge } from "lucide-react";
 import { PageHeader } from "@/layouts/PageHeader";
 import { FormSection } from "@/components/smady/FormSection";
 import { FieldInput, FieldTextarea } from "@/components/smady/FieldInput";
 import { MultiSelectDropdown } from "@/components/smady/MultiSelectDropdown";
 import { ButtonPrimary, ButtonOutline } from "@/components/smady/Button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppData } from "@/context/AppDataContext";
 import { toast } from "@/components/ui/sonner";
+import { IcpDetailModal } from "@/components/smady/IcpDetailModal";
 
 const countries = ["United States", "United Kingdom", "Canada", "Germany", "India"];
 const industries = ["B2B SaaS", "Fintech", "Healthtech", "E-commerce", "Manufacturing"];
+const businessStages = ["Pre-Seed / Idea", "Early Stage (MVP)", "Growth", "Scale-up", "Enterprise / Mature"];
+const priorities = ["Speed", "Quality", "Cost", "Balanced"];
 
 const resultGroups: { key: "industry" | "targetRoles" | "companySize" | "geography" | "painPoints"; label: string }[] = [
   { key: "industry", label: "Industry" },
@@ -27,10 +31,13 @@ export default function ICPEngine() {
   const [form, setForm] = useState({ productName: "", productDescription: "", companyName: "", companyDetails: "" });
   const [selectedCountries, setSelectedCountries] = useState<string[]>(["United States"]);
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>(["B2B SaaS"]);
+  const [businessStage, setBusinessStage] = useState(businessStages[2]);
+  const [priority, setPriority] = useState(priorities[3]);
+  const [showFullAnalysis, setShowFullAnalysis] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await generateIcp({ ...form, countries: selectedCountries, industries: selectedIndustries });
+    await generateIcp({ ...form, countries: selectedCountries, industries: selectedIndustries, businessStage, priority });
   };
 
   const summarySentence = `${form.productName || "Your product"} helps ${form.companyName || "your company"} reach ${
@@ -97,7 +104,45 @@ export default function ICPEngine() {
                 required
               />
             </FormSection>
-            <FormSection label="Audience & Market Targeting" step="03" icon={Target} tint>
+            <FormSection label="Business Context" step="03" icon={Rocket} tint>
+              <div className="group relative">
+                <Rocket className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted transition-colors duration-150 group-focus-within:text-primary-500" strokeWidth={1.5} />
+                <Select value={businessStage} onValueChange={setBusinessStage}>
+                  <SelectTrigger
+                    data-testid="icp-business-stage-select"
+                    className="h-11 w-full rounded-xl border border-border bg-white pl-10 pr-4 text-sm text-ink shadow-[inset_0_1px_2px_rgba(23,20,18,0.04)] transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-4 focus:ring-primary-500/10"
+                  >
+                    <SelectValue placeholder="Business Stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {businessStages.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="group relative">
+                <Gauge className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted transition-colors duration-150 group-focus-within:text-primary-500" strokeWidth={1.5} />
+                <Select value={priority} onValueChange={setPriority}>
+                  <SelectTrigger
+                    data-testid="icp-priority-select"
+                    className="h-11 w-full rounded-xl border border-border bg-white pl-10 pr-4 text-sm text-ink shadow-[inset_0_1px_2px_rgba(23,20,18,0.04)] transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-4 focus:ring-primary-500/10"
+                  >
+                    <SelectValue placeholder="Priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {priorities.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {p}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </FormSection>
+            <FormSection label="Audience & Market Targeting" step="04" icon={Target} tint>
               <MultiSelectDropdown
                 icon={Globe2}
                 label="Target Country"
@@ -243,6 +288,9 @@ export default function ICPEngine() {
                   >
                     Save &amp; Use in Lead Management
                   </ButtonPrimary>
+                  <ButtonOutline fullWidth onClick={() => setShowFullAnalysis(true)} data-testid="icp-view-full-analysis-button">
+                    View Full Analysis
+                  </ButtonOutline>
                   <ButtonOutline fullWidth onClick={() => generateIcp(form)} data-testid="icp-regenerate-button">
                     Regenerate
                   </ButtonOutline>
@@ -252,6 +300,7 @@ export default function ICPEngine() {
           </AnimatePresence>
         </div>
       </div>
+      <IcpDetailModal icp={icp} open={showFullAnalysis} onOpenChange={setShowFullAnalysis} />
     </div>
   );
 }

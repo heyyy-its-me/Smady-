@@ -7,11 +7,28 @@ from datetime import datetime, timezone, date, timedelta
 import uuid
 
 from database import get_db
-from models import outreach_campaigns, outreach_emails, leads
+from models import outreach_campaigns, outreach_emails, lead_results
 from auth import get_current_user
 from webhooks import trigger_webhook, is_webhook_configured, verify_callback_secret
+from routers.leads_router import _normalize_lead
 
 router = APIRouter(prefix="/api/outreach", tags=["outreach"])
+
+
+async def _eligible_leads(db: AsyncSession, user_id: str, run_id: Optional[str] = None):
+    """Recipients live in the real public.lead_results (not the legacy smady.leads table).
+    Pass run_id to scope to one specific execution instead of all of the user's leads ever."""
+    query = select(lead_results).where(lead_results.c.user_id == user_id)
+    if run_id:
+        query = query.where(lead_results.c.request_id == run_id)
+    result = await db.execute(query)
+    out = []
+    for row in result.fetchall():
+        for i, item in enumerate(row.leads or []):
+            lead = _normalize_lead(item, row.request_id, i)
+            if lead["status"] in ("New", "Verified", "Contacted") and lead["email"]:
+                out.append(lead)
+    return out
 
 
 class CampaignCreateRequest(BaseModel):
@@ -19,6 +36,7 @@ class CampaignCreateRequest(BaseModel):
     subject: str
     body: str
     recipientSource: str = "all"
+    runId: Optional[str] = None
 
 
 class EmailEvent(BaseModel):
@@ -56,10 +74,8 @@ async def list_campaigns(user: dict = Depends(get_current_user), db: AsyncSessio
 
 @router.post("/campaigns")
 async def create_campaign(body: CampaignCreateRequest, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    count_result = await db.execute(
-        select(func.count()).select_from(leads).where(leads.c.user_id == user["id"], leads.c.status.in_(["New", "Verified", "Contacted"]))
-    )
-    leads_count = count_result.scalar() or 0
+    eligible = await _eligible_leads(db, user["id"], run_id=body.runId if body.recipientSource == "run" else None)
+    leads_count = len(eligible)
 
     request_id = uuid.uuid4()
     configured = is_webhook_configured("outreach")
@@ -75,10 +91,7 @@ async def create_campaign(body: CampaignCreateRequest, user: dict = Depends(get_
     await db.commit()
 
     if configured:
-        leads_result = await db.execute(
-            select(leads).where(leads.c.user_id == user["id"], leads.c.status.in_(["New", "Verified", "Contacted"]))
-        )
-        recipient_leads = [{"lead_id": str(l.id), "email": l.email, "name": l.name} for l in leads_result.fetchall()]
+        recipient_leads = [{"lead_id": l["id"], "email": l["email"], "name": l["name"]} for l in eligible]
         await trigger_webhook("outreach", {
             "request_id": str(request_id), "user_id": user["id"],
             "subject": body.subject, "body": body.body, "leads": recipient_leads,
