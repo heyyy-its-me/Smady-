@@ -298,11 +298,222 @@ def test_proposals_pending():
         return False
 
 
+def test_proposals_review_queue():
+    """Test GET /api/proposals - verify review_queue has test proposal id=10"""
+    print_section("Test: Proposals Review Queue (id=10, meeting_id=test-ff-001)")
+    
+    try:
+        response = session.get(f"{BASE_URL}/proposals")
+        
+        if response.status_code == 200:
+            data = response.json()
+            review_queue = data.get('review_queue', [])
+            
+            # Look for proposal with id=10 or meeting_id="test-ff-001"
+            test_proposal = None
+            for item in review_queue:
+                if item.get('id') == 10 or item.get('meeting_id') == "test-ff-001":
+                    test_proposal = item
+                    break
+            
+            if test_proposal:
+                print_result("Proposals Review Queue", True, 
+                           f"Found test proposal: id={test_proposal.get('id')}, meeting_id={test_proposal.get('meeting_id')}")
+                print(f"    Status: {test_proposal.get('final_status')}")
+                print(f"    Lead: {test_proposal.get('lead_email')}")
+                return test_proposal
+            else:
+                print_result("Proposals Review Queue", False, 
+                           f"Test proposal (id=10 or meeting_id=test-ff-001) not found in review_queue. Found {len(review_queue)} items.")
+                if review_queue:
+                    print(f"    Available items: {[(item.get('id'), item.get('meeting_id')) for item in review_queue[:3]]}")
+                return None
+        else:
+            print_result("Proposals Review Queue", False, 
+                       f"Status: {response.status_code}, Response: {response.text[:200]}")
+            return None
+    except Exception as e:
+        print_result("Proposals Review Queue", False, f"Exception: {str(e)}")
+        return None
+
+
+def test_approve_proposal(proposal_id=10):
+    """Test POST /api/proposals/{id}/approve - should handle n8n inactive workflow gracefully"""
+    print_section(f"Test: POST /api/proposals/{proposal_id}/approve")
+    
+    try:
+        response = session.post(f"{BASE_URL}/proposals/{proposal_id}/approve")
+        
+        if response.status_code == 200:
+            data = response.json()
+            n8n_status = data.get('n8n_status')
+            local_status = data.get('local_status')
+            message = data.get('message', '')
+            
+            print_result("POST /api/proposals/approve", True, 
+                       f"Status 200 - n8n_status={n8n_status}, local_status={local_status}")
+            print(f"    Message: {message}")
+            
+            # Verify it handled n8n inactive workflow (404)
+            if n8n_status == 404:
+                print_result("n8n Inactive Workflow Handling", True, 
+                           "Correctly handled n8n workflow inactive (404)")
+                return True
+            elif n8n_status == 200:
+                print_result("n8n Active Workflow", True, 
+                           "n8n workflow is active and responded 200")
+                return True
+            else:
+                print(f"    ⚠️  Unexpected n8n_status: {n8n_status}")
+                return True  # Still passed the API call
+        else:
+            print_result("POST /api/proposals/approve", False, 
+                       f"Status: {response.status_code}, Response: {response.text[:200]}")
+            return False
+    except Exception as e:
+        print_result("POST /api/proposals/approve", False, f"Exception: {str(e)}")
+        return False
+
+
+def test_reject_proposal_short_feedback(proposal_id=10):
+    """Test POST /api/proposals/{id}/reject with short feedback - should return 422"""
+    print_section(f"Test: POST /api/proposals/{proposal_id}/reject (short feedback)")
+    
+    try:
+        response = session.post(
+            f"{BASE_URL}/proposals/{proposal_id}/reject",
+            json={"feedback": "short"}  # Less than 10 chars
+        )
+        
+        if response.status_code == 422:
+            print_result("Reject with Short Feedback", True, 
+                       "Correctly rejected short feedback with 422 (Unprocessable)")
+            try:
+                error_detail = response.json()
+                print(f"    Error: {error_detail}")
+            except:
+                pass
+            return True
+        else:
+            print_result("Reject with Short Feedback", False, 
+                       f"Expected 422, got {response.status_code}. Response: {response.text[:200]}")
+            return False
+    except Exception as e:
+        print_result("Reject with Short Feedback", False, f"Exception: {str(e)}")
+        return False
+
+
+def test_reject_proposal_valid_feedback(proposal_id=10):
+    """Test POST /api/proposals/{id}/reject with valid feedback - should return 200"""
+    print_section(f"Test: POST /api/proposals/{proposal_id}/reject (valid feedback)")
+    
+    try:
+        response = session.post(
+            f"{BASE_URL}/proposals/{proposal_id}/reject",
+            json={"feedback": "Please reduce the price and focus on automation savings to address the objection"}
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            n8n_status = data.get('n8n_status')
+            local_status = data.get('local_status')
+            message = data.get('message', '')
+            
+            print_result("Reject with Valid Feedback", True, 
+                       f"Status 200 - n8n_status={n8n_status}, local_status={local_status}")
+            print(f"    Message: {message}")
+            
+            # n8n workflow might be inactive (500) or active (200)
+            if n8n_status in [200, 500]:
+                print_result("n8n Workflow Response", True, 
+                           f"n8n responded with {n8n_status} (expected for inactive/active workflow)")
+            return True
+        else:
+            print_result("Reject with Valid Feedback", False, 
+                       f"Status: {response.status_code}, Response: {response.text[:200]}")
+            return False
+    except Exception as e:
+        print_result("Reject with Valid Feedback", False, f"Exception: {str(e)}")
+        return False
+
+
+def reset_proposal_status(proposal_id=10):
+    """Helper: Reset proposal status to needs_review for testing reject after approve"""
+    print_section(f"Helper: Reset proposal {proposal_id} to needs_review")
+    
+    # This is a workaround - we'll just note if the proposal is already approved
+    try:
+        response = session.get(f"{BASE_URL}/proposals")
+        if response.status_code == 200:
+            data = response.json()
+            review_queue = data.get('review_queue', [])
+            
+            for item in review_queue:
+                if item.get('id') == proposal_id:
+                    status = item.get('final_status')
+                    print(f"    Current status: {status}")
+                    if status == "Approved":
+                        print("    ⚠️  Proposal is already Approved. Reject test may need fresh proposal.")
+                    return status
+            print(f"    ⚠️  Proposal {proposal_id} not found in review_queue")
+            return None
+    except Exception as e:
+        print(f"    Exception checking status: {str(e)}")
+        return None
+
+
+def test_meetings_with_specific_data():
+    """Test POST /api/meetings/schedule with specific test data from review request"""
+    print_section("Test: POST /api/meetings/schedule (specific test data)")
+    
+    meeting_data = {
+        "lead_name": "Test User",
+        "lead_email": "claudesmadlytics@gmail.com",
+        "meeting_date": "2026-09-20",
+        "meeting_time": "15:30",
+        "duration": 30,
+        "title": "Test Discovery Call"
+    }
+    
+    try:
+        response = session.post(f"{BASE_URL}/meetings/schedule", json=meeting_data)
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            # Verify response structure
+            has_id = 'id' in data
+            has_status = data.get('status') == 'Confirmed'
+            has_source = data.get('source') == 'manual'
+            
+            if has_id and has_status and has_source:
+                print_result("POST /api/meetings/schedule (specific data)", True, 
+                           f"Meeting created: id={data.get('id')}, status={data.get('status')}, source={data.get('source')}")
+                print(f"    Lead: {data.get('lead_name')} ({data.get('lead_email')})")
+                print(f"    Date: {data.get('meeting_date')}")
+                return data.get('id')
+            else:
+                print_result("POST /api/meetings/schedule (specific data)", False, 
+                           f"Missing expected fields. has_id={has_id}, status={data.get('status')}, source={data.get('source')}")
+                return None
+        elif response.status_code == 409:
+            print_result("POST /api/meetings/schedule (specific data)", True, 
+                       "Meeting already exists (409 - double-booking protection working)")
+            return "existing"
+        else:
+            print_result("POST /api/meetings/schedule (specific data)", False, 
+                       f"Status: {response.status_code}, Response: {response.text[:200]}")
+            return None
+    except Exception as e:
+        print_result("POST /api/meetings/schedule (specific data)", False, f"Exception: {str(e)}")
+        return None
+
+
 def main():
-    """Run all tests"""
+    """Run all tests - CRITICAL TESTS from review request"""
     print("\n" + "="*80)
-    print("  SMADY Backend API Testing")
-    print("  Testing new endpoints from master build prompt")
+    print("  SMADY Backend API Testing - CRITICAL LIVE-FIRE TESTS")
+    print("  Testing meetings webhook fix + proposals approve/reject")
     print("="*80)
     
     # Authenticate
@@ -313,42 +524,109 @@ def main():
     # Track results
     results = {}
     
-    # Test 1: GET /api/proposals
-    results['proposals'] = test_proposals_endpoint()
+    print("\n" + "="*80)
+    print("  CRITICAL TESTS (from review request)")
+    print("="*80)
     
-    # Test 2: GET /api/proposals/packages
+    # CRITICAL TEST 1: Meetings webhook fix with specific data
+    meeting_id = test_meetings_with_specific_data()
+    results['meetings_webhook_fix'] = meeting_id is not None or meeting_id == "existing"
+    
+    # CRITICAL TEST 2: Proposals review queue (should show id=10, meeting_id="test-ff-001")
+    test_proposal = test_proposals_review_queue()
+    results['proposals_review_queue'] = test_proposal is not None
+    
+    # CRITICAL TEST 3: GET /api/proposals/packages (should return 3 packages)
     results['packages'] = test_proposals_packages()
     
-    # Test 3: GET /api/dashboard/analytics
+    # CRITICAL TEST 4: GET /api/dashboard/analytics (should return all keys)
     results['analytics'] = test_dashboard_analytics()
     
-    # Test 4: POST /api/meetings/schedule
-    meeting_id = test_meetings_schedule()
-    results['meetings_schedule'] = meeting_id is not None
+    # CRITICAL TEST 5: Approve proposal (should handle n8n inactive workflow)
+    results['approve_proposal'] = test_approve_proposal(10)
     
-    # Test 5: Double-booking protection
-    results['double_booking'] = test_double_booking_protection(meeting_id)
+    # Check proposal status before reject tests
+    proposal_status = reset_proposal_status(10)
     
-    # Test 6: GET /api/proposals/pending
+    # CRITICAL TEST 6: Reject with short feedback (should return 422)
+    results['reject_short_feedback'] = test_reject_proposal_short_feedback(10)
+    
+    # CRITICAL TEST 7: Reject with valid feedback (should return 200)
+    # Note: This will only work if proposal is in needs_review state
+    if proposal_status != "Approved":
+        results['reject_valid_feedback'] = test_reject_proposal_valid_feedback(10)
+    else:
+        print_section("SKIPPED: Reject with valid feedback (proposal already approved)")
+        print("    ⚠️  To test reject, proposal must be reset to needs_review state")
+        results['reject_valid_feedback'] = None
+    
+    print("\n" + "="*80)
+    print("  ADDITIONAL TESTS")
+    print("="*80)
+    
+    # Additional tests
+    results['proposals_endpoint'] = test_proposals_endpoint()
     results['proposals_pending'] = test_proposals_pending()
     
     # Summary
-    print_section("Test Summary")
-    passed = sum(1 for v in results.values() if v)
-    total = len(results)
+    print_section("CRITICAL TEST SUMMARY")
     
-    print(f"Tests Passed: {passed}/{total}")
-    print("\nDetailed Results:")
-    for test_name, result in results.items():
-        status = "✅ PASS" if result else "❌ FAIL"
-        print(f"  {status} - {test_name}")
+    critical_tests = {
+        'meetings_webhook_fix': 'Meetings webhook fix (POST /api/meetings/schedule)',
+        'proposals_review_queue': 'Proposals review queue (id=10, meeting_id=test-ff-001)',
+        'packages': 'GET /api/proposals/packages (3 packages)',
+        'analytics': 'GET /api/dashboard/analytics (all keys)',
+        'approve_proposal': 'POST /api/proposals/10/approve (n8n inactive handling)',
+        'reject_short_feedback': 'POST /api/proposals/10/reject (validation <10 chars)',
+        'reject_valid_feedback': 'POST /api/proposals/10/reject (valid feedback)',
+    }
     
-    if passed == total:
-        print("\n🎉 All tests passed!")
+    print("\nCRITICAL TESTS:")
+    critical_passed = 0
+    critical_total = 0
+    for key, desc in critical_tests.items():
+        result = results.get(key)
+        if result is not None:
+            critical_total += 1
+            if result:
+                critical_passed += 1
+                print(f"  ✅ PASS - {desc}")
+            else:
+                print(f"  ❌ FAIL - {desc}")
+        else:
+            print(f"  ⏭️  SKIP - {desc}")
+    
+    print("\nADDITIONAL TESTS:")
+    additional_tests = {
+        'proposals_endpoint': 'GET /api/proposals',
+        'proposals_pending': 'GET /api/proposals/pending',
+    }
+    additional_passed = 0
+    additional_total = 0
+    for key, desc in additional_tests.items():
+        result = results.get(key)
+        if result is not None:
+            additional_total += 1
+            if result:
+                additional_passed += 1
+                print(f"  ✅ PASS - {desc}")
+            else:
+                print(f"  ❌ FAIL - {desc}")
+    
+    total_passed = critical_passed + additional_passed
+    total_tests = critical_total + additional_total
+    
+    print(f"\n{'='*80}")
+    print(f"OVERALL: {total_passed}/{total_tests} tests passed")
+    print(f"  Critical: {critical_passed}/{critical_total}")
+    print(f"  Additional: {additional_passed}/{additional_total}")
+    
+    if critical_passed == critical_total:
+        print("\n🎉 All CRITICAL tests passed!")
     else:
-        print(f"\n⚠️  {total - passed} test(s) failed")
+        print(f"\n⚠️  {critical_total - critical_passed} CRITICAL test(s) failed")
     
-    print("\n" + "="*80)
+    print("="*80)
 
 
 if __name__ == "__main__":

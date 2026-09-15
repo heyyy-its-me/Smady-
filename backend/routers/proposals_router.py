@@ -312,7 +312,28 @@ async def approve_proposal(
             async with httpx.AsyncClient(timeout=15) as client:
                 resp = await client.get(f"{approve_url}?meeting_id={meeting_id}")
             logger.info("n8n approve webhook responded: %s", resp.status_code)
-            return {"message": "Proposal approved and sent via n8n", "meeting_id": meeting_id, "n8n_status": resp.status_code}
+            if resp.status_code == 200:
+                # n8n accepted — email will be sent by n8n
+                return {"message": "Proposal approved and sent via n8n", "meeting_id": meeting_id, "n8n_status": 200}
+            elif resp.status_code == 404:
+                # n8n workflow is INACTIVE — mark locally, tell user to activate
+                result = await db.execute(
+                    update(public_proposal_review_log)
+                    .where(public_proposal_review_log.c.meeting_id == meeting_id)
+                    .values(final_status="Approved")
+                )
+                await db.commit()
+                return {
+                    "message": "Marked approved locally. n8n approve workflow is inactive — activate the 'Proposal Agent' workflow in n8n to auto-send the email.",
+                    "meeting_id": meeting_id,
+                    "n8n_status": 404,
+                    "local_status": "Approved",
+                }
+            else:
+                logger.error("n8n approve webhook returned %s: %s", resp.status_code, resp.text[:200])
+                raise HTTPException(status_code=502, detail=f"n8n approve webhook returned {resp.status_code}")
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error("n8n approve webhook failed: %s", e)
             raise HTTPException(status_code=502, detail=f"Failed to reach n8n approve webhook: {e}")
@@ -398,11 +419,26 @@ async def reject_proposal(
             async with httpx.AsyncClient(timeout=15) as client:
                 resp = await client.post(reject_url, data=form_data)
             logger.info("n8n reject form responded: %s %s", resp.status_code, resp.text[:200])
-            return {
-                "message": "Feedback submitted — n8n will regenerate the proposal",
-                "meeting_id": meeting_id,
-                "n8n_status": resp.status_code,
-            }
+            if resp.status_code == 200:
+                return {
+                    "message": "Feedback submitted — n8n will regenerate the proposal",
+                    "meeting_id": meeting_id,
+                    "n8n_status": resp.status_code,
+                }
+            else:
+                # n8n form workflow inactive or error — mark locally as Rejected
+                await db.execute(
+                    update(public_proposal_review_log)
+                    .where(public_proposal_review_log.c.meeting_id == meeting_id)
+                    .values(final_status="Rejected")
+                )
+                await db.commit()
+                return {
+                    "message": "Marked rejected locally. n8n feedback form returned an error — activate the 'Proposal Agent' workflow in n8n to enable automatic regeneration.",
+                    "meeting_id": meeting_id,
+                    "n8n_status": resp.status_code,
+                    "local_status": "Rejected",
+                }
         except Exception as e:
             logger.error("n8n reject form failed: %s", e)
             raise HTTPException(status_code=502, detail=f"Failed to reach n8n reject form: {e}")

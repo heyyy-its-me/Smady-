@@ -499,9 +499,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const approveProposal = async (id: string | number) => {
     try {
-      await api.post(`/proposals/${id}/approve`);
+      const { data } = await api.post(`/proposals/${id}/approve`);
       await refreshProposals();
-      toast.success("Proposal approved and sent");
+      // Show appropriate message based on n8n status
+      if (data?.n8n_status === 404) {
+        toast.warning(
+          "Marked approved locally — activate the 'Proposal Agent' workflow in n8n to send the email automatically.",
+          { duration: 8000 }
+        );
+      } else if (data?.n8n_status === 200) {
+        toast.success("Proposal approved and sent to lead via n8n");
+      } else {
+        toast.success("Proposal approved");
+      }
     } catch (e) {
       toast.error(formatApiError(e));
     }
@@ -509,9 +519,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const rejectProposal = async (id: string | number, feedback: string) => {
     try {
-      await api.post(`/proposals/${id}/reject`, { feedback });
+      const { data } = await api.post(`/proposals/${id}/reject`, { feedback });
       await refreshProposals();
-      toast.success("Feedback submitted — proposal will be regenerated");
+      if (data?.n8n_status === 200) {
+        toast.success("Feedback submitted — n8n will regenerate the proposal");
+      } else if (data?.n8n_status) {
+        toast.warning(
+          "Marked rejected locally — activate the 'Proposal Agent' workflow in n8n to enable automatic regeneration.",
+          { duration: 8000 }
+        );
+      } else {
+        toast.success("Proposal marked for revision");
+      }
     } catch (e) {
       toast.error(formatApiError(e));
     }

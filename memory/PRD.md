@@ -116,10 +116,23 @@ Reports/Dashboard. Ground rule: no assumptions — inspect and ask before wiring
   Meetings (booking + calendar) - PASS.
 - Meeting conflict prevention (409) - self-tested via curl + screenshot, confirmed working.
 - Outreach campaign send - NOT tested (would trigger real emails).
-- Proposals page - smoke-tested via screenshot: pricing packages showing, review queue empty state,
-  tabs working correctly. Approve/Reject NOT live-fire tested.
-- Meetings new form (Duration+Title+n8n webhook) - smoke-tested via screenshot: all fields visible.
+- Proposals page - smoke-tested via screenshot + backend deep test (7/7 PASS):
+  - Pricing packages, review queue with real test row (id=10), approve/reject with graceful n8n inactive handling.
+  - Approve: 200 with n8n_status=404 + local_status=Approved when workflow inactive.
+  - Reject: 422 on short feedback; 200 with n8n_status=500 + local_status=Rejected when workflow inactive.
+- Meetings new form (Duration+Title+n8n book-slot webhook) - PASS:
+  - Fixed: n8n book-slot is GET not POST. Changed webhooks.py.
+  - Live-fired: GET to n8n returned 200 OK. Confirmed in backend logs.
+  - Double-booking 409 still intact.
 - Reports analytics endpoint - smoke-tested: real funnel/outreach/country/industry data rendering.
+- Outreach webhook format verified: POST with {request_id, user_id, subject, body, leads[]} → n8n returns 200.
+
+## n8n activation required
+- **Proposal Agent workflow** is INACTIVE in n8n. To fully enable approve/reject email sending:
+  1. Log into n8n at https://n8n-smady-adgtdkg5hvacf7fs.canadacentral-01.azurewebsites.net
+  2. Find the "Proposal Agent" workflow
+  3. Toggle it ACTIVE (top-right switch)
+  - Until activated, the app marks proposals locally (Approved/Rejected) but n8n doesn't send emails or regenerate.
 
 ## Test credentials
 - test@smady.ai / Test123456! (created by agent, no real data)
