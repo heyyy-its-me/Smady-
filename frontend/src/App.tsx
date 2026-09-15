@@ -6,6 +6,7 @@ import { AppDataProvider } from "@/context/AppDataContext";
 import { AppShell } from "@/layouts/AppShell";
 import { Toaster } from "@/components/ui/sonner";
 import Landing from "@/pages/Landing";
+import LandingV2 from "@/pages/LandingV2";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import ForgotPassword from "@/pages/ForgotPassword";
@@ -31,6 +32,7 @@ function AnimatedRoutes() {
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<PageTransition><Landing /></PageTransition>} />
+        <Route path="/preview" element={<LandingV2 />} />
         <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
         <Route path="/signup" element={<PageTransition><Signup /></PageTransition>} />
         <Route path="/forgot-password" element={<PageTransition><ForgotPassword /></PageTransition>} />
