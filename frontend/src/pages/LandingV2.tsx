@@ -157,7 +157,62 @@ const CSS = `
   .lv2-root ::-webkit-scrollbar { width: 4px; }
   .lv2-root ::-webkit-scrollbar-track { background: #111; }
   .lv2-root ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+  /* ─────────── MOBILE RESPONSIVE ─────────── */
+  @media (max-width: 767px) {
+
+    /* NAV: hide center links, shrink padding */
+    .lv2-nav { padding-left: 16px !important; padding-right: 16px !important; }
+
+    /* HERO: smaller headline */
+    .lv2-hero-h1 { font-size: 46px !important; line-height: 1.05 !important; }
+
+    /* BENTO GRID: break the fixed 12-col layout into a single column */
+    .lv2-bento-grid {
+      display: flex !important;
+      flex-direction: column !important;
+      height: auto !important;
+      -webkit-mask-image: none !important;
+      mask-image: none !important;
+      overflow: hidden !important;
+      border-radius: 16px !important;
+    }
+    /* Every direct child card spans full width regardless of grid-column inline style */
+    .lv2-bento-grid > div {
+      grid-column: unset !important;
+      grid-row: unset !important;
+      width: 100% !important;
+    }
+    /* Hero leads table: sensible height on mobile */
+    .lv2-bento-hero { max-height: 440px !important; min-height: 320px !important; }
+    /* Stat card */
+    .lv2-bento-stat { min-height: 130px !important; }
+    /* Code snippet: hide on mobile to keep layout clean */
+    .lv2-bento-code { display: none !important; }
+    /* Chart card */
+    .lv2-bento-chart { min-height: 160px !important; }
+    /* Global reach */
+    .lv2-bento-global { min-height: 220px !important; }
+
+    /* MARQUEE: narrower cards so they don't overflow 390px */
+    .lv2-testi-card { width: 300px !important; min-width: 300px !important; }
+
+    /* PROBLEM SECTION: smaller big heading */
+    .lv2-problem-h2 { font-size: 44px !important; }
+
+    /* METRICS: 2-col instead of 4-col */
+    .lv2-metrics-grid {
+      grid-template-columns: 1fr 1fr !important;
+    }
+
+    /* FOOTER: 2-col grid */
+    .lv2-footer-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+    .lv2-footer-brand { grid-column: span 2 !important; }
+  }
 `;
+
 
 /* ─── Data ────────────────────────────────────────────────── */
 
@@ -238,7 +293,7 @@ function HeroSection() {
         <span className="lv2-orange-text text-[14px]">✦</span>
       </div>
       {/* Headline */}
-      <h1 className="mx-auto max-w-4xl text-[56px] font-[900] leading-[1.02] tracking-[-0.04em] text-white md:text-[72px] lg:text-[80px]">
+      <h1 className="lv2-hero-h1 mx-auto max-w-4xl text-[56px] font-[900] leading-[1.02] tracking-[-0.04em] text-white md:text-[72px] lg:text-[80px]">
         Your Next Customer<br />
         <span className="lv2-orange-text">Is One AI Call Away.</span>
       </h1>
@@ -271,7 +326,7 @@ function BentoGrid() {
   return (
     <section className="relative z-10 mx-auto max-w-screen-xl px-6 pb-6">
       <div
-        className="lv2-bento-mask grid gap-3 overflow-hidden rounded-3xl"
+        className="lv2-bento-mask lv2-bento-grid grid gap-3 overflow-hidden rounded-3xl"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(12, 1fr)",
