@@ -557,6 +557,325 @@ function TestiCard({ name, role, text, avatar }: { name: string; role: string; t
   );
 }
 
+function ProblemSection() {
+  return (
+    <section className="relative z-10 mx-auto max-w-screen-xl px-6 py-20">
+      {/* Header row — "The problem." + vertical line + subtitle */}
+      <div className="mb-12 flex flex-col gap-4 border-b border-white/[0.06] pb-10 md:flex-row md:items-start md:gap-0">
+        <h2 className="flex-1 text-[64px] font-[900] leading-none tracking-[-0.04em] text-white md:text-[80px]">
+          The problem.
+        </h2>
+        <div className="hidden md:block w-px self-stretch bg-white/10 mx-12" />
+        <div className="flex-1 flex items-center">
+          <p className="text-[16px] text-neutral-400 max-w-sm leading-relaxed">
+            How Smady solves what holds every sales team back — manually, every single day.
+          </p>
+        </div>
+      </div>
+
+      {/* 3 Cards */}
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+
+        {/* ── Card 1: Problem ── */}
+        <div className="lv2-card group relative flex flex-col overflow-hidden rounded-2xl" style={{ background: "linear-gradient(160deg, #13080d 0%, #0f0a0a 100%)" }}>
+          {/* Subtle red glow */}
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 30% 20%, rgba(239,68,68,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
+          {/* Label pill */}
+          <div className="relative z-10 p-6 pb-0">
+            <span className="inline-flex items-center rounded-full border border-red-500/20 bg-red-500/8 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-red-400">
+              Problem
+            </span>
+          </div>
+          {/* Visual mockup */}
+          <div className="relative z-10 mx-6 mt-5 overflow-hidden rounded-xl p-4" style={{ background: "#0c080b", border: "1px solid rgba(239,68,68,0.12)" }}>
+            {/* Fake CRM header */}
+            <div className="mb-3 flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-red-500/60" />
+              <div className="h-2 rounded bg-white/8" style={{ width: 80 }} />
+              <div className="ml-auto h-2 rounded bg-white/5" style={{ width: 40 }} />
+            </div>
+            {/* Fake rows — declining metrics */}
+            {[70,45,30,18].map((w,i) => (
+              <div key={i} className="mb-2 flex items-center gap-2">
+                <div className="h-6 w-6 rounded bg-white/5 flex-shrink-0" />
+                <div className="flex-1 space-y-1">
+                  <div className="h-1.5 rounded bg-white/8" style={{ width: `${w+30}%` }} />
+                  <div className="h-1 rounded bg-white/5" style={{ width: `${w}%` }} />
+                </div>
+                <div className="h-4 rounded-full px-1.5 flex items-center text-[9px] font-bold" style={{ background: "rgba(239,68,68,0.15)", color: "#f87171" }}>−{20-i*4}%</div>
+              </div>
+            ))}
+            {/* Loss indicator */}
+            <div className="mt-3 flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.15)" }}>
+              <span className="h-2 w-2 rounded-full" style={{ background: "#ef4444" }} />
+              <span className="text-[11px] font-bold text-red-400">Pipeline stalled: 0 new replies this week</span>
+            </div>
+          </div>
+          {/* Text */}
+          <div className="relative z-10 p-6 pt-5 flex-1">
+            <h3 className="text-[22px] font-[800] leading-tight tracking-tight text-white mb-3">
+              Manual prospecting kills momentum
+            </h3>
+            <p className="text-[13px] leading-relaxed text-neutral-500">
+              Your team spends 5+ hours a day copy-pasting leads, writing one-by-one emails, and chasing follow-ups. SDRs burn out while the pipeline runs dry.
+            </p>
+          </div>
+        </div>
+
+        {/* ── Card 2: Challenge ── */}
+        <div className="lv2-card group relative flex flex-col overflow-hidden rounded-2xl" style={{ background: "linear-gradient(160deg, #0f0f0a 0%, #0a0a0d 100%)" }}>
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 60% 30%, rgba(249,115,22,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
+          <div className="relative z-10 p-6 pb-0">
+            <span className="inline-flex items-center rounded-full border border-orange-500/20 bg-orange-500/8 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-orange-400">
+              Challenge
+            </span>
+          </div>
+          {/* Visual: scattered tool grid */}
+          <div className="relative z-10 mx-6 mt-5 overflow-hidden rounded-xl p-4" style={{ background: "#0a0a0c", border: "1px solid rgba(255,255,255,0.05)" }}>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { icon: "📊", label: "CRM", sub: "outdated data" },
+                { icon: "🔗", label: "LinkedIn", sub: "manual research" },
+                { icon: "📧", label: "Email tool", sub: "generic blasts" },
+                { icon: "📅", label: "Calendar", sub: "back-and-forth" },
+                { icon: "📋", label: "Spreadsheet", sub: "lost leads" },
+                { icon: "🗒️", label: "Notion", sub: "no sync" },
+              ].map(t => (
+                <div key={t.label} className="flex items-center gap-2 rounded-lg px-2.5 py-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                  <span style={{ fontSize: 13 }}>{t.icon}</span>
+                  <div>
+                    <p className="text-[11px] font-semibold text-neutral-300">{t.label}</p>
+                    <p className="text-[9px] text-neutral-600">{t.sub}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 text-center">
+              <span className="text-[10px] text-neutral-600">← no connection between any of these →</span>
+            </div>
+          </div>
+          {/* Text */}
+          <div className="relative z-10 p-6 pt-5 flex-1">
+            <h3 className="text-[22px] font-[800] leading-tight tracking-tight text-white mb-3">
+              7 tools for one conversation
+            </h3>
+            <p className="text-[13px] leading-relaxed text-neutral-500">
+              Your team juggles LinkedIn, Clay, Apollo, Calendly, and Notion. Nothing connects. Context falls through the cracks with every hand-off.
+            </p>
+          </div>
+        </div>
+
+        {/* ── Card 3: Solution ── */}
+        <div className="lv2-card group relative flex flex-col overflow-hidden rounded-2xl" style={{ background: "linear-gradient(160deg, #0a0f0a 0%, #080d0a 100%)" }}>
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 40% 30%, rgba(34,197,94,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
+          <div className="relative z-10 p-6 pb-0">
+            <span className="inline-flex items-center rounded-full border border-orange-500/25 bg-orange-500/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-orange-400">
+              Smady Solution
+            </span>
+          </div>
+          {/* Visual: rising dashboard */}
+          <div className="relative z-10 mx-6 mt-5 overflow-hidden rounded-xl p-4" style={{ background: "#080d0a", border: "1px solid rgba(34,197,94,0.12)" }}>
+            {/* Mini chart header */}
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5"><path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></svg>
+                <div className="h-1.5 rounded" style={{ width: 70, background: "rgba(255,255,255,0.1)" }} />
+              </div>
+              <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "rgba(34,197,94,0.15)", color: "#22c55e" }}>+$1,240</span>
+            </div>
+            {/* Rising bar chart */}
+            <div className="flex items-end gap-1 h-[60px] mb-2">
+              {[35,45,55,58,72,82,95].map((h,i) => (
+                <div key={i} className="flex-1 rounded-sm" style={{
+                  height: `${h}%`,
+                  background: i >= 4
+                    ? `linear-gradient(to top, rgba(249,115,22,0.9), rgba(249,115,22,0.5))`
+                    : `rgba(255,255,255,0.08)`
+                }} />
+              ))}
+            </div>
+            {/* Pipeline status row */}
+            <div className="flex gap-1.5">
+              {["ICP✓","Leads✓","Outreach✓","Meeting✓","Proposal✓"].map(s => (
+                <span key={s} className="flex-1 rounded px-1 py-0.5 text-center text-[8px] font-bold" style={{ background: "rgba(249,115,22,0.12)", color: "#fb923c" }}>{s}</span>
+              ))}
+            </div>
+            {/* Result indicator */}
+            <div className="mt-2 flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.15)" }}>
+              <span className="h-2 w-2 rounded-full" style={{ background: "#22c55e" }} />
+              <span className="text-[11px] font-bold text-green-400">Pipeline up +340% this quarter</span>
+            </div>
+          </div>
+          {/* Text */}
+          <div className="relative z-10 p-6 pt-5 flex-1">
+            <h3 className="text-[22px] font-[800] leading-tight tracking-tight text-white mb-3">
+              One pipeline. Five agents. Zero manual work.
+            </h3>
+            <p className="text-[13px] leading-relaxed text-neutral-500">
+              Smady connects ICP research, lead sourcing, personalised outreach, meeting booking, and proposal drafting in one autonomous pipeline — running 24/7 while your team closes.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  );
+}
+
+function PricingSection() {
+  const tiers = [
+    {
+      name: "Starter",
+      tagline: "For solo founders and early-stage teams",
+      price: "$500–$800",
+      period: "/ month",
+      highlight: false,
+      badge: null,
+      validDays: 14,
+      features: [
+        "Up to 200 leads / week",
+        "ICP Engine included",
+        "Email outreach sequences",
+        "Meeting scheduling agent",
+        "Basic proposal templates",
+        "Email support",
+      ],
+      cta: "Start with Starter",
+    },
+    {
+      name: "Growth",
+      tagline: "For scaling sales teams ready to dominate",
+      price: "$1,200–$2,000",
+      period: "/ month",
+      highlight: true,
+      badge: "Most Popular",
+      validDays: 21,
+      features: [
+        "Up to 500 leads / week",
+        "Full ICP Engine + scoring",
+        "AI-personalised outreach",
+        "Auto meeting + calendar sync",
+        "Full proposal agent with guardrails",
+        "Priority support + onboarding",
+        "Run history & analytics",
+      ],
+      cta: "Start Growing",
+    },
+    {
+      name: "Enterprise",
+      tagline: "Custom pipelines for high-volume teams",
+      price: "$3,999–$7,999",
+      period: "/ month",
+      highlight: false,
+      badge: null,
+      validDays: 21,
+      features: [
+        "Unlimited leads",
+        "Custom ICP + lead scoring models",
+        "Multi-sequence outreach",
+        "Dedicated meeting agent",
+        "Custom proposal catalog",
+        "SLA guarantee",
+        "Dedicated engineer + CSM",
+        "White-label available",
+      ],
+      cta: "Contact Us",
+    },
+  ];
+
+  return (
+    <section className="relative z-10 mx-auto max-w-screen-xl px-6 py-20">
+      {/* Section header */}
+      <div className="text-center mb-14">
+        <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[12px] font-medium text-neutral-400 mb-5 inline-block">
+          Transparent Pricing
+        </span>
+        <h2 className="text-[40px] font-[800] leading-tight tracking-[-0.03em] text-white md:text-[52px]">
+          Pick your pipeline.<br /><span className="lv2-orange-text">Start closing today.</span>
+        </h2>
+        <p className="mt-4 text-[16px] text-neutral-400 max-w-xl mx-auto">
+          All plans include every Smady agent. Price reflects the scale of your outbound motion.
+        </p>
+      </div>
+      {/* Tier cards */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {tiers.map((tier) => (
+          <div
+            key={tier.name}
+            className="lv2-card relative flex flex-col overflow-hidden rounded-2xl"
+            style={{
+              background: tier.highlight
+                ? "linear-gradient(160deg, #1a0d05 0%, #130a04 100%)"
+                : "#0f0f10",
+              ...(tier.highlight ? { border: "1px solid rgba(249,115,22,0.25)" } : {}),
+            }}
+          >
+            {/* Orange top accent for highlight */}
+            {tier.highlight && (
+              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg, #f97316, #fb923c, transparent)" }} />
+            )}
+            {/* Badge */}
+            {tier.badge && (
+              <div className="absolute top-5 right-5">
+                <span className="rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: "rgba(249,115,22,0.15)", color: "#f97316", border: "1px solid rgba(249,115,22,0.25)" }}>
+                  {tier.badge}
+                </span>
+              </div>
+            )}
+            <div className="p-6 flex-1">
+              {/* Name + tagline */}
+              <p className="text-[13px] font-bold uppercase tracking-wider mb-1" style={{ color: tier.highlight ? "#f97316" : "#6b7280" }}>
+                {tier.name}
+              </p>
+              <p className="text-[12px] text-neutral-600 mb-5">{tier.tagline}</p>
+              {/* Price */}
+              <div className="mb-6">
+                <span className="text-[36px] font-[900] leading-none tracking-tight text-white">{tier.price}</span>
+                <span className="text-[13px] text-neutral-500 ml-1">{tier.period}</span>
+                <p className="mt-1 text-[11px] text-neutral-600">{tier.validDays}-day proposal validity included</p>
+              </div>
+              {/* Divider */}
+              <div className="mb-5 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
+              {/* Features */}
+              <ul className="space-y-2.5">
+                {tier.features.map(f => (
+                  <li key={f} className="flex items-start gap-2.5 text-[13px] text-neutral-400">
+                    <svg className="mt-0.5 flex-shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={tier.highlight ? "#f97316" : "#6b7280"} strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* CTA */}
+            <div className="p-6 pt-0">
+              <Link
+                to="/signup"
+                className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[14px] font-semibold transition-all hover:-translate-y-0.5"
+                style={tier.highlight ? {
+                  background: "linear-gradient(135deg, #f97316, #ea580c)",
+                  color: "#fff",
+                  boxShadow: "0 6px 20px rgba(249,115,22,0.3)"
+                } : {
+                  background: "rgba(255,255,255,0.05)",
+                  color: "#d4d4d4",
+                  border: "1px solid rgba(255,255,255,0.08)"
+                }}
+              >
+                {tier.cta}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </Link>
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Bottom note */}
+      <p className="mt-8 text-center text-[12px] text-neutral-600">
+        All plans billed monthly · Cancel any time · Setup takes under 10 minutes
+      </p>
+    </section>
+  );
+}
+
 function ComparisonSection() {
   return (
     <section className="relative z-10 mx-auto max-w-screen-xl px-6 py-20">
@@ -869,8 +1188,10 @@ export default function LandingV2() {
       <HeroSection />
       <BentoGrid />
       <Marquee />
+      <ProblemSection />
       <ComparisonSection />
       <HowItWorks />
+      <PricingSection />
       <MetricsSection />
       <CTASection />
       <Footer />
