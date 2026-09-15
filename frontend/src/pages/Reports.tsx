@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Download, ExternalLink, Eye } from "lucide-react";
 import { PageHeader } from "@/layouts/PageHeader";
@@ -32,12 +32,37 @@ export default function Reports() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailContent, setDetailContent] = useState<Record<string, unknown> | null>(null);
   const [detailType, setDetailType] = useState<"icp" | "leads" | null>(null);
-  const rows: CampaignRow[] = campaignPerformance.map((c, i) => ({ id: `cp-${i}`, ...c }));
+
+  // Real analytics state — falls back to mock data if unavailable
+  const [analytics, setAnalytics] = useState<Record<string, unknown> | null>(null);
+
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      const { data } = await api.get("/dashboard/analytics");
+      setAnalytics(data);
+    } catch (_e) {
+      // Falls back to mock data silently
+    }
+  }, []);
 
   useEffect(() => {
     fetchHistory();
     fetchRealHistory();
-  }, [fetchHistory, fetchRealHistory]);
+    fetchAnalytics();
+  }, [fetchHistory, fetchRealHistory, fetchAnalytics]);
+
+  // Use real data when available, fall back to mock
+  const realFunnel = analytics ? (analytics.funnel as typeof funnelData) : funnelData;
+  const realOutreach = analytics ? (analytics.outreach_over_time as typeof outreachOverTime) : outreachOverTime;
+  const realByCountry = analytics ? (analytics.leads_by_country as typeof leadsByCountry) : leadsByCountry;
+  const realByIndustry = analytics ? (analytics.leads_by_industry as typeof leadsByIndustry) : leadsByIndustry;
+  const realMeetingConv = analytics ? (analytics.meeting_conversion as typeof meetingConversion) : meetingConversion;
+  const realCampaigns = analytics ? (analytics.campaign_performance as typeof campaignPerformance) : campaignPerformance;
+
+  const rows = (realCampaigns || []).map((c, i) => ({
+    id: (c as Record<string, unknown>).id ? String((c as Record<string, unknown>).id) : `cp-${i}`,
+    ...(c as Record<string, unknown>)
+  })) as CampaignRow[];
 
   const openRealHistoryRow = async (row: RealHistoryItem) => {
     if (row.type === "meeting") {
@@ -221,17 +246,17 @@ export default function Reports() {
       )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <FunnelChartCard title="Outbound Funnel" subtitle="Leads to closed-won" data={funnelData} testId="reports-funnel-chart" />
-        <MultiLineChartCard title="Outreach Performance Over Time" subtitle="Sent, opened, and replied" data={outreachOverTime} testId="reports-performance-chart" />
-        <DonutChartCard title="Leads by Country" data={leadsByCountry} testId="reports-country-donut" />
-        <DonutChartCard title="Leads by Industry" data={leadsByIndustry} testId="reports-industry-donut" />
+        <FunnelChartCard title="Outbound Funnel" subtitle={analytics ? "Real pipeline data" : "Leads to closed-won (sample)"} data={realFunnel} testId="reports-funnel-chart" />
+        <MultiLineChartCard title="Outreach Performance Over Time" subtitle={analytics ? "Real send/open/reply data" : "Sent, opened, and replied (sample)"} data={realOutreach} testId="reports-performance-chart" />
+        <DonutChartCard title="Leads by Country" data={realByCountry} testId="reports-country-donut" />
+        <DonutChartCard title="Leads by Industry" data={realByIndustry} testId="reports-industry-donut" />
         <ComparisonCard
           title="Meeting Conversion Rate"
-          percent={meetingConversion.percent}
-          trend={meetingConversion.trend}
-          thisWeek={meetingConversion.thisWeek}
-          lastWeek={meetingConversion.lastWeek}
-          totalPerWeek={meetingConversion.totalPerWeek}
+          percent={realMeetingConv.percent}
+          trend={realMeetingConv.trend}
+          thisWeek={realMeetingConv.thisWeek}
+          lastWeek={realMeetingConv.lastWeek}
+          totalPerWeek={realMeetingConv.totalPerWeek}
         />
       </div>
 

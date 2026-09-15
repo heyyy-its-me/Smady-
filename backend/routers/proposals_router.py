@@ -1,37 +1,83 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
-from pydantic import BaseModel
+"""
+Proposals router — Phase 1 of SMADY master build.
+
+Two data sources:
+  1. public.proposal_review_log  — n8n Proposal Agent writes here when guardrail/AI review
+     flags a proposal for human approval.  INTEGER serial id, meeting_id = Fireflies transcript id.
+  2. public.proposal_results     — app-generated proposals (legacy flow, kept for compatibility).
+
+Approve flow: GET  /webhook/proposal-approve?meeting_id={id}  on n8n (the same URL as the
+              email button — reuses proven email send logic).
+Reject  flow: POST /form/proposal-feedback  with fields {"Meeting ID": id, "Feedback": text}
+              — matches the n8n form that already validates min-10-char feedback.
+
+Ownership gap: n8n does NOT populate user_id/customer_id in proposal_review_log.
+We scope by matching lead_email against the authenticated user's lead_results rows.
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, Header, Query
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
-from sqlalchemy import select, insert, update
+from sqlalchemy import select, insert, update, text
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
+import os
+import httpx
+import logging
 
 from database import get_db
-from models import proposal_results, users
+from models import public_proposal_review_log, proposal_results, pricing_packages, lead_results, users
 from auth import get_current_user
 from webhooks import trigger_webhook, is_webhook_configured, verify_callback_secret
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/proposals", tags=["proposals"])
 
 
-class GenerateProposalRequest(BaseModel):
-    lead_name: str
-    lead_email: str
-    proposal_template: str
-    key_points: Optional[str] = ""
+# ── helpers ──────────────────────────────────────────────────────────────────
+
+def _safe_list(val) -> list:
+    """Normalise guardrail_errors / reviewer_issues regardless of storage format."""
+    if val is None:
+        return []
+    if isinstance(val, list):
+        return val
+    if isinstance(val, str):
+        import json
+        try:
+            parsed = json.loads(val)
+            return parsed if isinstance(parsed, list) else []
+        except Exception:
+            return []
+    return []
 
 
-class ProposalCallbackRequest(BaseModel):
-    request_id: str
-    customer_id: Optional[str] = None
-    user_id: str
-    lead_name: str
-    lead_email: str
-    proposal_json: dict
-    guardrail_errors: List[str] = []
-    reviewer_approved: bool = False
+def _serialize_review_log(row) -> dict:
+    """Serialise a row from public.proposal_review_log."""
+    pj = row.proposal_json or {}
+    return {
+        "id": row.id,  # INTEGER
+        "meeting_id": row.meeting_id,
+        "lead_email": row.lead_email,
+        "final_status": row.final_status,
+        "guardrail_errors": _safe_list(row.guardrail_errors),
+        "reviewer_approved": row.reviewer_approved,
+        "reviewer_issues": _safe_list(row.reviewer_issues),
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+        # proposal fields extracted from proposal_json
+        "package_selected": pj.get("package_selected") if isinstance(pj, dict) else None,
+        "quoted_price": pj.get("quoted_price") if isinstance(pj, dict) else None,
+        "valid_until": pj.get("valid_until") if isinstance(pj, dict) else None,
+        "subject": pj.get("subject") if isinstance(pj, dict) else None,
+        "body_html": pj.get("body_html") if isinstance(pj, dict) else None,
+        "context_json": row.context_json,
+        # revision indicator: final_status was already 'sent_after_revision' in a previous row for same meeting_id
+        "is_revision": False,  # populated by list endpoint
+    }
 
 
-def serialize(row):
+def _serialize_proposal_result(row) -> dict:
+    """Serialise a row from public.proposal_results (legacy app flow)."""
     return {
         "id": str(row.id),
         "user_id": str(row.user_id),
@@ -39,19 +85,344 @@ def serialize(row):
         "lead_name": row.lead_name,
         "lead_email": row.lead_email,
         "proposal_json": row.proposal_json,
-        "guardrail_errors": row.guardrail_errors,
+        "guardrail_errors": _safe_list(row.guardrail_errors),
         "reviewer_approved": row.reviewer_approved,
         "final_status": row.final_status,
         "created_at": row.created_at.isoformat() if row.created_at else None,
+        "reviewer_issues": [],
+        "context_json": None,
+        "meeting_id": None,
+        "is_revision": False,
     }
 
 
+async def _get_user_lead_emails(db: AsyncSession, user_id: str) -> set:
+    """
+    Return the set of lead emails belonging to this user (via public.lead_results).
+    Used to soft-scope public.proposal_review_log since n8n doesn't set user_id there.
+    """
+    result = await db.execute(
+        select(lead_results.c.leads).where(lead_results.c.user_id == user_id)
+    )
+    emails = set()
+    for row in result.fetchall():
+        for item in (row.leads or []):
+            if isinstance(item, dict):
+                e = item.get("Email") or item.get("email") or item.get("email_address")
+                if e:
+                    emails.add(str(e).lower())
+    return emails
+
+
+# ── GET /api/proposals/packages ───────────────────────────────────────────────
+
+@router.get("/packages")
+async def list_packages(user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Return the active pricing catalog (public.pricing_packages)."""
+    result = await db.execute(
+        select(pricing_packages).where(pricing_packages.c.active == True).order_by(pricing_packages.c.floor_price)
+    )
+    out = []
+    for r in result.fetchall():
+        out.append({
+            "id": r.id,
+            "package_name": r.package_name,
+            "floor_price": float(r.floor_price),
+            "ceiling_price": float(r.ceiling_price),
+            "includes": r.includes,
+            "valid_days": r.valid_days,
+        })
+    return out
+
+
+# ── GET /api/proposals ────────────────────────────────────────────────────────
+
+@router.get("")
+async def list_proposals(
+    status: Optional[str] = Query(None, description="Filter by final_status"),
+    user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Returns proposals from public.proposal_review_log (n8n-generated) PLUS
+    public.proposal_results (app-generated), most recent first.
+
+    Scoping: proposal_review_log rows are filtered to leads whose email appears
+    in this user's lead_results; proposal_results rows are filtered by user_id.
+    Falls back to showing all proposal_review_log rows if the user has no leads
+    (e.g., first time user, or admin view).
+    """
+    uid = user["id"]
+
+    # --- n8n review log -------------------------------------------------------
+    user_emails = await _get_user_lead_emails(db, uid)
+
+    q = select(public_proposal_review_log).order_by(public_proposal_review_log.c.id.desc())
+    if status:
+        q = q.where(public_proposal_review_log.c.final_status == status)
+    result = await db.execute(q)
+    n8n_rows = result.fetchall()
+
+    # Detect which meeting_ids already have a 'sent_after_revision' entry
+    revision_meeting_ids = {r.meeting_id for r in n8n_rows if r.final_status == "sent_after_revision"}
+
+    review_rows = []
+    for r in n8n_rows:
+        row_email = (r.lead_email or "").lower()
+        # Show row if user has no leads yet OR lead email matches
+        if not user_emails or row_email in user_emails:
+            d = _serialize_review_log(r)
+            # Mark second-cycle reviews
+            if r.meeting_id and r.meeting_id in revision_meeting_ids and r.final_status in ("needs_review", "Needs Review"):
+                d["is_revision"] = True
+            review_rows.append(d)
+
+    # --- app proposal_results -------------------------------------------------
+    q2 = select(proposal_results).where(proposal_results.c.user_id == uid).order_by(proposal_results.c.created_at.desc())
+    if status:
+        q2 = q2.where(proposal_results.c.final_status == status)
+    result2 = await db.execute(q2)
+    app_rows = [_serialize_proposal_result(r) for r in result2.fetchall()]
+
+    return {"review_queue": review_rows, "app_proposals": app_rows}
+
+
+# ── GET /api/proposals/pending (backward compat) ──────────────────────────────
+
 @router.get("/pending")
 async def list_pending(user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Backward-compatible: return app-generated proposals for this user."""
     result = await db.execute(
         select(proposal_results).where(proposal_results.c.user_id == user["id"]).order_by(proposal_results.c.created_at.desc())
     )
-    return [serialize(r) for r in result.fetchall()]
+    return [_serialize_proposal_result(r) for r in result.fetchall()]
+
+
+# ── GET /api/proposals/{meeting_id} ───────────────────────────────────────────
+
+@router.get("/{proposal_ref}")
+async def get_proposal(
+    proposal_ref: str,
+    user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Fetch full proposal detail.
+    - If proposal_ref is an integer string → look up public.proposal_review_log by id.
+    - If proposal_ref looks like a UUID → look up public.proposal_results by id.
+    - Otherwise treat as meeting_id and search proposal_review_log.
+    """
+    # Try integer id first (n8n review log)
+    try:
+        row_id = int(proposal_ref)
+        result = await db.execute(
+            select(public_proposal_review_log).where(public_proposal_review_log.c.id == row_id)
+        )
+        row = result.first()
+        if row:
+            return _serialize_review_log(row)
+    except ValueError:
+        pass
+
+    # Try UUID (app proposal_results)
+    try:
+        proposal_uuid = uuid.UUID(proposal_ref)
+        result = await db.execute(
+            select(proposal_results).where(
+                proposal_results.c.id == proposal_uuid,
+                proposal_results.c.user_id == user["id"]
+            )
+        )
+        row = result.first()
+        if row:
+            return _serialize_proposal_result(row)
+    except ValueError:
+        pass
+
+    # Treat as meeting_id
+    result = await db.execute(
+        select(public_proposal_review_log)
+        .where(public_proposal_review_log.c.meeting_id == proposal_ref)
+        .order_by(public_proposal_review_log.c.id.desc())
+        .limit(1)
+    )
+    row = result.first()
+    if row:
+        return _serialize_review_log(row)
+
+    raise HTTPException(status_code=404, detail="Proposal not found")
+
+
+# ── POST /api/proposals/{meeting_id}/approve ──────────────────────────────────
+
+@router.post("/{proposal_ref}/approve")
+async def approve_proposal(
+    proposal_ref: str,
+    user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Approve a proposal. For n8n-managed proposals, calls the n8n approve webhook
+    (same GET URL as the email button — reuses n8n's proven send logic).
+    For app proposals, updates final_status locally.
+
+    LIVE-FIRE WARNING: if n8n approve URL is configured, calling this WILL send
+    a real email to the lead. Only call after explicit user confirmation.
+    """
+    approve_url = os.environ.get("N8N_PROPOSALS_APPROVE_URL", "").strip()
+
+    # --- n8n review log (integer id or meeting_id) ---
+    meeting_id = None
+    try:
+        row_id = int(proposal_ref)
+        result = await db.execute(
+            select(public_proposal_review_log).where(public_proposal_review_log.c.id == row_id)
+        )
+        row = result.first()
+        if row:
+            meeting_id = row.meeting_id
+    except ValueError:
+        pass
+
+    if meeting_id is None:
+        # Try as UUID for app proposals
+        try:
+            proposal_uuid = uuid.UUID(proposal_ref)
+            owner_check = await db.execute(
+                select(proposal_results.c.user_id).where(proposal_results.c.id == proposal_uuid)
+            )
+            owner_row = owner_check.first()
+            if not owner_row or str(owner_row.user_id) != user["id"]:
+                raise HTTPException(status_code=404, detail="Proposal not found")
+            res = await db.execute(
+                update(proposal_results).where(proposal_results.c.id == proposal_uuid)
+                .values(final_status="Approved").returning(proposal_results)
+            )
+            row = res.first()
+            await db.commit()
+            return _serialize_proposal_result(row)
+        except ValueError:
+            pass
+        # Try as meeting_id string
+        meeting_id = proposal_ref
+
+    # Call n8n approve webhook
+    if approve_url:
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.get(f"{approve_url}?meeting_id={meeting_id}")
+            logger.info("n8n approve webhook responded: %s", resp.status_code)
+            return {"message": "Proposal approved and sent via n8n", "meeting_id": meeting_id, "n8n_status": resp.status_code}
+        except Exception as e:
+            logger.error("n8n approve webhook failed: %s", e)
+            raise HTTPException(status_code=502, detail=f"Failed to reach n8n approve webhook: {e}")
+    else:
+        # No webhook — update local DB status as a dry-run
+        result = await db.execute(
+            update(public_proposal_review_log)
+            .where(public_proposal_review_log.c.meeting_id == meeting_id)
+            .values(final_status="Approved")
+        )
+        await db.commit()
+        return {"message": "Proposal marked Approved (n8n URL not configured — email NOT sent)", "meeting_id": meeting_id}
+
+
+# ── POST /api/proposals/{meeting_id}/reject ───────────────────────────────────
+
+class RejectRequest(BaseModel):
+    feedback: str
+
+    @field_validator("feedback")
+    @classmethod
+    def feedback_min_length(cls, v: str) -> str:
+        if len(v.strip()) < 10:
+            raise ValueError("Feedback must be at least 10 characters")
+        return v.strip()
+
+
+@router.post("/{proposal_ref}/reject")
+async def reject_proposal(
+    proposal_ref: str,
+    body: RejectRequest,
+    user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Reject and queue for regeneration.
+    - Validates feedback >= 10 chars (same rule as the n8n form).
+    - For n8n proposals: submits to the n8n rejection form which triggers regeneration.
+    - For app proposals: marks as Rejected locally.
+
+    LIVE-FIRE WARNING: if the n8n form URL is configured, this WILL trigger n8n to
+    regenerate and (if it passes) email a revised proposal. Only call after confirmation.
+    """
+    reject_url = os.environ.get("N8N_PROPOSALS_REJECT_FORM_URL", "").strip()
+
+    meeting_id = None
+    try:
+        row_id = int(proposal_ref)
+        result = await db.execute(
+            select(public_proposal_review_log).where(public_proposal_review_log.c.id == row_id)
+        )
+        row = result.first()
+        if row:
+            meeting_id = row.meeting_id
+    except ValueError:
+        pass
+
+    if meeting_id is None:
+        try:
+            proposal_uuid = uuid.UUID(proposal_ref)
+            owner_check = await db.execute(
+                select(proposal_results.c.user_id).where(proposal_results.c.id == proposal_uuid)
+            )
+            owner_row = owner_check.first()
+            if not owner_row or str(owner_row.user_id) != user["id"]:
+                raise HTTPException(status_code=404, detail="Proposal not found")
+            res = await db.execute(
+                update(proposal_results).where(proposal_results.c.id == proposal_uuid)
+                .values(final_status="Rejected").returning(proposal_results)
+            )
+            row = res.first()
+            await db.commit()
+            return _serialize_proposal_result(row)
+        except ValueError:
+            pass
+        meeting_id = proposal_ref
+
+    if reject_url:
+        # n8n form trigger expects form-encoded POST with the exact field names
+        # the form defines: "Meeting ID" and "Feedback"
+        form_data = {"Meeting ID": meeting_id, "Feedback": body.feedback}
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.post(reject_url, data=form_data)
+            logger.info("n8n reject form responded: %s %s", resp.status_code, resp.text[:200])
+            return {
+                "message": "Feedback submitted — n8n will regenerate the proposal",
+                "meeting_id": meeting_id,
+                "n8n_status": resp.status_code,
+            }
+        except Exception as e:
+            logger.error("n8n reject form failed: %s", e)
+            raise HTTPException(status_code=502, detail=f"Failed to reach n8n reject form: {e}")
+    else:
+        result = await db.execute(
+            update(public_proposal_review_log)
+            .where(public_proposal_review_log.c.meeting_id == meeting_id)
+            .values(final_status="Rejected")
+        )
+        await db.commit()
+        return {"message": "Proposal marked Rejected (n8n URL not configured — no regeneration)", "meeting_id": meeting_id}
+
+
+# ── POST /api/proposals/generate (existing app flow) ─────────────────────────
+
+class GenerateProposalRequest(BaseModel):
+    lead_name: str
+    lead_email: str
+    proposal_template: str
+    key_points: Optional[str] = ""
 
 
 @router.post("/generate")
@@ -76,7 +447,20 @@ async def generate_proposal(body: GenerateProposalRequest, user: dict = Depends(
             "lead_name": body.lead_name, "lead_email": body.lead_email,
             "proposal_template": body.proposal_template, "key_points": body.key_points,
         })
-    return serialize(row)
+    return _serialize_proposal_result(row)
+
+
+# ── POST /api/proposals/callback ──────────────────────────────────────────────
+
+class ProposalCallbackRequest(BaseModel):
+    request_id: str
+    customer_id: Optional[str] = None
+    user_id: str
+    lead_name: str
+    lead_email: str
+    proposal_json: dict
+    guardrail_errors: List[str] = []
+    reviewer_approved: bool = False
 
 
 @router.post("/callback")
@@ -88,7 +472,7 @@ async def proposal_callback(body: ProposalCallbackRequest, x_callback_secret: Op
         raise HTTPException(status_code=400, detail="Invalid user_id")
     user_check = await db.execute(select(users.c.id).where(users.c.id == user_uuid))
     if not user_check.first():
-        raise HTTPException(status_code=404, detail="Unknown user_id — refusing to record proposal")
+        raise HTTPException(status_code=404, detail="Unknown user_id")
 
     result = await db.execute(select(proposal_results).where(proposal_results.c.request_id == body.request_id))
     row = result.first()
@@ -105,58 +489,3 @@ async def proposal_callback(body: ProposalCallbackRequest, x_callback_secret: Op
     )
     await db.commit()
     return {"message": "Proposal updated"}
-
-
-@router.get("/{proposal_id}")
-async def get_proposal(proposal_id: str, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    try:
-        proposal_uuid = uuid.UUID(proposal_id)
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Proposal not found")
-    result = await db.execute(
-        select(proposal_results).where(proposal_results.c.id == proposal_uuid, proposal_results.c.user_id == user["id"])
-    )
-    row = result.first()
-    if not row:
-        raise HTTPException(status_code=404, detail="Proposal not found")
-    return serialize(row)
-
-
-@router.post("/{proposal_id}/approve")
-async def approve_proposal(proposal_id: str, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    try:
-        proposal_uuid = uuid.UUID(proposal_id)
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Proposal not found")
-    owner_check = await db.execute(
-        select(proposal_results.c.user_id).where(proposal_results.c.id == proposal_uuid)
-    )
-    owner_row = owner_check.first()
-    if not owner_row or str(owner_row.user_id) != user["id"]:
-        raise HTTPException(status_code=404, detail="Proposal not found")
-    result = await db.execute(
-        update(proposal_results).where(proposal_results.c.id == proposal_uuid).values(final_status="Approved").returning(proposal_results)
-    )
-    row = result.first()
-    await db.commit()
-    return serialize(row)
-
-
-@router.post("/{proposal_id}/reject")
-async def reject_proposal(proposal_id: str, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    try:
-        proposal_uuid = uuid.UUID(proposal_id)
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Proposal not found")
-    owner_check = await db.execute(
-        select(proposal_results.c.user_id).where(proposal_results.c.id == proposal_uuid)
-    )
-    owner_row = owner_check.first()
-    if not owner_row or str(owner_row.user_id) != user["id"]:
-        raise HTTPException(status_code=404, detail="Proposal not found")
-    result = await db.execute(
-        update(proposal_results).where(proposal_results.c.id == proposal_uuid).values(final_status="Rejected").returning(proposal_results)
-    )
-    row = result.first()
-    await db.commit()
-    return serialize(row)

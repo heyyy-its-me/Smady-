@@ -25,7 +25,10 @@ async def trigger_webhook(kind: str, payload: dict) -> bool:
         return False
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            await client.post(url, json=payload)
+            resp = await client.post(url, json=payload)
+            if resp.status_code >= 400:
+                logger.error(f"n8n webhook '{kind}' returned {resp.status_code}: {resp.text[:200]}")
+                return False
         return True
     except Exception as e:
         logger.error(f"Failed to trigger n8n webhook '{kind}': {e}")

@@ -108,6 +108,43 @@ proposal_results = Table(
     schema="public",
 )
 
+# n8n-managed proposal review log — written by the Proposal Agent workflow.
+# Uses an INTEGER serial id (not UUID). meeting_id is the Fireflies transcript ID (text).
+# guardrail_errors and reviewer_issues are TEXT[] arrays in the real DB.
+# Note: n8n does NOT set user_id/customer_id; ownership is inferred via lead_email.
+public_proposal_review_log = Table(
+    "proposal_review_log", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("meeting_id", Text),
+    Column("lead_email", Text),
+    Column("proposal_json", JSONB),
+    Column("guardrail_errors", JSONB),  # TEXT[] stored as JSONB-compatible
+    Column("reviewer_approved", Boolean),
+    Column("reviewer_issues", JSONB),   # TEXT[] stored as JSONB-compatible
+    Column("final_status", Text),
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
+    Column("context_json", JSONB),
+    Column("customer_id", UUID(as_uuid=True), nullable=True),
+    Column("user_id", UUID(as_uuid=True), nullable=True),
+    schema="public",
+    extend_existing=True,
+)
+
+# Active pricing packages — read by n8n Proposal Agent and displayed in the app.
+pricing_packages = Table(
+    "pricing_packages", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("package_name", Text, nullable=False),
+    Column("floor_price", Numeric, nullable=False),
+    Column("ceiling_price", Numeric, nullable=False),
+    Column("includes", Text),
+    Column("valid_days", Integer),
+    Column("active", Boolean),
+    Column("updated_at", DateTime(timezone=True)),
+    schema="public",
+    extend_existing=True,
+)
+
 # ── App-internal tables (own schema, e.g. "smady") — brand new / created by us.
 # Kept isolated from the real "public" schema table names (leads, meetings, proposals, etc.)
 # to avoid any collision with the live n8n-managed data.

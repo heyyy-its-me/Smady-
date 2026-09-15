@@ -22,7 +22,9 @@ export default function Meetings() {
   const [leadName, setLeadName] = useState("");
   const [leadEmail, setLeadEmail] = useState("");
   const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
+  const [time, setTime] = useState(""); // HH:mm 24hr IST
+  const [duration, setDuration] = useState("30");
+  const [title, setTitle] = useState("Discovery Call");
   const [link, setLink] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -34,7 +36,12 @@ export default function Meetings() {
 
   const onConfirm = async () => {
     if (!leadName || !leadEmail || !date || !time) {
-      toast.error("Please fill in all fields");
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    // Validate time format HH:mm
+    if (!/^\d{1,2}:\d{2}$/.test(time)) {
+      toast.error("Time must be in HH:mm format (e.g. 14:30)");
       return;
     }
     setSubmitting(true);
@@ -42,17 +49,16 @@ export default function Meetings() {
       await scheduleMeeting({
         lead_name: leadName,
         lead_email: leadEmail,
-        meeting_date: new Date(`${date}T${time}:00`).toISOString(),
+        meeting_date: date,        // YYYY-MM-DD only — backend combines with meeting_time
+        meeting_time: time,        // HH:mm 24hr IST
+        duration: parseInt(duration, 10) || 30,
+        title: title || "Discovery Call",
         meeting_link: link || undefined,
         notes: notes || undefined,
       });
       setOpen(false);
-      setLeadName("");
-      setLeadEmail("");
-      setDate("");
-      setTime("");
-      setLink("");
-      setNotes("");
+      setLeadName(""); setLeadEmail(""); setDate(""); setTime("");
+      setDuration("30"); setTitle("Discovery Call"); setLink(""); setNotes("");
       toast.success("Meeting scheduled");
     } catch {
       // error toast already shown by context
@@ -110,30 +116,50 @@ export default function Meetings() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Lead Name</label>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Client Name *</label>
                 <Input value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder="Jordan Blake" data-testid="meeting-lead-name-input" />
               </div>
               <div>
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Lead Email</label>
-                <Input value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} placeholder="jordan@company.com" data-testid="meeting-lead-email-input" />
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Client Email *</label>
+                <Input type="email" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} placeholder="jordan@company.com" data-testid="meeting-lead-email-input" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Date</label>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Meeting Date *</label>
                 <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} data-testid="meeting-date-input" />
               </div>
               <div>
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Time</label>
-                <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} data-testid="meeting-time-input" />
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Meeting Time (24hr, IST) *</label>
+                <Input
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  placeholder="e.g. 14:30"
+                  pattern="\d{1,2}:\d{2}"
+                  data-testid="meeting-time-input"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Duration (minutes)</label>
+                <Input
+                  type="number"
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                  placeholder="30"
+                  min={5}
+                  max={240}
+                  data-testid="meeting-duration-input"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Meeting Title</label>
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Discovery Call" data-testid="meeting-title-input" />
               </div>
             </div>
             <div>
-              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Meeting Link</label>
-              <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://meet.smady.ai/..." data-testid="meeting-link-input" />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Notes</label>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Notes / Description</label>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything to prepare for this meeting..." data-testid="meeting-notes-input" />
             </div>
             <ButtonPrimary fullWidth loading={submitting} onClick={onConfirm} data-testid="meeting-confirm-button">

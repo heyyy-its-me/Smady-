@@ -92,10 +92,14 @@ async def create_campaign(body: CampaignCreateRequest, user: dict = Depends(get_
 
     if configured:
         recipient_leads = [{"lead_id": l["id"], "email": l["email"], "name": l["name"]} for l in eligible]
-        await trigger_webhook("outreach", {
+        webhook_ok = await trigger_webhook("outreach", {
             "request_id": str(request_id), "user_id": user["id"],
             "subject": body.subject, "body": body.body, "leads": recipient_leads,
         })
+        if not webhook_ok:
+            await db.execute(update(outreach_campaigns).where(outreach_campaigns.c.request_id == request_id).values(status="Failed"))
+            await db.commit()
+            row = (await db.execute(select(outreach_campaigns).where(outreach_campaigns.c.request_id == request_id))).first()
     return serialize_campaign(row)
 
 

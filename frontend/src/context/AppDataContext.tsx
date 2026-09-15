@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from "react";
-import type { Lead, Campaign, Meeting, Proposal, ICPResult, HistoryData, RealHistoryItem } from "@/types";
+import type { Lead, Campaign, Meeting, Proposal, ReviewQueue, PricingPackage, ICPResult, HistoryData, RealHistoryItem } from "@/types";
 import { api, formatApiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/components/ui/sonner";
@@ -152,13 +152,15 @@ interface AppDataContextType {
 
   meetings: Meeting[];
   refreshMeetings: () => Promise<void>;
-  scheduleMeeting: (data: { lead_name: string; lead_email: string; meeting_date: string; meeting_link?: string; notes?: string }) => Promise<void>;
+  scheduleMeeting: (data: { lead_name: string; lead_email: string; meeting_date: string; meeting_time?: string; duration?: number; title?: string; meeting_link?: string; notes?: string }) => Promise<void>;
 
   proposals: Proposal[];
+  reviewQueue: Proposal[];
+  pricingPackages: PricingPackage[];
   generatingProposal: boolean;
   generateProposal: (data: { lead_name: string; lead_email: string; proposal_template: string; key_points: string }) => Promise<void>;
-  approveProposal: (id: string) => Promise<void>;
-  rejectProposal: (id: string) => Promise<void>;
+  approveProposal: (id: string | number) => Promise<void>;
+  rejectProposal: (id: string | number, feedback: string) => Promise<void>;
 
   dashboardStats: DashboardStats;
   outreachStats: OutreachStats;
@@ -194,6 +196,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [reviewQueue, setReviewQueue] = useState<Proposal[]>([]);
+  const [pricingPackages, setPricingPackages] = useState<PricingPackage[]>([]);
   const [generatingProposal, setGeneratingProposal] = useState(false);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats>(defaultDashboardStats);
   const [outreachStats, setOutreachStats] = useState<OutreachStats>(defaultOutreachStats);
@@ -257,8 +261,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshProposals = useCallback(async () => {
-    const { data } = await api.get("/proposals/pending");
-    setProposals(data);
+    const { data } = await api.get("/proposals");
+    setReviewQueue(data.review_queue || []);
+    setProposals([...(data.review_queue || []), ...(data.app_proposals || [])]);
+    // Also fetch pricing packages
+    try {
+      const { data: pkgs } = await api.get("/proposals/packages");
+      setPricingPackages(pkgs || []);
+    } catch (_e) { /* non-critical */ }
   }, []);
 
   useEffect(() => {
@@ -462,7 +472,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addMeeting = async (m: { lead_name: string; lead_email: string; meeting_date: string; meeting_link?: string; notes?: string }) => {
+  const addMeeting = async (m: { lead_name: string; lead_email: string; meeting_date: string; meeting_time?: string; duration?: number; title?: string; meeting_link?: string; notes?: string }) => {
     try {
       await api.post("/meetings/schedule", m);
       await refreshMeetings();
@@ -487,19 +497,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const approveProposal = async (id: string) => {
+  const approveProposal = async (id: string | number) => {
     try {
-      const { data } = await api.post(`/proposals/${id}/approve`);
-      setProposals((prev) => prev.map((p) => (p.id === id ? data : p)));
+      await api.post(`/proposals/${id}/approve`);
+      await refreshProposals();
+      toast.success("Proposal approved and sent");
     } catch (e) {
       toast.error(formatApiError(e));
     }
   };
 
-  const rejectProposal = async (id: string) => {
+  const rejectProposal = async (id: string | number, feedback: string) => {
     try {
-      const { data } = await api.post(`/proposals/${id}/reject`);
-      setProposals((prev) => prev.map((p) => (p.id === id ? data : p)));
+      await api.post(`/proposals/${id}/reject`, { feedback });
+      await refreshProposals();
+      toast.success("Feedback submitted — proposal will be regenerated");
     } catch (e) {
       toast.error(formatApiError(e));
     }
@@ -536,6 +548,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         refreshMeetings,
         scheduleMeeting: addMeeting,
         proposals,
+        reviewQueue,
+        pricingPackages,
         generatingProposal,
         generateProposal,
         approveProposal,

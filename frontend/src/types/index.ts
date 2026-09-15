@@ -63,19 +63,43 @@ export interface Meeting {
   created_at: string;
 }
 
-export type ProposalStatus = "Needs Review" | "Approved" | "Sent" | "Rejected" | "webhook_not_configured";
+export type ProposalStatus = "needs_review" | "Needs Review" | "sent" | "Sent" | "Approved" | "Rejected" | "webhook_not_configured" | "sent_after_revision" | "pending";
 
 export interface Proposal {
-  id: string;
-  user_id: string;
-  request_id: string | null;
-  lead_name: string;
-  lead_email: string;
-  proposal_json: Record<string, unknown>;
-  guardrail_errors: string[] | null;
-  reviewer_approved: boolean;
-  final_status: ProposalStatus;
+  id: string | number;   // INTEGER for n8n rows, UUID string for app rows
+  meeting_id?: string | null;
+  user_id?: string;
+  request_id?: string | null;
+  lead_name?: string;
+  lead_email?: string;
+  proposal_json?: Record<string, unknown>;
+  guardrail_errors: string[];
+  reviewer_issues: string[];
+  reviewer_approved?: boolean;
+  final_status: string;
   created_at: string;
+  context_json?: Record<string, unknown> | null;
+  // Extracted from proposal_json
+  package_selected?: string | null;
+  quoted_price?: number | null;
+  valid_until?: string | null;
+  subject?: string | null;
+  body_html?: string | null;
+  is_revision?: boolean;
+}
+
+export interface ReviewQueue {
+  review_queue: Proposal[];
+  app_proposals: Proposal[];
+}
+
+export interface PricingPackage {
+  id: number;
+  package_name: string;
+  floor_price: number;
+  ceiling_price: number;
+  includes: string;
+  valid_days: number;
 }
 
 export interface ICPResult {

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date, datetime, timezone, timedelta
 
 from database import get_db
-from models import outreach_campaigns, outreach_emails, icp_profiles, lead_runs, lead_results, meetings
+from models import outreach_campaigns, outreach_emails, icp_profiles, lead_runs, lead_results, meetings, proposal_results, public_proposal_review_log
 from auth import get_current_user
 from routers.leads_router import _normalize_lead
 
@@ -197,4 +197,200 @@ async def get_history(user: dict = Depends(get_current_user), db: AsyncSession =
         "lead_runs": lead_run_history,
         "icp_profiles": icp_history,
         "campaigns": campaign_history,
+    }
+
+
+
+@router.get("/analytics")
+async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """
+    Real analytics for the Reports/Analytics page, replacing mock data.
+    Queries: public.lead_results, public.meetings, public.proposal_review_log,
+    smady.outreach_campaigns, smady.outreach_emails.
+    """
+    uid = str(user["id"])
+    today = date.today()
+
+    # --- Flatten all leads for this user ---
+    all_leads, leads_by_day = await _flatten_user_leads(db, uid)
+
+    # --- Pipeline funnel from real data ---
+    total_leads = len(all_leads)
+    contacted = sum(1 for l in all_leads if l["status"] in ("Contacted", "Meeting Booked", "Interested"))
+    meetings_count_r = await db.execute(select(func.count()).select_from(meetings).where(meetings.c.user_id == user["id"]))
+    meetings_total = meetings_count_r.scalar() or 0
+
+    # Proposals from public.proposal_review_log (n8n) + proposal_results (app)
+    n8n_props_r = await db.execute(select(func.count()).select_from(public_proposal_review_log))
+    n8n_props_total = n8n_props_r.scalar() or 0
+    n8n_approved_r = await db.execute(
+        select(func.count()).select_from(public_proposal_review_log).where(
+            public_proposal_review_log.c.final_status.in_(["sent", "sent_after_revision", "Approved", "Sent"])
+        )
+    )
+    n8n_approved = n8n_approved_r.scalar() or 0
+
+    app_props_r = await db.execute(
+        select(func.count()).select_from(proposal_results).where(proposal_results.c.user_id == user["id"])
+    )
+    proposals_sent = (app_props_r.scalar() or 0) + n8n_props_total
+    proposals_approved = n8n_approved
+
+    funnel = [
+        {"stage": "Leads Generated", "value": total_leads},
+        {"stage": "Contacted", "value": contacted},
+        {"stage": "Meetings Scheduled", "value": meetings_total},
+        {"stage": "Proposals Sent", "value": proposals_sent},
+        {"stage": "Approved", "value": proposals_approved},
+    ]
+
+    # --- Outreach over time (last 6 months) ---
+    campaign_ids_r = await db.execute(select(outreach_campaigns.c.id).where(outreach_campaigns.c.user_id == user["id"]))
+    campaign_ids = [r.id for r in campaign_ids_r.fetchall()]
+
+    outreach_over_time = []
+    for i in range(5, -1, -1):
+        m_date = today.replace(day=1) - timedelta(days=i * 28)
+        m_label = m_date.strftime("%b")
+        sent_r, opened_r, replied_r = 0, 0, 0
+        if campaign_ids:
+            month_start = m_date.replace(day=1)
+            if m_date.month == 12:
+                month_end = m_date.replace(year=m_date.year + 1, month=1, day=1)
+            else:
+                month_end = m_date.replace(month=m_date.month + 1, day=1)
+
+            async def _count_email_status(status: str, ms, me) -> int:
+                r = await db.execute(
+                    select(func.count()).select_from(outreach_emails).where(
+                        outreach_emails.c.campaign_id.in_(campaign_ids),
+                        outreach_emails.c.status == status,
+                        func.date(outreach_emails.c.created_at) >= ms,
+                        func.date(outreach_emails.c.created_at) < me,
+                    )
+                )
+                return r.scalar() or 0
+
+            sent_r = await _count_email_status("sent", month_start, month_end)
+            opened_r = await _count_email_status("opened", month_start, month_end)
+            replied_r = await _count_email_status("replied", month_start, month_end)
+        outreach_over_time.append({"label": m_label, "sent": sent_r, "opened": opened_r, "replied": replied_r})
+
+    # --- Leads by Country & Industry ---
+    country_counts: dict = {}
+    industry_counts: dict = {}
+    for lead in all_leads:
+        c = lead.get("country") or "Unknown"
+        if c and c != "Unknown":
+            country_counts[c] = country_counts.get(c, 0) + 1
+        ind = lead.get("industry") or "Unknown"
+        if ind and ind != "Unknown":
+            industry_counts[ind] = industry_counts.get(ind, 0) + 1
+
+    leads_by_country = sorted([{"name": k, "value": v} for k, v in country_counts.items()], key=lambda x: -x["value"])[:6]
+    leads_by_industry = sorted([{"name": k, "value": v} for k, v in industry_counts.items()], key=lambda x: -x["value"])[:6]
+
+    # Ensure at least some placeholder data if empty
+    if not leads_by_country:
+        leads_by_country = [{"name": "No data", "value": 1}]
+    if not leads_by_industry:
+        leads_by_industry = [{"name": "No data", "value": 1}]
+
+    # --- Meeting conversion comparison (this week vs last) ---
+    this_week_start = today - timedelta(days=6)
+    last_week_start = today - timedelta(days=13)
+
+    async def _meetings_per_day(start: date) -> list:
+        daily = [0] * 7
+        r = await db.execute(
+            select(func.date(meetings.c.meeting_date).label("d"), func.count().label("c"))
+            .where(meetings.c.user_id == user["id"],
+                   func.date(meetings.c.meeting_date) >= start,
+                   func.date(meetings.c.meeting_date) <= start + timedelta(days=6))
+            .group_by("d")
+        )
+        for row in r.fetchall():
+            idx = (row.d - start).days
+            if 0 <= idx < 7:
+                daily[idx] = row.c
+        return daily
+
+    this_week_meetings = await _meetings_per_day(this_week_start)
+    last_week_meetings = await _meetings_per_day(last_week_start)
+
+    def _pct_change(cur, prev):
+        if prev == 0:
+            return 100 if cur > 0 else 0
+        return round((cur - prev) / prev * 100)
+
+    tw_total = sum(this_week_meetings)
+    lw_total = sum(last_week_meetings)
+    pct = _pct_change(tw_total, lw_total)
+    total_leads_for_conv = max(total_leads, 1)
+    meeting_conversion_rate = round(tw_total / total_leads_for_conv * 100)
+
+    meeting_conversion = {
+        "percent": meeting_conversion_rate,
+        "trend": "up" if tw_total >= lw_total else "down",
+        "thisWeek": this_week_meetings,
+        "lastWeek": last_week_meetings,
+        "totalPerWeek": tw_total,
+    }
+
+    # --- Campaign performance (real data) ---
+    camp_r = await db.execute(
+        select(outreach_campaigns).where(outreach_campaigns.c.user_id == user["id"])
+        .order_by(outreach_campaigns.c.created_at.desc()).limit(10)
+    )
+    campaign_perf = []
+    for c in camp_r.fetchall():
+        # Count emails by status for this campaign
+        async def _c_status(cid, status):
+            r = await db.execute(
+                select(func.count()).select_from(outreach_emails).where(
+                    outreach_emails.c.campaign_id == cid, outreach_emails.c.status == status
+                )
+            )
+            return r.scalar() or 0
+        s = await _c_status(c.id, "sent")
+        o = await _c_status(c.id, "opened")
+        rep = await _c_status(c.id, "replied")
+        den = s or 1
+        campaign_perf.append({
+            "id": str(c.id),
+            "campaign": c.name or "Unnamed",
+            "contacted": c.leads_count or 0,
+            "openRate": f"{round(o / den * 100)}%",
+            "replyRate": f"{round(rep / den * 100)}%",
+            "meetings": 0,
+            "proposals": 0,
+            "won": 0,
+        })
+
+    # --- Proposal quality (from public.proposal_review_log) ---
+    needs_review_r = await db.execute(
+        select(func.count()).select_from(public_proposal_review_log).where(
+            public_proposal_review_log.c.final_status.in_(["needs_review", "Needs Review"])
+        )
+    )
+    after_revision_r = await db.execute(
+        select(func.count()).select_from(public_proposal_review_log).where(
+            public_proposal_review_log.c.final_status == "sent_after_revision"
+        )
+    )
+    proposal_quality = {
+        "needs_review_count": needs_review_r.scalar() or 0,
+        "sent_count": n8n_approved,
+        "after_revision_count": after_revision_r.scalar() or 0,
+        "approval_rate_first_pass": round(n8n_approved / max(n8n_props_total, 1) * 100),
+    }
+
+    return {
+        "funnel": funnel,
+        "outreach_over_time": outreach_over_time,
+        "leads_by_country": leads_by_country,
+        "leads_by_industry": leads_by_industry,
+        "meeting_conversion": meeting_conversion,
+        "campaign_performance": campaign_perf,
+        "proposal_quality": proposal_quality,
     }
