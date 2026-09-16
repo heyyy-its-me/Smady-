@@ -11,10 +11,29 @@ import { useAppData } from "@/context/AppDataContext";
 import { toast } from "@/components/ui/sonner";
 
 const legend = [
-  { label: "Confirmed", color: "bg-success" },
+  { label: "Scheduled", color: "bg-success" },
   { label: "Pending Reply", color: "bg-amber-500" },
+  { label: "Confirmed", color: "bg-blue-500" },
   { label: "Auto-Booked by Agent", color: "bg-primary-500" },
+  { label: "Failed", color: "bg-red-500" },
 ];
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "Scheduled":
+      return "bg-success text-success-dark";
+    case "Pending Reply":
+      return "bg-amber-100 text-amber-800";
+    case "Confirmed":
+      return "bg-blue-100 text-blue-800";
+    case "Auto-Booked":
+      return "bg-primary-100 text-primary-800";
+    case "Failed":
+      return "bg-red-100 text-red-800";
+    default:
+      return "bg-gray-100 text-gray-800";
+  }
+};
 
 export default function Meetings() {
   const { meetings, scheduleMeeting } = useAppData();
@@ -93,11 +112,16 @@ export default function Meetings() {
                     {m.source === "agent" && <span className="ml-1.5 font-semibold text-primary-600">· Auto-booked</span>}
                   </p>
                 </div>
-                {m.meeting_link && (
-                  <a href={m.meeting_link} target="_blank" rel="noreferrer" className="text-primary-500" data-testid={`join-meeting-${m.id}`}>
-                    <ExternalLink className="h-4 w-4" strokeWidth={1.5} />
-                  </a>
-                )}
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(m.status)}`}>
+                    {m.status}
+                  </span>
+                  {m.meeting_link && m.status === "Scheduled" && (
+                    <a href={m.meeting_link} target="_blank" rel="noreferrer" className="text-primary-500" data-testid={`join-meeting-${m.id}`}>
+                      <ExternalLink className="h-4 w-4" strokeWidth={1.5} />
+                    </a>
+                  )}
+                </div>
               </div>
             ))}
             {upcoming.length === 0 && <p className="text-sm text-muted">No upcoming meetings.</p>}

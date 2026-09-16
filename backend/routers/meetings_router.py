@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel, field_validator
 from typing import Optional
-from sqlalchemy import select, insert
+from sqlalchemy import select, insert, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 import re
@@ -70,6 +70,12 @@ class MeetingCallbackRequest(BaseModel):
     meeting_link: Optional[str] = None
 
 
+class UpdateMeetingStatusRequest(BaseModel):
+    lead_email: str
+    meeting_date: str
+    status: str  # "Scheduled", "Failed", "Cancelled", etc.
+
+
 def serialize(row):
     return {
         "id": str(row.id),
@@ -126,7 +132,7 @@ async def schedule_meeting(body: ScheduleMeetingRequest, user: dict = Depends(ge
             meeting_date=meeting_dt,
             meeting_link=body.meeting_link,
             notes=body.notes or f"Meeting scheduled manually with {body.lead_name}",
-            status="Confirmed",
+            status="Pending Reply",
             source="manual",
         ).returning(meetings)
     )
@@ -176,6 +182,37 @@ async def meeting_callback(body: MeetingCallbackRequest, x_callback_secret: Opti
     )
     row = result.first()
     await db.commit()
+    return serialize(row)
+
+
+@router.put("/update-status")
+async def update_meeting_status(
+    body: UpdateMeetingStatusRequest,
+    x_callback_secret: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_db)
+):
+    """Update meeting status (used by N8N to mark as Scheduled or Failed)."""
+    verify_callback_secret(x_callback_secret)
+    
+    # Parse meeting_date
+    meeting_date = parse_dt(body.meeting_date) if "T" in body.meeting_date else parse_dt(f"{body.meeting_date}T00:00:00+00:00")
+    
+    result = await db.execute(
+        update(meetings)
+        .where(
+            (meetings.c.lead_email == body.lead_email) &
+            (meetings.c.status != "Cancelled")
+        )
+        .values(status=body.status, updated_at=func.now())
+        .returning(meetings)
+    )
+    row = result.first()
+    await db.commit()
+    
+    if not row:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    
+    logger.info("Meeting status updated to %s for %s", body.status, body.lead_email)
     return serialize(row)
 
 

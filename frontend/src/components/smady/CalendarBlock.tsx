@@ -9,9 +9,11 @@ import type { Meeting } from "@/types";
 const localizer = momentLocalizer(moment);
 
 const statusColor: Record<string, string> = {
-  Confirmed: "#22C55E",
+  Scheduled: "#22C55E",
   "Pending Reply": "#D97706",
+  Confirmed: "#3B82F6",
   "Auto-Booked": "#F9622C",
+  Failed: "#EF4444",
 };
 
 function CustomToolbar(toolbar: any) {
