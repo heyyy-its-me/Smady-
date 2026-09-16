@@ -46,6 +46,12 @@ yarn-error.log*
 .pnpm-debug.log*
 dump.rdb
 
+# N8N workflow files (contain sensitive configurations)
+Proposal.json
+meeting.json
+outreach.json
+leads.json
+
 # System files
 .DS_Store
 *.pem
