@@ -1,0 +1,36 @@
+{
+  "summary": "Full regression for Phase 2 polish (Run History picker + pagination + Lead/ICP detail modals) + Phase 3 read-only Outreach + Phase 4 Meetings. Backend: 15/15 pytest green in /app/backend/tests/test_phase234.py covering auth, leads listing new dict shape (leads/total/run_id/status), pagination bounds, /api/leads/runs, run_id scoped listing, outreach stats+campaigns, meetings list, schedule + GET-by-id verification, unauth 401s, 404 handling. Frontend Playwright: login works, Leads page shows Run History button which opens the popover listing 1 past execution ('Sep 8, 2026 - success - 1 leads'), clicking loads scoped leads, pagination correctly hidden (only 1 lead), Lead detail modal opens with Score:85, High Priority, ICP Yes (primary), full contact/company/AI Intelligence sections (pain points, personalization hook, recommended action all populated). ICP page shows business-stage + priority selects; View Full Analysis modal opens with confidence 88%, positioning, differentiator, core problem all rendered. Outreach page renders all 4 stat cards (Emails Sent 0, Open Rate 0%, Reply Rate 0%, Bounce Rate 0%), Recent Requests empty table, New Campaign modal opens with form fields including send button (NOT clicked - safety per instructions). Meetings page: calendar renders, seeded Sean Clark meeting on Sep 15 2026 visible both on calendar and in Upcoming Meetings list, schedule modal form submits and creates meeting in DB (verified via backend GET/{id}).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Multiple modals (Lead detail, ICP detail, Schedule Meeting, New Campaign)", "issues": ["Missing aria-describedby / Radix DialogContent Description - console warns 'Missing Description or aria-describedby={undefined} for {DialogContent}'. Accessibility only, non-blocking."]},
+      {"screen": "Meetings Schedule modal", "issues": ["Uses native HTML5 date/time picker (input type=date/time) rather than shadcn calendar - browser-default UI is not consistent with rest of app."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase234.py",
+    "/app/test_reports/pytest/phase234_results.xml"
+  ],
+  "action_items": [
+    "Optional: add DialogDescription (or aria-describedby) to LeadDetailModal, IcpDetailModal, ScheduleMeeting, NewCampaign dialogs to silence Radix a11y warnings.",
+    "Optional: swap native date/time inputs in ScheduleMeeting modal for the shadcn calendar/time components for visual consistency.",
+    "Optional (also flagged last iteration): icp_router upsert is not atomic; add unique index on customer_id or use ON CONFLICT to avoid duplicate rows under concurrent generate.",
+    "Optional: ICP pre-fill toast on Leads page auto-dismisses very fast (not caught by test); filters ARE pre-filled correctly from latest ICP - just verify toast duration is at least 3s so users notice it."
+  ],
+  "critical_code_review_comments": [
+    "leads_router.list_leads: normalizes ALL leads (all_normalized) just to compute verified_count/ready_count, then throws them away and returns only the paginated slice. For large runs (500+ leads) this is O(n) work on every page request. Consider caching those counters on lead_results or computing at callback time.",
+    "leads_router._normalize_lead composite id `${request_id}-${index}` is positional; if a callback overwrites row.leads with a reordered list, existing composite ids in the UI become stale and send-to-outreach may target the wrong lead. Consider a stable uuid per lead at insert time.",
+    "leads_router.send_to_outreach: mutates row.leads with a Python list then does update(...).values(leads=leads_list) - JSON column update fine, but there is no row-lock so two concurrent send-to-outreach on the same run can lose an update. Consider SELECT FOR UPDATE or increment counters instead of full-array rewrite.",
+    "meetings_router.parse_dt: `datetime.fromisoformat(value.replace('Z','+00:00'))` will raise ValueError with a 500 for malformed input from the UI (e.g. '2026-03-15T'); wrap in try/except -> 400."
+  ],
+  "updated_files": ["/app/backend/tests/test_phase234.py"],
+  "success_rate": {"backend": "100% (15/15)", "frontend": "100% (Leads run history + pagination + lead modal + ICP selects + ICP modal + Outreach stats + New Campaign modal open + Meetings calendar + schedule flow all verified)"},
+  "test_credentials": "phase1_test_1788798832@example.com / TestPass123! (works). Any newly created UI Test lead-scheduled meetings are prefixed 'UI Test ' + 6-digit timestamp; backend-created meetings via test_phase234 are prefixed 'TEST Lead '.",
+  "seed_data_creation": "Backend test class TestMeetings.test_schedule_and_list created 1 meeting per pytest run (visible as 'TEST Lead b5fd50' on Sep 15 2026 in the Upcoming Meetings list). UI Playwright run created 1 meeting for March 15, 2026 which is not on current calendar view but persisted in DB.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Regression suite is now /app/backend/tests/test_phase234.py (15 tests, ~18s) plus prior /app/backend/tests/test_phase1_phase2.py. Test account has 1 lead (Sean Clark), 1 ICP profile, and accumulates 'TEST Lead ...' meetings on Sep 15 2026 with each pytest run - the calendar for Sep 2026 will grow busier. New /api/leads returns DICT not list ({leads, total, run_id, status, verified_count, ready_count}) - if you copy old test_phase1_phase2 assertions expecting a list they will fail. Outreach 'Send Campaign' hits a LIVE production n8n webhook that sends real emails - DO NOT CLICK data-testid=campaign-send-button under any circumstance. Frontend routes: /login, /signup, /dashboard, /icp, /leads, /outreach, /meetings, /proposals, /reports.",
+  "rca_of_the_issue": "N/A - all in-scope features working."
+}

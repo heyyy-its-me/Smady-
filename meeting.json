@@ -1,0 +1,1427 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "67ce27d0-dd62-4172-a9eb-a698da0dd96a",
+              "leftValue": "={{ ($('Classify Reply1').item.json.message?.content ?? $('Classify Reply1').item.json.output?.find(o => o.type === 'message')?.content?.find(c => c.type === 'output_text')?.text ?? $('Classify Reply1').item.json.content ?? '').includes('\"meeting_requested\": true').toString() }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -608,
+        1104
+      ],
+      "id": "57fd56dc-8d8e-4372-8e4a-71ca68b14032",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/calendar/v3/calendars/claudesmadlytics@gmail.com/events",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "={\n  \"timeMin\": \"2026-05-25T21:00:30.460+05:30\",\n  \"timeMax\": \"2026-06-01T21:00:30.460+05:30\",\n  \"singleEvents\": \"true\",\n  \"orderBy\": \"startTime\",\n  \"timeZone\": \"Asia/Kolkata\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -160,
+        896
+      ],
+      "id": "e8c9fce7-6a16-4dde-819c-2ed7e7980b19",
+      "name": "HTTP Request1",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "KwkN3V5EjeLYytuk",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "calendar",
+        "calendar": {
+          "__rl": true,
+          "value": "claudesmadlytics@gmail.com",
+          "mode": "list",
+          "cachedResultName": "claudesmadlytics@gmail.com"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -336,
+        896
+      ],
+      "id": "499db92b-5c9f-4926-bd4d-ed3453e5e71c",
+      "name": "Get availability in a calendar1",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "KwkN3V5EjeLYytuk",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- Robust text extraction: handles multiple possible upstream shapes:\n// 1) OpenAI Chat Completions style: message.content / choices[0].message.content\n// 2) OpenAI Responses API style: output[0].content[0].text (with type 'output_text')\n// 3) Gemini style: content.parts[0].text\nfunction extractText(json) {\n  if (Array.isArray(json.output)) {\n    for (const item of json.output) {\n      if (item.type === 'message' && Array.isArray(item.content)) {\n        const textBlock = item.content.find(c => c.type === 'output_text' || typeof c.text === 'string');\n        if (textBlock?.text) return textBlock.text;\n      }\n    }\n  }\n  return (\n    json.message?.content ??\n    json.content ??\n    json.choices?.[0]?.message?.content ??\n    json.content?.parts?.[0]?.text ??\n    json.output_text ??\n    ''\n  );\n}\n\nconst raw = extractText($input.item.json);\nif (!raw) {\n  throw new Error('No text content found in AI response. Full input: ' + JSON.stringify($input.item.json).slice(0, 500));\n}\n\nlet cleaned = raw.replace(/```json|```/g, '').trim();\nconst jsonMatch = cleaned.match(/\\{[\\s\\S]*\\}/);\nif (jsonMatch) cleaned = jsonMatch[0];\n\n// Normalize smart quotes some models emit\ncleaned = cleaned\n  .replace(/[\\u201C\\u201D]/g, '\"')\n  .replace(/[\\u2018\\u2019]/g, \"'\");\n\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  throw new Error('Failed to parse Gemini output as JSON: ' + e.message + ' | RAW (first 800 chars): ' + cleaned.slice(0, 800));\n}\n\nif (!parsed.body || !parsed.subject || !parsed.proposed_slots_iso) {\n  throw new Error('Parsed JSON missing required fields: ' + JSON.stringify(parsed).slice(0, 500));\n}\n\nconst rawFrom = $('Gmail Trigger').item.json.From;\nconst emailMatch = rawFrom.match(/<(.+?)>/);\nconst leadEmail = emailMatch ? emailMatch[1].trim() : rawFrom.trim();\n\nconst baseUrl = 'https://n8n-smady-adgtdkg5hvacf7fs.canadacentral-01.azurewebsites.net/webhook/book-slot';\nconst slots = parsed.proposed_slots_iso;\nconst slotLabels = parsed.body.match(/<li>(.*?)<\\/li>/gs) || [];\n\nfunction parseSlotLabel(raw) {\n  return raw.replace(/<\\/?li>/g, '').replace(/<strong>|<\\/strong>/g, '').replace(/<br\\s*\\/?>/g, '').trim();\n}\n\nfunction getDayMonth(iso) {\n  const d = new Date(iso);\n  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];\n  const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];\n  return {\n    weekday: days[d.getDay()],\n    day: d.getDate(),\n    month: months[d.getMonth()]\n  };\n}\n\nlet slotCards = '';\nslots.forEach((iso, i) => {\n  const label = slotLabels[i] ? parseSlotLabel(slotLabels[i]) : `Slot ${i+1}`;\n  const url = `${baseUrl}?slot=${i+1}&email=${encodeURIComponent(leadEmail)}&time=${encodeURIComponent(iso)}`;\n  const dt = getDayMonth(iso);\n\n  slotCards += `\n  <tr>\n    <td style=\"padding:5px 0;\">\n      <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#ffffff;\">\n        <tr>\n          <td width=\"70\" style=\"background:#EFF6FF;padding:0;text-align:center;vertical-align:middle;\">\n            <div style=\"padding:16px 12px;\">\n              <div style=\"font-size:10px;font-weight:700;color:#3B82F6;letter-spacing:0.08em;margin-bottom:4px;\">${dt.month}</div>\n              <div style=\"font-size:26px;font-weight:700;color:#1E40AF;line-height:1;\">${dt.day}</div>\n            </div>\n          </td>\n          <td style=\"padding:14px 16px;vertical-align:middle;\">\n            <div style=\"font-size:14px;font-weight:700;color:#111827;margin-bottom:3px;\">${dt.weekday}</div>\n            <div style=\"font-size:12px;color:#6b7280;line-height:1.5;\">${label}</div>\n          </td>\n          <td width=\"110\" style=\"padding:14px 16px;text-align:center;vertical-align:middle;\">\n            <a href=\"${url}\" style=\"display:inline-block;background:#1D4ED8;color:#ffffff;padding:9px 16px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap;line-height:1;\">Book slot</a>\n          </td>\n        </tr>\n      </table>\n    </td>\n  </tr>`;\n});\n\nconst newBody = `\n<div style=\"font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f3f4f6;padding:20px;\">\n  <div style=\"background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;\">\n    <div style=\"background:#1D4ED8;padding:32px 24px;text-align:center;\">\n      <table cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 auto 14px;\">\n        <tr>\n          <td style=\"background:rgba(255,255,255,0.18);border-radius:50%;width:52px;height:52px;text-align:center;vertical-align:middle;\">\n            <span style=\"font-size:24px;line-height:52px;\">&#128197;</span>\n          </td>\n        </tr>\n      </table>\n      <div style=\"color:#ffffff;font-size:20px;font-weight:700;margin-bottom:6px;\">Schedule a call</div>\n      <div style=\"color:rgba(255,255,255,0.75);font-size:13px;\">30 min &nbsp;·&nbsp; Google Meet &nbsp;·&nbsp; Pick a time below</div>\n    </div>\n    <div style=\"padding:24px;\">\n      <p style=\"font-size:14px;color:#374151;margin:0 0 6px;\">Hi there,</p>\n      <p style=\"font-size:14px;color:#374151;margin:0 0 20px;line-height:1.6;\">Great to hear from you! Here are a few slots — just click to instantly book:</p>\n      <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin-bottom:20px;\">\n        ${slotCards}\n      </table>\n      <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin-bottom:20px;\">\n        <tr>\n          <td style=\"background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:13px 16px;\">\n            <span style=\"font-size:12px;color:#166534;\">Once you click a slot, a <strong>Google Calendar invite</strong> will be sent automatically.</span>\n          </td>\n        </tr>\n      </table>\n      <p style=\"font-size:14px;color:#374151;margin:0 0 4px;\">Looking forward to our conversation!</p>\n      <p style=\"font-size:14px;font-weight:700;color:#111827;margin:0 0 2px;\">Claude Smadlytics</p>\n      <p style=\"font-size:12px;color:#9ca3af;margin:0;\">AI Sales Automation</p>\n    </div>\n  </div>\n  <p style=\"text-align:center;font-size:11px;color:#9ca3af;margin-top:14px;\">If buttons don't work, reply with your preferred slot number (1, 2, 3, or 4).</p>\n</div>`;\n\nreturn [{\n  json: {\n    subject: parsed.subject.replace(/^=+/, '').trim(),\n    body: newBody,\n    proposed_slots_iso: slots,\n    detected_timezone: parsed.detected_timezone,\n    lead_email: leadEmail\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        896
+      ],
+      "id": "6454ba36-ac84-456a-8f5c-6e163dc730d7",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.lead_email }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        624,
+        896
+      ],
+      "id": "c8e456cd-130e-4b16-94d0-0d19f664d329",
+      "name": "Send a message3",
+      "webhookId": "f9265713-8d62-442e-bfaa-b2976ac53553",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "K0DjQT5IwJtYnuzY",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -352,
+        1328
+      ],
+      "id": "a0bac479-7fca-4e99-9f0d-a3b005572b61",
+      "name": "Wait1",
+      "webhookId": "9c9d687c-6e9e-4f75-8abd-2d5ebf0799c3"
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- Robust text extraction: handles multiple possible upstream shapes:\n// 1) OpenAI Chat Completions style: message.content / choices[0].message.content\n// 2) OpenAI Responses API style: output[0].content[0].text (with type 'output_text')\n// 3) Gemini style: content.parts[0].text\n// Prevents silent empty-string failures which previously caused:\n// \"Failed to parse nurture email JSON: \" with nothing after the colon.\nfunction extractText(json) {\n  // OpenAI Responses API: { output: [ { type: 'message', content: [ { type: 'output_text', text: '...' } ] } ] }\n  if (Array.isArray(json.output)) {\n    for (const item of json.output) {\n      if (item.type === 'message' && Array.isArray(item.content)) {\n        const textBlock = item.content.find(c => c.type === 'output_text' || typeof c.text === 'string');\n        if (textBlock?.text) return textBlock.text;\n      }\n    }\n  }\n  return (\n    json.message?.content ??\n    json.content ??\n    json.choices?.[0]?.message?.content ??\n    json.content?.parts?.[0]?.text ??\n    json.output_text ??\n    ''\n  );\n}\n\nconst raw = extractText($input.item.json);\nif (!raw) {\n  throw new Error('No text content found in AI response. Full input: ' + JSON.stringify($input.item.json).slice(0, 500));\n}\n\n// Strip code fences and any leading/trailing junk outside the JSON object\nlet cleaned = raw.replace(/```json|```/g, '').trim();\n\n// Extract just the {...} block in case the model added preamble/postamble text\nconst jsonMatch = cleaned.match(/\\{[\\s\\S]*\\}/);\nif (jsonMatch) {\n  cleaned = jsonMatch[0];\n}\n\n// Fix common LLM JSON issues: smart quotes -> straight quotes\ncleaned = cleaned\n  .replace(/[\\u201C\\u201D]/g, '\"')\n  .replace(/[\\u2018\\u2019]/g, \"'\");\n\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  // Surface the ACTUAL content so you can see what broke\n  throw new Error(\n    'Failed to parse nurture email JSON: ' + e.message +\n    ' | RAW (first 800 chars): ' + cleaned.slice(0, 800)\n  );\n}\n\nif (!parsed.body || !parsed.subject) {\n  throw new Error('Parsed JSON missing required fields (subject/body): ' + JSON.stringify(parsed).slice(0, 500));\n}\n\nconst rawFrom = $('Gmail Trigger').item.json.From;\nconst emailMatch = rawFrom.match(/<(.+?)>/);\nconst leadEmail = emailMatch ? emailMatch[1].trim() : rawFrom.trim();\n\nconst styledBody = `\n<div style=\"font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f9fafb;padding:24px;\">\n  <div style=\"background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;\">\n    <div style=\"height:6px;background:#6366F1;\"></div>\n    <div style=\"padding:28px 24px;\">\n      <table cellpadding=\"0\" cellspacing=\"0\" style=\"margin-bottom:20px;\">\n        <tr>\n          <td style=\"width:40px;height:40px;background:#EEF2FF;border-radius:50%;text-align:center;vertical-align:middle;padding-right:12px;\">\n            <span style=\"font-size:16px;\">&#128075;</span>\n          </td>\n          <td style=\"vertical-align:middle;\">\n            <div style=\"font-size:13px;font-weight:600;color:#111827;\">Claude Smadlytics</div>\n            <div style=\"font-size:12px;color:#9ca3af;\">AI Sales Automation</div>\n          </td>\n        </tr>\n      </table>\n      <div style=\"font-size:14px;color:#374151;line-height:1.7;\">\n        ${parsed.body}\n      </div>\n      <div style=\"margin-top:24px;padding-top:20px;border-top:1px solid #f3f4f6;\">\n        <p style=\"font-size:12px;color:#9ca3af;margin:0;\">Not the right time? No worries — I'll be here when you're ready.</p>\n      </div>\n    </div>\n  </div>\n  <p style=\"text-align:center;font-size:11px;color:#9ca3af;margin-top:16px;\">Claude Smadlytics · AI Sales Automation</p>\n</div>`;\n\nreturn [{\n  json: {\n    subject: parsed.subject.replace(/^=+/, '').trim(),\n    body: styledBody,\n    lead_email: leadEmail\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        1328
+      ],
+      "id": "cf15d843-95ae-466d-8800-4e19a5932f90",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.lead_email }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        1328
+      ],
+      "id": "95fb5c93-a85b-4594-a245-5bb309d06a68",
+      "name": "Send a message4",
+      "webhookId": "2aa380c2-d3a9-41f5-85a3-63e76b92c29f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "K0DjQT5IwJtYnuzY",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2d625ab2-f1b1-4252-9388-3c133d2ce5d5",
+              "name": "event_type",
+              "value": "=reply_received",
+              "type": "string"
+            },
+            {
+              "id": "c8566e6c-b404-4fcf-bbd2-43a7f43da589",
+              "name": "agent_source",
+              "value": "=follow_up",
+              "type": "string"
+            },
+            {
+              "id": "ed1e0534-976c-42a1-8f56-373a1cc23f90",
+              "name": "lead_id",
+              "value": "={{ $('Gmail Trigger').item.json.From }}",
+              "type": "string"
+            },
+            {
+              "id": "1b231ef2-4b70-4fa4-9cf4-e94aadda58be",
+              "name": "data.email",
+              "value": "={{ $('Gmail Trigger').item.json.From }}",
+              "type": "string"
+            },
+            {
+              "id": "a65a11fc-e04b-4ec2-bdb5-af240df155b7",
+              "name": "data.reply_text",
+              "value": "={{ $('Gmail Trigger').item.json.snippet }}",
+              "type": "string"
+            },
+            {
+              "id": "27b5f4b0-0703-4101-80d2-93ae77f98ebc",
+              "name": "data.sentiment",
+              "value": "={{ JSON.parse($json.message?.content ?? $json.output?.find(o => o.type === 'message')?.content?.find(c => c.type === 'output_text')?.text ?? $json.content ?? '{}').sentiment }}",
+              "type": "string"
+            },
+            {
+              "id": "862bdac6-954f-4e78-9575-5d8c68b64782",
+              "name": "data.intent",
+              "value": "={{ JSON.parse($json.message?.content ?? $json.output?.find(o => o.type === 'message')?.content?.find(c => c.type === 'output_text')?.text ?? $json.content ?? '{}').classification }}",
+              "type": "string"
+            },
+            {
+              "id": "62707497-1adb-4d73-a626-1792392c0dea",
+              "name": "data.timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -992,
+        1104
+      ],
+      "id": "8de6889c-80ee-4665-9598-b420f61b91f4",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n-smady-adgtdkg5hvacf7fs.canadacentral-01.azurewebsites.net/webhook/crm-agent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "=reply_received"
+            },
+            {
+              "name": "agent_source",
+              "value": "=follow_up"
+            },
+            {
+              "name": "lead_id",
+              "value": "={{ $('Gmail Trigger').item.json.From }}"
+            },
+            {
+              "name": "data.email",
+              "value": "={{ $('Gmail Trigger').item.json.From }}"
+            },
+            {
+              "name": "data.reply_text",
+              "value": "={{ $('Gmail Trigger').item.json.snippet }}"
+            },
+            {
+              "name": "data.sentiment",
+              "value": "={{ $json.data.sentiment }}"
+            },
+            {
+              "name": "data.intent",
+              "value": "={{ $json.data.intent }}"
+            },
+            {
+              "name": "data.timestamp",
+              "value": "={{ $now.toISO() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -784,
+        1104
+      ],
+      "id": "7d599720-3266-4603-abb5-587ec8411ca3",
+      "name": "HTTP Request2",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "c68qb91Niq3S4cOO",
+          "name": "Header Auth account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p2-1",
+              "name": "event_type",
+              "value": "=proposal_sent",
+              "type": "string"
+            },
+            {
+              "id": "p2-2",
+              "name": "agent_source",
+              "value": "=scheduling",
+              "type": "string"
+            },
+            {
+              "id": "p2-3",
+              "name": "lead_id",
+              "value": "={{ $('Gmail Trigger').item.json.From }}",
+              "type": "string"
+            },
+            {
+              "id": "p2-4",
+              "name": "data.email",
+              "value": "={{ $('Code in JavaScript3').item.json.lead_email }}",
+              "type": "string"
+            },
+            {
+              "id": "p2-5",
+              "name": "data.proposed_slots",
+              "value": "={{ JSON.stringify($('Code in JavaScript3').item.json.proposed_slots_iso) }}",
+              "type": "string"
+            },
+            {
+              "id": "p2-6",
+              "name": "data.timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1040,
+        896
+      ],
+      "id": "d9b9be9b-6d78-47e5-8ed6-3bace68f887f",
+      "name": "CRM Payload - Proposal Sent",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n-smady-adgtdkg5hvacf7fs.canadacentral-01.azurewebsites.net/webhook/crm-agent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "={{ $json.event_type }}"
+            },
+            {
+              "name": "agent_source",
+              "value": "={{ $json.agent_source }}"
+            },
+            {
+              "name": "lead_id",
+              "value": "={{ $json.lead_id }}"
+            },
+            {
+              "name": "data",
+              "value": "={{ { email: $json.data.email, proposed_slots: JSON.parse($json.data.proposed_slots), timestamp: $json.data.timestamp } }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1264,
+        896
+      ],
+      "id": "c074a0ec-84b7-4a60-804b-513efc8c05dc",
+      "name": "HTTP Request - Proposal Sent",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "c68qb91Niq3S4cOO",
+          "name": "Header Auth account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "labelIds": [
+            "Label_2802626876655277802"
+          ],
+          "readStatus": "unread"
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -1696,
+        1104
+      ],
+      "id": "6430f28b-0589-47ea-8689-8e3d1e46c1f8",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "K0DjQT5IwJtYnuzY",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=Analyze ONLY the latest reply from the lead provided below.\n\nIgnore any quoted email history, signatures, forwarded messages, or previous conversation context. Base your analysis exclusively on the text in the `latestReply` field.\n\nDetermine whether the lead:\n\n1. Wants to schedule a meeting or demo.\n2. Is interested in learning more.\n3. Is neutral or requesting more information.\n4. Is not interested or declines the offer.\n\nLatest Reply:\n{{$json.latestReply}}\n\nReturn ONLY valid JSON in the following format:\n\n{\n  \"classification\": \"meeting_requested | interested | neutral | not_interested\",\n  \"meeting_requested\": true,\n  \"sentiment\": \"positive | neutral | negative\",\n  \"follow_up_needed\": true\n}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        -1296,
+        1104
+      ],
+      "id": "d239959c-7c1a-430a-b284-b022f7bbac15",
+      "name": "Classify Reply1",
+      "credentials": {
+        "openAiApi": {
+          "id": "ODOlsxHV7W56bDtS",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=You are a sales follow-up assistant for someone based in India. Write a warm, low-pressure nurture email to a lead who replied but wasn't ready to book a meeting yet.\n\nLEAD'S ORIGINAL REPLY:\n{{ $('Gmail Trigger').item.json.snippet }}\n\nLEAD'S EMAIL: {{ $('Gmail Trigger').item.json.From }}\n\nCLASSIFICATION FROM EARLIER:\n{{ $('Classify Reply1').item.json.message?.content ?? $('Classify Reply1').item.json.output?.find(o => o.type === 'message')?.content?.find(c => c.type === 'output_text')?.text ?? $('Classify Reply1').item.json.content ?? '' }}\n\n\nINSTRUCTIONS:\n1. Acknowledge their previous reply briefly (without being pushy).\n2. Add genuine value — share a relevant insight, useful observation, or light resource mention. Don't just \"check in.\"\n3. End with a soft, optional ask — leave the door open without demanding a reply.\n4. Keep it under 120 words.\n5. Tone: friendly, human, not salesy. Avoid clichés like \"just following up\" or \"circling back.\"\n6. Sign off naturally.\n7. The body must be valid HTML using <p>, <br>, <strong> tags only. No bullet lists. Wrap every paragraph in <p> tags.\n\nOUTPUT FORMAT (strict JSON only, no markdown, no code fences, no preamble):\n{\n  \"subject\": \"...\",\n  \"body\": \"<p>...</p><p>...</p><p>...</p>\"\n}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        -128,
+        1328
+      ],
+      "id": "6da37e5c-d87b-4360-a3f2-4bdcb97c6e7e",
+      "name": "Message a model3",
+      "credentials": {
+        "openAiApi": {
+          "id": "ODOlsxHV7W56bDtS",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=You are a meeting scheduling assistant for someone based in India (IST, Asia/Kolkata). You schedule calls with leads worldwide.\n\nCURRENT DATE & TIME (IST): {{ $now.setZone('Asia/Kolkata').toFormat('yyyy-MM-dd HH:mm') }}, {{ $now.setZone('Asia/Kolkata').toFormat('cccc') }}\n\nMY BUSY EVENTS (next 7 days):\n{{ JSON.stringify($json.items) }}\n\nLEAD'S ORIGINAL REPLY:\n{{ $('Gmail Trigger').item.json.snippet }}\n\nLEAD'S EMAIL: {{ $('Gmail Trigger').item.json.From }}\n\n---\n\nINSTRUCTIONS:\n\nSTEP 1 — DETECT LEAD TIMEZONE:\nAnalyze the lead's reply for timezone clues in this priority order:\n1. Explicit timezone mention (\"I'm in London\", \"PST\", \"EST\", \"GMT+1\")\n2. Location in signature or email body\n3. Email domain TLD (.in→IST, .uk→GMT, .au→AEDT, .de→CET, .fr→CET, .com→UNKNOWN)\n4. Default to UNKNOWN if unclear\n\nSTEP 2 — PICK 4 SLOTS:\nFind 4 free 30-minute slots in the next 5 business days (exclude weekends).\nMy available hours: 10:00 AM – 8:00 PM IST\nExclude any times that overlap with events in MY BUSY EVENTS.\n\nFor each timezone, pick slots during their typical working hours (9 AM – 6 PM local time):\n- IST (India): 10 AM – 6 PM IST\n- GMT/UK: 1 PM – 7 PM IST (1:30 PM – 8 PM for exact overlap)\n- CET/Europe: 1 PM – 7 PM IST\n- EST (US East): 6:30 PM – 8 PM IST\n- PST (US West): 7:30 PM – 8 PM IST\n- AEDT (Australia): 10:30 AM – 12:30 PM IST\n- UNKNOWN: Spread across 11 AM, 2 PM, 5 PM, 7:30 PM IST\n\nSpread the 4 slots across different days when possible.\n\nSTEP 3 — FORMAT EMAIL:\n- Tone: Warm, professional, genuine\n- HTML body using: <p>, <strong>, <ol>, <li> tags only\n- Show each slot in BOTH IST and detected timezone\n- No greeting with \"=\" — start with \"Hi\" or \"Hello\"\n- Ask lead to reply with preferred slot number (1, 2, 3, or 4)\n- Keep under 200 words\n\nSTEP 4 — RETURN JSON ONLY:\nReturn ONLY valid JSON with NO markdown, NO code fences, NO preamble, NO extra text.\n\n{\n  \"detected_timezone\": \"IST | EST | PST | GMT | CET | AEDT | UNKNOWN\",\n  \"subject\": \"Let's schedule our call — 4 times that work for you\",\n  \"body\": \"<p>Hi [Lead Name],</p><p>Thanks for your email! Here are 4 times I'm available next week:</p><ol><li><strong>Wednesday, May 27:</strong> 11:00 AM IST / 05:30 AM GMT</li></ol><p>Which works best? Just reply with your preferred slot number.</p><p>Looking forward to connecting!</p>\",\n  \"proposed_slots_iso\": [\"2026-05-27T11:00:00+05:30\", \"2026-05-28T14:00:00+05:30\", \"2026-05-29T17:00:00+05:30\", \"2026-06-01T19:30:00+05:30\"]\n}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        64,
+        896
+      ],
+      "id": "f2be85c4-4f48-47cb-8a34-873592c96fab",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "ODOlsxHV7W56bDtS",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const snippet = $json.snippet || \"\";\n\nconst reply = snippet\n  .split(/\\n?\\s*On .*? wrote:/i)[0]   // Split at \"On ... wrote:\"\n  .trim();\n\nreturn {\n  ...$json,\n  latestReply: reply\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1504,
+        1104
+      ],
+      "id": "c05f811b-6e60-4308-8660-2a4fbd98b25e",
+      "name": "Code in JavaScript5"
+    },
+    {
+      "parameters": {
+        "path": "book-slot",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -528,
+        1712
+      ],
+      "id": "26314f1f-3958-4032-8ab2-5e8e77b72107",
+      "name": "Webhook",
+      "webhookId": "83ef44df-f7aa-495e-bc3d-73e3d7d36d68"
+    },
+    {
+      "parameters": {
+        "formTitle": "Schedule a Meeting Manually",
+        "formDescription": "Pick a specific client and a specific date/time - this books the Google Meet event and sends the confirmation directly, no reply-classification needed.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Client Name",
+              "defaultValue": "Onaamika",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Client Email",
+              "fieldType": "email",
+              "defaultValue": "onaamikaonaamika@gmail.com",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Meeting Date",
+              "fieldType": "date",
+              "defaultValue": "2026-07-27",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Meeting Time (24hr, IST)",
+              "placeholder": "e.g. 14:30",
+              "defaultValue": "12:20",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Duration (minutes)",
+              "fieldType": "number",
+              "placeholder": "30",
+              "defaultValue": "10"
+            },
+            {
+              "fieldLabel": "Meeting Title",
+              "placeholder": "Discovery Call",
+              "defaultValue": "testingggggg"
+            },
+            {
+              "fieldLabel": "Notes / Description",
+              "fieldType": "textarea"
+            }
+          ]
+        },
+        "options": {
+          "buttonLabel": "Book Meeting"
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -464,
+        1984
+      ],
+      "id": "823d344e-4252-4a19-beeb-1fa3096d77df",
+      "name": "Manual Booking Form Trigger",
+      "webhookId": "4b6bfcd9-a034-4e23-aa3a-908c9aa2734d",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const clientName = $json['Client Name'];\nconst clientEmail = $json['Client Email'];\nconst meetingDate = $json['Meeting Date']; // e.g. '2026-08-05'\nconst meetingTime = ($json['Meeting Time (24hr, IST)'] || '').trim(); // e.g. '14:30'\nconst durationMinutes = Number($json['Duration (minutes)']) || 30;\nconst title = $json['Meeting Title'] || 'Discovery Call';\nconst notes = $json['Notes / Description'] || `Meeting scheduled manually with ${clientName}`;\n\nif (!clientEmail || !meetingDate || !meetingTime) {\n  throw new Error('Missing required fields. Got: ' + JSON.stringify($json));\n}\n\nconst timeMatch = meetingTime.match(/^(\\d{1,2}):(\\d{2})$/);\nif (!timeMatch) {\n  throw new Error('Meeting Time must be in HH:mm 24-hour format, got: ' + meetingTime);\n}\n\n// Asia/Kolkata is a fixed UTC+5:30 offset, so we can build the ISO string directly\nconst hh = timeMatch[1].padStart(2, '0');\nconst mm = timeMatch[2];\nconst isoWithOffset = `${meetingDate}T${hh}:${mm}:00+05:30`;\nconst startDt = new Date(isoWithOffset);\n\nif (isNaN(startDt.getTime())) {\n  throw new Error('Could not parse meeting date/time: ' + isoWithOffset);\n}\n\nconst endDt = new Date(startDt.getTime() + durationMinutes * 60000);\n\nreturn [{\n  json: {\n    lead_email: clientEmail,\n    client_name: clientName,\n    slot_number: 'manual',\n    start_time: startDt.toISOString(),\n    end_time: endDt.toISOString(),\n    summary: title,\n    description: notes\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        1984
+      ],
+      "id": "665e2521-81ad-444d-9888-4c3898d24475",
+      "name": "Prepare Manual Booking"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const query = $json.query || {};\n\n// Map incoming webhook keys to your variables (supporting both formats)\nconst rawEmail = query.email || query['Client Email'];\nconst meetingDate = query['Meeting Date'];\nconst meetingTime = query['Meeting Time'];\n\n// Combine Meeting Date and Meeting Time if 'time' is missing\nconst rawTime = query.time || (meetingDate && meetingTime ? `${meetingDate}T${meetingTime}` : null);\nconst slot = query.slot || query.Duration || '30';\n\nif (!rawTime || !rawEmail) {\n  throw new Error('Missing params. Got: ' + JSON.stringify(query));\n}\n\nconst decoded = decodeURIComponent(rawEmail);\nconst emailMatch = decoded.match(/<([^>]+)>/);\nconst email = emailMatch ? emailMatch[1].trim() : decoded.trim();\n\nconst decodedTime = decodeURIComponent(rawTime);\nconst startDt = new Date(decodedTime);\n\nif (isNaN(startDt.getTime())) {\n  throw new Error('Invalid time: ' + decodedTime);\n}\n\nconst endDt = new Date(startDt.getTime() + 30 * 60 * 1000);\n\nreturn [{\n  json: {\n    lead_email: email,\n    slot_number: slot,\n    start_time: startDt.toISOString(),\n    end_time: endDt.toISOString(),\n    summary: 'Discovery Call',\n    description: 'Meeting scheduled via AI assistant'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        1712
+      ],
+      "id": "2e62582b-803e-43d0-a294-b01d8d1e4655",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.lead_email }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        608,
+        1712
+      ],
+      "id": "7a68373f-e767-4ff9-94cf-563ad4239e1a",
+      "name": "Send a message",
+      "webhookId": "37292d5b-7eef-4936-814c-2031cf1f01f1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "K0DjQT5IwJtYnuzY",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- Extract meeting details from the Google Calendar event creation response ---\nconst resp = $input.item.json;\n\n// Prefer the attendee email echoed back by Google Calendar itself - this works\n// whether this run came from a booking-link click (Code in JavaScript2) or the\n// manual booking form (Prepare Manual Booking), since both paths converge here.\nlet leadEmail = (resp.attendees && resp.attendees[0] && resp.attendees[0].email) || null;\nif (!leadEmail) {\n  try {\n    leadEmail = $('Code in JavaScript').item.json.lead_email;\n  } catch (e) {\n    leadEmail = $('Prepare Manual Booking').item.json.lead_email;\n  }\n}\n\nconst startIso = resp.start && resp.start.dateTime;\nconst entryPoints = (resp.conferenceData && resp.conferenceData.entryPoints) || [];\nconst meetLink = resp.hangoutLink || (entryPoints.find(e => e.entryPointType === 'video') || {}).uri || null;\nconst summary = resp.summary || 'Discovery Call';\n\nif (!startIso) {\n  throw new Error('Could not parse start time from Google Calendar response: ' + JSON.stringify(resp).slice(0, 500));\n}\n\nconst startDt = new Date(startIso);\n\nconst dateStr = startDt.toLocaleDateString('en-IN', {\n  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',\n  timeZone: 'Asia/Kolkata'\n});\nconst timeStr = startDt.toLocaleTimeString('en-IN', {\n  hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata'\n});\n\nconst day = startDt.getDate();\nconst month = startDt.toLocaleString('en-IN', { month: 'long', timeZone: 'Asia/Kolkata' }).toUpperCase();\nconst year = startDt.getFullYear();\nconst weekday = startDt.toLocaleString('en-IN', { weekday: 'long', timeZone: 'Asia/Kolkata' });\n\n// First weekday of the month (0=Sun)\nconst firstDay = new Date(startDt.getFullYear(), startDt.getMonth(), 1).getDay();\n// Days in month\nconst daysInMonth = new Date(startDt.getFullYear(), startDt.getMonth() + 1, 0).getDate();\n\n// Build mini calendar cells\nlet calCells = '';\nfor (let i = 0; i < firstDay; i++) {\n  calCells += `<td style=\"width:14.28%;text-align:center;padding:2px 0;font-size:9px;\"></td>`;\n}\nfor (let d = 1; d <= daysInMonth; d++) {\n  const isToday = d === day;\n  calCells += isToday\n    ? `<td style=\"width:14.28%;text-align:center;padding:2px 0;\">\n         <span style=\"display:inline-block;width:18px;height:18px;line-height:18px;background:#059669;color:#ffffff;border-radius:50%;font-size:9px;font-weight:700;\">${d}</span>\n       </td>`\n    : `<td style=\"width:14.28%;text-align:center;padding:2px 0;font-size:9px;color:#6b7280;\">${d}</td>`;\n  if ((firstDay + d) % 7 === 0 && d !== daysInMonth) {\n    calCells += '</tr><tr>';\n  }\n}\n\n// Meet link section\nconst meetSection = meetLink ? `\n  <tr>\n    <td style=\"padding:0 24px 20px;\">\n      <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;\">\n        <tr>\n          <td style=\"padding:14px 16px;\">\n            <p style=\"font-size:11px;color:#059669;font-weight:700;margin:0 0 10px;text-transform:uppercase;letter-spacing:0.06em;\">&#128279; Video Link</p>\n            <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#ffffff;border-radius:8px;border:1px solid #BBF7D0;\">\n              <tr>\n                <td style=\"padding:12px 14px;\">\n                  <table cellpadding=\"0\" cellspacing=\"0\">\n                    <tr>\n                      <td style=\"width:36px;height:36px;background:#1D4ED8;border-radius:8px;text-align:center;vertical-align:middle;font-size:18px;\">&#128249;</td>\n                      <td style=\"padding-left:10px;\">\n                        <a href=\"${meetLink}\" style=\"display:block;font-size:13px;font-weight:700;color:#1D4ED8;text-decoration:none;\">Join Google Meet</a>\n                        <span style=\"font-size:11px;color:#6b7280;\">${meetLink}</span>\n                      </td>\n                    </tr>\n                  </table>\n                </td>\n              </tr>\n            </table>\n          </td>\n        </tr>\n      </table>\n    </td>\n  </tr>` : `\n  <tr>\n    <td style=\"padding:0 24px 20px;\">\n      <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#FFF7ED;border:1px solid #FED7AA;border-radius:12px;\">\n        <tr>\n          <td style=\"padding:14px 16px;font-size:13px;color:#92400E;text-align:center;\">\n            &#128249; A Google Meet link will be included in your calendar invite.\n          </td>\n        </tr>\n      </table>\n    </td>\n  </tr>`;\n\n// ISO string for countdown\nconst isoStart = startDt.toISOString();\n\nconst confirmBody = `<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\"/>\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"/>\n<title>Meeting Confirmed</title>\n<style>\n  @keyframes confettiFall {\n    0%   { transform: translateY(-20px) rotate(0deg);   opacity: 1; }\n    100% { transform: translateY(500px) rotate(720deg); opacity: 0; }\n  }\n  @keyframes ripple {\n    0%   { transform: scale(1);   opacity: 0.6; }\n    100% { transform: scale(2.4); opacity: 0;   }\n  }\n  @keyframes fadeUp {\n    from { opacity: 0; transform: translateY(12px); }\n    to   { opacity: 1; transform: translateY(0);    }\n  }\n  @keyframes pop {\n    0%   { transform: scale(0.5); opacity: 0; }\n    70%  { transform: scale(1.15);            }\n    100% { transform: scale(1);   opacity: 1; }\n  }\n  @keyframes pulse {\n    0%, 100% { opacity: 1; }\n    50%       { opacity: 0.5; }\n  }\n</style>\n</head>\n<body style=\"margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;\">\n\n<div style=\"max-width:560px;margin:0 auto;padding:20px;position:relative;overflow:hidden;\">\n\n  <!-- confetti container -->\n  <div id=\"cf\" style=\"position:absolute;top:0;left:0;width:100%;pointer-events:none;z-index:99;\"></div>\n\n  <div style=\"background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;\">\n\n    <!-- HEADER -->\n    <div style=\"background:#059669;padding:40px 24px 32px;text-align:center;\">\n      <table cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 auto 16px;\">\n        <tr>\n          <td style=\"width:64px;height:64px;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.6);border-radius:50%;text-align:center;vertical-align:middle;font-size:30px;line-height:64px;color:#ffffff;\">\n            &#10003;\n          </td>\n        </tr>\n      </table>\n      <div style=\"color:#ffffff;font-size:22px;font-weight:700;margin-bottom:6px;\">You're confirmed!</div>\n      <div style=\"color:rgba(255,255,255,0.85);font-size:14px;\">Your discovery call is locked in</div>\n    </div>\n\n    <!-- CALENDAR + TIME -->\n    <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n      <tr>\n        <td style=\"padding:24px 24px 0;\">\n          <p style=\"font-size:11px;color:#059669;font-weight:700;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.06em;\">&#128197; Event Details</p>\n\n          <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;\">\n            <tr>\n              <td style=\"padding:16px;vertical-align:top;width:52%;\">\n\n                <!-- mini calendar -->\n                <div style=\"background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;\">\n                  <div style=\"background:#059669;padding:6px 10px;font-size:10px;color:rgba(255,255,255,0.9);font-weight:700;letter-spacing:0.06em;\">${month} ${year}</div>\n                  <div style=\"padding:10px;text-align:center;border-bottom:1px solid #f0f0f0;\">\n                    <div style=\"font-size:42px;font-weight:700;color:#111827;line-height:1;\">${day}</div>\n                    <div style=\"font-size:12px;color:#6b7280;margin-top:2px;\">${weekday}</div>\n                  </div>\n                  <div style=\"padding:6px 8px 8px;\">\n                    <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n                      <tr>\n                        <td style=\"width:14.28%;text-align:center;font-size:8px;color:#9ca3af;padding:2px 0;\">S</td>\n                        <td style=\"width:14.28%;text-align:center;font-size:8px;color:#9ca3af;padding:2px 0;\">M</td>\n                        <td style=\"width:14.28%;text-align:center;font-size:8px;color:#9ca3af;padding:2px 0;\">T</td>\n                        <td style=\"width:14.28%;text-align:center;font-size:8px;color:#9ca3af;padding:2px 0;\">W</td>\n                        <td style=\"width:14.28%;text-align:center;font-size:8px;color:#9ca3af;padding:2px 0;\">T</td>\n                        <td style=\"width:14.28%;text-align:center;font-size:8px;color:#9ca3af;padding:2px 0;\">F</td>\n                        <td style=\"width:14.28%;text-align:center;font-size:8px;color:#9ca3af;padding:2px 0;\">S</td>\n                      </tr>\n                      <tr>${calCells}</tr>\n                    </table>\n                  </div>\n                </div>\n\n              </td>\n              <td style=\"padding:16px;vertical-align:top;\">\n\n                <!-- start time card -->\n                <div style=\"background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin-bottom:10px;text-align:center;\">\n                  <div style=\"font-size:10px;color:#9ca3af;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;\">&#128336; Start Time</div>\n                  <div style=\"font-size:30px;font-weight:700;color:#111827;line-height:1.1;\">${timeStr}</div>\n                  <div style=\"font-size:12px;color:#059669;font-weight:600;margin-top:2px;\">IST</div>\n                </div>\n\n                <!-- duration card -->\n                <div style=\"background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin-bottom:10px;text-align:center;\">\n                  <div style=\"font-size:10px;color:#9ca3af;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;\">&#9203; Duration</div>\n                  <div style=\"font-size:28px;font-weight:700;color:#111827;line-height:1.1;\">30</div>\n                  <div style=\"font-size:12px;color:#6b7280;\">minutes</div>\n                </div>\n\n                <!-- meeting type -->\n                <div style=\"background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:12px;text-align:center;\">\n                  <div style=\"font-size:10px;color:#9ca3af;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;\">&#128187; Type</div>\n                  <div style=\"font-size:13px;font-weight:700;color:#111827;\">${summary}</div>\n                </div>\n\n              </td>\n            </tr>\n          </table>\n        </td>\n      </tr>\n\n      <!-- countdown -->\n      <tr>\n        <td style=\"padding:16px 24px 0;\">\n          <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px;\">\n            <tr>\n              <td style=\"text-align:center;padding:14px;\">\n                <p style=\"font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;margin:0 0 10px;\">&#9203; Meeting starts in</p>\n                <div id=\"countdown\" style=\"display:flex;justify-content:center;gap:16px;\"></div>\n              </td>\n            </tr>\n          </table>\n        </td>\n      </tr>\n\n      <!-- meet link -->\n      ${meetSection}\n\n      <!-- calendar + reminder chips -->\n      <tr>\n        <td style=\"padding:0 24px 20px;\">\n          <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n            <tr>\n              <td style=\"width:50%;padding-right:6px;\">\n                <div style=\"background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px;text-align:center;\">\n                  <div style=\"font-size:20px;\">&#128140;</div>\n                  <div style=\"font-size:11px;color:#1E40AF;margin-top:4px;\">Calendar invite sent to your inbox</div>\n                </div>\n              </td>\n              <td style=\"width:50%;padding-left:6px;\">\n                <div style=\"background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:12px;text-align:center;\">\n                  <div style=\"font-size:20px;\">&#128276;</div>\n                  <div style=\"font-size:11px;color:#92400E;margin-top:4px;\">Reminder 15 min before</div>\n                </div>\n              </td>\n            </tr>\n          </table>\n        </td>\n      </tr>\n\n      <!-- footer -->\n      <tr>\n        <td style=\"padding:16px 24px;border-top:1px solid #f3f4f6;\">\n          <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n            <tr>\n              <td>\n                <p style=\"font-size:14px;color:#374151;margin:0 0 2px;\">Looking forward to our conversation!</p>\n                <p style=\"font-size:14px;font-weight:700;color:#111827;margin:0 0 2px;\">Claude Smadlytics</p>\n                <p style=\"font-size:12px;color:#9ca3af;margin:0;\">AI Sales Automation</p>\n              </td>\n              <td style=\"text-align:right;font-size:11px;color:#9ca3af;vertical-align:bottom;\">\n                Need to reschedule?<br/>Reply to this email.\n              </td>\n            </tr>\n          </table>\n        </td>\n      </tr>\n\n    </table>\n  </div>\n</div>\n\n<script>\n(function() {\n  // Confetti\n  var cf = document.getElementById('cf');\n  var colors = ['#059669','#1D4ED8','#F59E0B','#EF4444','#8B5CF6','#EC4899','#10B981'];\n  for (var i = 0; i < 40; i++) {\n    var el = document.createElement('div');\n    var size = 6 + Math.random() * 8;\n    el.style.cssText = 'position:absolute;left:' + (Math.random()*100) + '%;top:-10px;width:' + size + 'px;height:' + size + 'px;background:' + colors[Math.floor(Math.random()*colors.length)] + ';border-radius:' + (Math.random()>0.5?'50%':'2px') + ';animation:confettiFall ' + (1.5+Math.random()*2) + 's ' + (Math.random()*1.5) + 's ease-in forwards;';\n    cf.appendChild(el);\n  }\n  setTimeout(function(){ cf.innerHTML=''; }, 5000);\n\n  // Countdown\n  var target = new Date('${isoStart}').getTime();\n  var cdEl = document.getElementById('countdown');\n\n  function tick() {\n    var diff = target - Date.now();\n    if (diff <= 0) {\n      cdEl.innerHTML = '<span style=\"font-size:14px;color:#059669;font-weight:700;animation:pulse 1s infinite;\">&#128250; Meeting is live now!</span>';\n      return;\n    }\n    var d = Math.floor(diff/86400000);\n    var h = Math.floor((diff%86400000)/3600000);\n    var m = Math.floor((diff%3600000)/60000);\n    var s = Math.floor((diff%60000)/1000);\n    var units = [{v:d,l:'days'},{v:h,l:'hrs'},{v:m,l:'min'},{v:s,l:'sec'}];\n    cdEl.innerHTML = units.map(function(u){\n      return '<div style=\"min-width:48px;text-align:center;\">'\n        + '<div style=\"font-size:24px;font-weight:700;color:#111827;line-height:1;\">' + String(u.v).padStart(2,'0') + '</div>'\n        + '<div style=\"font-size:10px;color:#9ca3af;margin-top:2px;\">' + u.l + '</div>'\n        + '</div>';\n    }).join('<div style=\"font-size:24px;font-weight:700;color:#d1d5db;padding-top:0;\">:</div>');\n  }\n\n  tick();\n  setInterval(tick, 1000);\n})();\n</script>\n</body>\n</html>`;\n\nreturn [{\n  json: {\n    lead_email: leadEmail,\n    subject: `Confirmed: Your ${summary} is Scheduled!`,\n    body: confirmBody,\n    meet_link: meetLink,\n    summary: summary,\n    start_time: isoStart\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        1712
+      ],
+      "id": "51325d3f-efc2-4d82-b34d-8b10ab84ef30",
+      "name": "Code in JavaScript6"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "m3-1",
+              "name": "event_type",
+              "value": "=meeting_scheduled",
+              "type": "string"
+            },
+            {
+              "id": "m3-2",
+              "name": "agent_source",
+              "value": "=scheduling",
+              "type": "string"
+            },
+            {
+              "id": "m3-3",
+              "name": "lead_id",
+              "value": "={{ $json.lead_email }}",
+              "type": "string"
+            },
+            {
+              "id": "m3-4",
+              "name": "data.email",
+              "value": "={{ $json.lead_email }}",
+              "type": "string"
+            },
+            {
+              "id": "m3-5",
+              "name": "data.meeting_type",
+              "value": "={{ $json.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "m3-6",
+              "name": "data.meeting_date",
+              "value": "={{ $('Code in JavaScript6').item.json.start_time }}",
+              "type": "string"
+            },
+            {
+              "id": "m3-7",
+              "name": "data.timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        976,
+        1712
+      ],
+      "id": "8ede6204-3b1c-4fde-86e3-a637a777c7b9",
+      "name": "CRM Payload - Meeting Scheduled1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n-smady-adgtdkg5hvacf7fs.canadacentral-01.azurewebsites.net/webhook/crm-agent",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "={{ $json.event_type }}"
+            },
+            {
+              "name": "agent_source",
+              "value": "={{ $json.agent_source }}"
+            },
+            {
+              "name": "lead_id",
+              "value": "={{ $json.lead_id }}"
+            },
+            {
+              "name": "data",
+              "value": "={{ { email: $json.data.email, meeting_type: $json.data.meeting_type, meeting_date: $json.data.meeting_date, timestamp: $json.data.timestamp } }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1200,
+        1712
+      ],
+      "id": "d0841439-a725-4654-a924-01e49a668b10",
+      "name": "HTTP Request - Meeting Scheduled1",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/calendar/v3/calendars/claudesmadlytics@gmail.com/events",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "conferenceDataVersion",
+              "value": "1"
+            },
+            {
+              "name": "sendUpdates",
+              "value": "all"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ summary: $json.summary, description: $json.description, start: { dateTime: $json.start_time, timeZone: \"Asia/Kolkata\" }, end: { dateTime: $json.end_time, timeZone: \"Asia/Kolkata\" }, attendees: [ { email: $json.lead_email } ], conferenceData: { createRequest: { requestId: 'meet-' + Date.now(), conferenceSolutionKey: { type: 'hangoutsMeet' } } } }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        16,
+        1712
+      ],
+      "id": "42f3f96d-1f93-41c7-9b41-76e48af71886",
+      "name": "Create Google Meet Event1",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "KwkN3V5EjeLYytuk",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -608,
+        2368
+      ],
+      "id": "c24bc236-c542-4f00-97f6-0d03c82d7eec",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT meet_link, lead_email, event_id, start_time\nFROM propmeetings\nWHERE status = 'scheduled'\n  AND start_time < now() - interval '10 minutes';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -96,
+        2368
+      ],
+      "id": "282d5ea9-6741-4b6b-9bf1-3628cad8ced2",
+      "name": "Get Pending Meetings",
+      "credentials": {
+        "postgres": {
+          "id": "Q2ANOItnycod3cGQ",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const fireflies = $('Fireflies - List Recent Transcripts').first().json.data?.transcripts || [];\nconst pending = $input.all().map(i => i.json);\n\nconst matches = [];\nfor (const t of fireflies) {\n  if (!t.meeting_link) continue;\n  const found = pending.find(p => p.meet_link === t.meeting_link);\n  if (found) {\n    matches.push({\n      json: {\n        meeting_id: t.id,\n        lead_email: found.lead_email,\n        meet_link: t.meeting_link,\n        event_id: found.event_id\n      }\n    });\n  }\n}\nreturn matches;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        2368
+      ],
+      "id": "31624655-96be-487a-9a63-0f6a1881491f",
+      "name": "Match Transcripts To Leads"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE propmeetings\nSET status = 'transcript_ready',\n    fireflies_meeting_id = '{{ $json.meeting_id }}',\n    updated_at = now()\nWHERE meet_link = '{{ $json.meet_link }}';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        320,
+        2368
+      ],
+      "id": "c5c11796-bfc4-41a5-bb6f-89e0d3639a5b",
+      "name": "Mark Transcript Ready",
+      "credentials": {
+        "postgres": {
+          "id": "Q2ANOItnycod3cGQ",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO propmeetings (meet_link, lead_email, event_id, start_time, status)\nVALUES (\n  '{{ $json.meet_link }}',\n  '{{ $json.lead_email }}',\n  '',\n  '{{ $json.start_time }}',\n  'scheduled'\n)\nON CONFLICT (meet_link) DO NOTHING;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        608,
+        1936
+      ],
+      "id": "2aea88f2-b769-4c90-b200-4bb8494faa37",
+      "name": "save meeting details in DB",
+      "credentials": {
+        "postgres": {
+          "id": "Q2ANOItnycod3cGQ",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "JXEiyj8JB6t2LAjg",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/JXEiyj8JB6t2LAjg",
+          "cachedResultName": "Proposal Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "meeting_id": "={{ $('Match Transcripts To Leads').item.json.meeting_id }}",
+            "lead_email": "={{ $('Match Transcripts To Leads').item.json.lead_email }}",
+            "meet_link": "= {{ $('Match Transcripts To Leads').item.json.meet_link }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "meeting_id",
+              "displayName": "meeting_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "lead_email",
+              "displayName": "lead_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "meet_link",
+              "displayName": "meet_link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        528,
+        2368
+      ],
+      "id": "8a415ba6-dc6c-4189-8188-cd2987a8ae5f",
+      "name": "Call 'Proposal Agent'"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.fireflies.ai/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"query ListTranscripts($fromDate: DateTime, $toDate: DateTime, $organizerEmail: String) { transcripts(fromDate: $fromDate, toDate: $toDate, organizer_email: $organizerEmail) { id title date meeting_link } }\", variables: { fromDate: $now.minus({hours:6}).toISO(), toDate: $now.toISO(), organizerEmail: \"claudesmadlytics@gmail.com\" } }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -304,
+        2368
+      ],
+      "id": "0dd9e9e7-0a00-4112-a7de-5b02c8eac3b3",
+      "name": "Fireflies - List Recent Transcripts",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "MwnZheMWpOsi9I0G",
+          "name": "fireflies"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        832,
+        896
+      ],
+      "id": "d139f15b-c80f-4d1e-a7ef-99ae1dff8bfa",
+      "name": "Mark a message as read",
+      "webhookId": "0d640712-03b9-4434-b3e2-8290179b7f21",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "K0DjQT5IwJtYnuzY",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        640,
+        1328
+      ],
+      "id": "f3f3ad15-4604-4c9c-a6a0-5efb622ad083",
+      "name": "Mark a message as read1",
+      "webhookId": "dec38a9c-dd0f-4043-b621-a150acb083ab",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "K0DjQT5IwJtYnuzY",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -624,
+        2576
+      ],
+      "id": "2c3e975e-96c3-4b95-b332-0652c8dd88b2",
+      "name": "When clicking ‘Execute workflow’"
+    }
+  ],
+  "connections": {
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Get availability in a calendar1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get availability in a calendar1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Send a message3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message3": {
+      "main": [
+        [
+          {
+            "node": "Mark a message as read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Message a model3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Send a message4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message4": {
+      "main": [
+        [
+          {
+            "node": "Mark a message as read1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM Payload - Proposal Sent": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Proposal Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Reply1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model3": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript5": {
+      "main": [
+        [
+          {
+            "node": "Classify Reply1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Booking Form Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Manual Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Manual Booking": {
+      "main": [
+        [
+          {
+            "node": "Create Google Meet Event1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Create Google Meet Event1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "CRM Payload - Meeting Scheduled1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript6": {
+      "main": [
+        [
+          {
+            "node": "save meeting details in DB",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM Payload - Meeting Scheduled1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Meeting Scheduled1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Google Meet Event1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fireflies - List Recent Transcripts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Meetings": {
+      "main": [
+        [
+          {
+            "node": "Match Transcripts To Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match Transcripts To Leads": {
+      "main": [
+        [
+          {
+            "node": "Mark Transcript Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Transcript Ready": {
+      "main": [
+        [
+          {
+            "node": "Call 'Proposal Agent'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "save meeting details in DB": {
+      "main": [
+        []
+      ]
+    },
+    "Fireflies - List Recent Transcripts": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Meetings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark a message as read": {
+      "main": [
+        [
+          {
+            "node": "CRM Payload - Proposal Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Fireflies - List Recent Transcripts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "5505ae3ae5efbb9d8f9a82fdeda0abf3c231c29868e725b029760b471fbe6639"
+  }
+}

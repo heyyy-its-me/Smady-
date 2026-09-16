@@ -1,0 +1,170 @@
+{
+  "project_name": "Smady AI Outbound SaaS Platform",
+  "version": "2.0.0-Anti-Generic-Redesign",
+  "design_philosophy": {
+    "core_directive": "Radical anti-template composition. Reject standard SaaS clichés (4-stat-card rows, standard hero screenshot-on-right, symmetric split forms). Use asymmetric Tetris/Bento grids, overlapping kinetic typography, dynamic interactive simulators, high-density data visualization, and tactile editorial contrasts.",
+    "brand_pillars": [
+      "Tactile Warmth & Authority: Warm cream background (#FFF8F1) + Ink black typography (#171412) for high readability without cold corporate sterility.",
+      "Kinetic Energy: Vibrant signal orange (#F9622C) primary CTAs with subtle warning yellow (#FFC94A) highlighter marks.",
+      "Asymmetric Tension: Non-uniform bento grid ratios (1x2, 2x2, 3x1), overlapping visual containers, and offset text alignments.",
+      "Density & Clarity: Dashboard prioritizes immediate actionability, GitHub-style activity heatmaps, live pipeline funnels, and real-time activity streams."
+    ]
+  },
+  "brand_identity": {
+    "background": "#FFF8F1",
+    "surface": "#FFFFFF",
+    "surface_dark": "#171412",
+    "ink_primary": "#171412",
+    "ink_secondary": "#6B645F",
+    "ink_muted": "#A39A93",
+    "primary_orange": "#F9622C",
+    "primary_hover": "#E24D1B",
+    "primary_light": "#FFF4EE",
+    "accent_yellow": "#FFC94A",
+    "border_subtle": "#F1E9E3",
+    "border_strong": "#E2D7CF",
+    "card_radius": "rounded-[24px]",
+    "button_radius": "rounded-full",
+    "heading_font": "Clash Display, Inter, sans-serif",
+    "body_font": "Inter, sans-serif"
+  },
+  "layout_strategies": {
+    "landing_hero": {
+      "anti_pattern_avoided": "DO NOT use standard 'Badge -> Headline -> Subtitle -> 2 Buttons -> Right Screenshot' layout.",
+      "new_compositional_structure": "3-Column Kinetic Overlap Grid (grid-cols-12). Left col-span-7: Massive overlapping headline ('Outbound That Converts Before You Hit Send') with embedded interactive lead counter and floating live metric chip. Center/Right col-span-5: Interactive Live AI Prospecting Console (real-time lead generator simulator where users type a target ICP and watch verified leads fill in). Bottom span: Tilted ticker ribbon with live meeting bookings.",
+      "visual_enhancers": "Atmospheric blurred blobs (radial-gradient orange & yellow), rotating outcome pill tags, organic curved lines, micro-interactions on hover."
+    },
+    "dashboard_bento_grid": {
+      "anti_pattern_avoided": "DO NOT use '4 equal stat cards top row + 1 line chart bottom row'.",
+      "new_bento_mode": "MODE B Asymmetric High-Density Grid (lg:grid-cols-4 gap-6).",
+      "tile_architecture": [
+        {
+          "tile_id": "ai_command_tower",
+          "span": "col-span-1 md:col-span-2 lg:col-span-2 row-span-2",
+          "title": "AI Copilot & Instant Campaign Trigger",
+          "description": "Hero command widget with live AI campaign generator, instant lead sequence recommendation, launch button, and conversion forecast curve."
+        },
+        {
+          "tile_id": "leads_generated_pulse",
+          "span": "col-span-1 md:col-span-1 lg:col-span-1",
+          "title": "Leads Sourced Today",
+          "description": "Radial progress gauge + daily target bar + live indicator light."
+        },
+        {
+          "tile_id": "outreach_velocity",
+          "span": "col-span-1 md:col-span-1 lg:col-span-1",
+          "title": "Meetings Booked Velocity",
+          "description": "Comparative mini sparkline with week-over-week delta tag."
+        },
+        {
+          "tile_id": "activity_heatmap",
+          "span": "col-span-1 md:col-span-2 lg:col-span-2",
+          "title": "Outreach & Sourcing Activity Heatmap",
+          "description": "GitHub-style 52-week grid showing daily campaign intensity, hover details, and active lead volume."
+        },
+        {
+          "tile_id": "pipeline_funnel",
+          "span": "col-span-1 md:col-span-1 lg:col-span-1",
+          "title": "Outbound Conversion Funnel",
+          "description": "Visual funnel stages (Sourced -> Contacted -> Opened -> Replied -> Booked) with percentage drop-off tags."
+        },
+        {
+          "tile_id": "lead_source_donut",
+          "span": "col-span-1 md:col-span-1 lg:col-span-1",
+          "title": "Lead Sourcing Channels",
+          "description": "Interactive ring chart showing LinkedIn Sales Nav, Apollo API, Clearbit, and Website Intent sources."
+        },
+        {
+          "tile_id": "kinetic_activity_feed",
+          "span": "col-span-1 md:col-span-2 lg:col-span-2",
+          "title": "Live Outreach Stream & Replies",
+          "description": "Real-time scrolling log of opens, replies, calendar invites, and instant quick-reply action triggers."
+        },
+        {
+          "tile_id": "high_density_lead_table",
+          "span": "col-span-1 md:col-span-4 lg:col-span-4",
+          "title": "Verified Lead Database & ICP Scoring",
+          "description": "Full-width searchable, filterable lead table with ICP Match Badges (98%, 94%), status indicators, campaign tags, and side drawer details."
+        }
+      ]
+    },
+    "auth_pages": {
+      "anti_pattern_avoided": "DO NOT use simple centered gray box or plain 50/50 split.",
+      "compositional_structure": "Asymmetric Split (60/40) on Warm Cream background (#FFF8F1). Left side: Interactive ROI Calculator & Outbound Growth Simulator with client social proof badges. Right side: Floating elevated card (#FFFFFF, shadow-card, rounded-[24px]) with high-contrast tab switch, OTP logic, and quick social auth buttons."
+    }
+  },
+  "typography": {
+    "font_family_heading": "Clash Display, sans-serif",
+    "font_family_body": "Inter, sans-serif",
+    "scale": {
+      "h1_hero": "text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.08]",
+      "h2_section": "text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight",
+      "h3_card": "text-xl sm:text-2xl font-semibold",
+      "subtitle": "text-lg text-body leading-relaxed",
+      "body": "text-base text-body leading-normal",
+      "small_label": "text-xs font-semibold tracking-wider uppercase text-muted"
+    }
+  },
+  "color_palette_tokens": {
+    "bg_main": "#FFF8F1",
+    "bg_card": "#FFFFFF",
+    "bg_dark_band": "#171412",
+    "text_dark": "#171412",
+    "text_muted": "#6B645F",
+    "primary_orange": "#F9622C",
+    "primary_hover": "#E24D1B",
+    "accent_yellow": "#FFC94A",
+    "border_subtle": "#F1E9E3",
+    "badge_green": "#22C55E",
+    "badge_blue": "#3B82F6",
+    "badge_purple": "#8B5CF6"
+  },
+  "image_urls": {
+    "executives": [
+      {
+        "url": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjB0ZWNoJTIwdGVhbSUyMGV4ZWN1dGl2ZSUyMHByb2Zlc3Npb25hbCUyMHBvcnRyYWl0JTIwYjJifGVufDB8fHx8MTc4ODU5OTY2NXww&ixlib=rb-4.1.0&q=85",
+        "description": "Sarah Jenkins - VP Sales at TechFlow"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1560250097-0b93528c311a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjB0ZWNoJTIwdGVhbSUyMGV4ZWN1dGl2ZSUyMHByb2Zlc3Npb25hbCUyMHBvcnRyYWl0JTIwYjJifGVufDB8fHx8MTc4ODU5OTY2NXww&ixlib=rb-4.1.0&q=85",
+        "description": "Marcus Vance - Head of Growth at ScaleUp"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1718209881007-c0ecdfc00f9d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHw0fHxtb2Rlcm4lMjB0ZWNoJTIwdGVhbSUyMGV4ZWN1dGl2ZSUyMHByb2Zlc3Npb25hbCUyMHBvcnRyYWl0JTIwYjJifGVufDB8fHx8MTc4ODU5OTY2NXww&ixlib=rb-4.1.0&q=85",
+        "description": "David Chen - Founder at SaaSify"
+      }
+    ],
+    "company_logos": [
+      { "name": "Stripe", "label": "STRIPE B2B" },
+      { "name": "Linear", "label": "LINEAR TECH" },
+      { "name": "Vercel", "label": "VERCEL DEV" },
+      { "name": "Notion", "label": "NOTION WORK" },
+      { "name": "Figma", "label": "FIGMA DESIGN" }
+    ]
+  },
+  "testing_strategy": {
+    "mandatory_data_testid_rules": "All interactive elements (buttons, links, inputs, tabs, filter pills, dropdowns, table rows, modal triggers) MUST contain descriptive kebab-case data-testid attributes.",
+    "key_testids": [
+      "landing-nav-logo",
+      "landing-nav-dashboard-link",
+      "landing-nav-login-button",
+      "landing-hero-icp-input",
+      "landing-hero-generate-button",
+      "landing-hero-demo-trigger",
+      "dashboard-sidebar-navigation",
+      "dashboard-leads-filter-search",
+      "dashboard-leads-export-button",
+      "dashboard-campaign-launch-button",
+      "auth-email-input",
+      "auth-password-input",
+      "auth-submit-button"
+    ]
+  },
+  "instructions_to_main_agent": [
+    "1. MAINTAIN DESIGN TOKENS: Keep warm cream background (#FFF8F1), orange primary (#F9622C), yellow accent (#FFC94A), Clash Display font for headings, Inter font for body text, rounded-full pill buttons, and rounded-[24px] cards.",
+    "2. ELIMINATE AI SLOP LAYOUTS: Avoid standard row-based 4-stat cards or plain right-hand screenshot hero sections. Construct distinct asymmetrical layouts.",
+    "3. IMPLEMENT INTERACTIVE PLAYGROUNDS: Provide interactive lead generator console directly in the Hero, live ROI slider in Auth, and full filtering/searchable tables in Dashboard.",
+    "4. ENSURE RESPONSIVENESS & ACCESSIBILITY: Mobile first grid breakdowns (grid-cols-1 -> md:grid-cols-2 -> lg:grid-cols-4) with high contrast text colors and strict WCAG compliance.",
+    "5. TESTABILITY: Include data-testid on every single click/type target across Landing, Dashboard, ICP Engine, Lead Sourcing, Outreach, Scheduler, Proposal Generator, Reports, Login, Signup, and Forgot Password."
+  ]
+}
