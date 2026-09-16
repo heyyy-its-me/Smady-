@@ -116,7 +116,7 @@ async def refresh(request: Request, response: Response, db: AsyncSession = Depen
     if not row:
         raise HTTPException(status_code=401, detail="User not found")
     access_token = create_access_token(str(row.id), row.email)
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="none", max_age=900, path="/")
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="none", max_age=10800, path="/")
     return {"message": "Refreshed"}
 
 

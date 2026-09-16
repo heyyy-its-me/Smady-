@@ -7,6 +7,40 @@ export const api = axios.create({
   withCredentials: true,
 });
 
+// Track ongoing refresh to avoid multiple simultaneous refresh attempts
+let refreshPromise: Promise<any> | null = null;
+
+// Add response interceptor to handle token refresh on 401
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If we get a 401 and haven't already tried to refresh, attempt refresh
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      if (!refreshPromise) {
+        refreshPromise = axios
+          .post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true })
+          .then(() => {
+            refreshPromise = null;
+            return api(originalRequest); // Retry original request
+          })
+          .catch((err) => {
+            refreshPromise = null;
+            // Refresh failed, let original error through
+            return Promise.reject(err);
+          });
+      }
+
+      return refreshPromise;
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 export function formatApiError(err: unknown): string {
   const detail = (err as any)?.response?.data?.detail;
   if (detail == null) return (err as any)?.message || "Something went wrong. Please try again.";

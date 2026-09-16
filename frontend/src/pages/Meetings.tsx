@@ -4,6 +4,7 @@ import { PageHeader } from "@/layouts/PageHeader";
 import { CalendarBlock } from "@/components/smady/CalendarBlock";
 import { ButtonPrimary } from "@/components/smady/Button";
 import { AvatarInitial } from "@/components/smady/AvatarStack";
+import { TimePickerInput } from "@/components/smady/TimePickerInput";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,6 +34,12 @@ const getStatusColor = (status: string) => {
     default:
       return "bg-gray-100 text-gray-800";
   }
+};
+
+// Helper: get today's date in YYYY-MM-DD format
+const getTodayDate = () => {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
 };
 
 export default function Meetings() {
@@ -151,17 +158,11 @@ export default function Meetings() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Meeting Date *</label>
-                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} data-testid="meeting-date-input" />
+                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} min={getTodayDate()} data-testid="meeting-date-input" />
               </div>
               <div>
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Meeting Time (24hr, IST) *</label>
-                <Input
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  placeholder="e.g. 14:30"
-                  pattern="\d{1,2}:\d{2}"
-                  data-testid="meeting-time-input"
-                />
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Meeting Time (IST) *</label>
+                <TimePickerInput value={time} onChange={setTime} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
