@@ -65,8 +65,18 @@ export default function Meetings() {
       toast.error("Please fill in all required fields");
       return;
     }
+
+    // Validate that date is not in the past
+    const selectedDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selectedDate < today) {
+      toast.error("Meeting date cannot be in the past");
+      return;
+    }
+
     // Validate time format HH:mm
-    if (!/^\d{1,2}:\d{2}$/.test(time)) {
+    if (!/^\d{2}:\d{2}$/.test(time)) {
       toast.error("Time must be in HH:mm format (e.g. 14:30)");
       return;
     }
@@ -158,7 +168,22 @@ export default function Meetings() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Meeting Date *</label>
-                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} min={getTodayDate()} data-testid="meeting-date-input" />
+                <Input 
+                  type="date" 
+                  value={date} 
+                  onChange={(e) => {
+                    const selectedDate = new Date(e.target.value);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    if (selectedDate >= today) {
+                      setDate(e.target.value);
+                    } else {
+                      toast.error("Meeting date cannot be in the past");
+                    }
+                  }} 
+                  min={getTodayDate()} 
+                  data-testid="meeting-date-input" 
+                />
               </div>
               <div>
                 <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">Meeting Time (IST) *</label>

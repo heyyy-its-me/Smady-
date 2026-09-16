@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { ChevronUp, ChevronDown } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { ChevronUp, ChevronDown, Clock } from "lucide-react";
 
 interface TimePickerInputProps {
   value: string; // "HH:mm"
@@ -9,16 +9,29 @@ interface TimePickerInputProps {
 
 export function TimePickerInput({ value, onChange, disabled }: TimePickerInputProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [hours, setHours] = useState(0);
+  const [hours, setHours] = useState(9);
   const [minutes, setMinutes] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (value) {
+    if (value && /^\d{2}:\d{2}$/.test(value)) {
       const [h, m] = value.split(":").map(Number);
-      setHours(h || 0);
-      setMinutes(m || 0);
+      setHours(h);
+      setMinutes(m);
     }
   }, [value]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isOpen]);
 
   const updateTime = (h: number, m: number) => {
     const newH = Math.max(0, Math.min(23, h));
@@ -33,92 +46,97 @@ export function TimePickerInput({ value, onChange, disabled }: TimePickerInputPr
   const incrementMinutes = () => updateTime(hours, minutes + 5);
   const decrementMinutes = () => updateTime(hours, minutes - 5);
 
+  const setQuickTime = (h: number, m: number) => {
+    updateTime(h, m);
+    setIsOpen(false);
+  };
+
   return (
-    <div className="relative">
-      <div
+    <div ref={containerRef} className="relative w-full">
+      <button
+        type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-ink focus:border-primary-500 focus:outline-none cursor-pointer flex items-center justify-between ${
+        className={`w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-ink focus:border-primary-500 focus:outline-none cursor-pointer flex items-center justify-between transition-colors hover:bg-opacity-50 ${
           disabled ? "opacity-50 cursor-not-allowed" : ""
         }`}
       >
-        <span>{value || "--:--"}</span>
-        <svg className="h-4 w-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 2m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      </div>
+        <span className="font-medium">{value || "Select time"}</span>
+        <Clock className="h-4 w-4 text-primary-500" />
+      </button>
 
       {isOpen && !disabled && (
-        <div className="absolute top-full left-0 mt-2 bg-white border border-border rounded-lg shadow-lg p-4 z-50 w-48">
-          {/* Hour Selector */}
-          <div className="flex flex-col items-center mb-4">
-            <label className="text-xs font-semibold text-muted mb-2">Hours</label>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={decrementHours}
-                className="p-1 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                <ChevronUp className="h-4 w-4" />
-              </button>
-              <div className="bg-primary-50 border-2 border-primary-500 rounded-lg px-4 py-2 w-16 text-center font-bold text-lg">
-                {String(hours).padStart(2, "0")}
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-border rounded-lg shadow-2xl p-4 z-[9999] w-64">
+          {/* Hour and Minute Selectors */}
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            {/* Hour Selector */}
+            <div className="flex flex-col items-center">
+              <label className="text-xs font-semibold text-muted mb-2 uppercase">Hour</label>
+              <div className="flex flex-col items-center gap-1">
+                <button
+                  type="button"
+                  onClick={incrementHours}
+                  className="p-1 hover:bg-gray-200 rounded transition-colors"
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </button>
+                <div className="bg-primary-100 border-2 border-primary-500 rounded-lg px-4 py-2 w-16 text-center font-bold text-xl">
+                  {String(hours).padStart(2, "0")}
+                </div>
+                <button
+                  type="button"
+                  onClick={decrementHours}
+                  className="p-1 hover:bg-gray-200 rounded transition-colors"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                onClick={incrementHours}
-                className="p-1 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                <ChevronDown className="h-4 w-4" />
-              </button>
             </div>
-          </div>
 
-          {/* Minute Selector */}
-          <div className="flex flex-col items-center mb-4">
-            <label className="text-xs font-semibold text-muted mb-2">Minutes</label>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={decrementMinutes}
-                className="p-1 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                <ChevronUp className="h-4 w-4" />
-              </button>
-              <div className="bg-primary-50 border-2 border-primary-500 rounded-lg px-4 py-2 w-16 text-center font-bold text-lg">
-                {String(minutes).padStart(2, "0")}
+            {/* Minute Selector */}
+            <div className="flex flex-col items-center">
+              <label className="text-xs font-semibold text-muted mb-2 uppercase">Minute</label>
+              <div className="flex flex-col items-center gap-1">
+                <button
+                  type="button"
+                  onClick={incrementMinutes}
+                  className="p-1 hover:bg-gray-200 rounded transition-colors"
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </button>
+                <div className="bg-primary-100 border-2 border-primary-500 rounded-lg px-4 py-2 w-16 text-center font-bold text-xl">
+                  {String(minutes).padStart(2, "0")}
+                </div>
+                <button
+                  type="button"
+                  onClick={decrementMinutes}
+                  className="p-1 hover:bg-gray-200 rounded transition-colors"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                onClick={incrementMinutes}
-                className="p-1 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                <ChevronDown className="h-4 w-4" />
-              </button>
             </div>
           </div>
 
           {/* Quick Select Buttons */}
-          <div className="border-t pt-3 grid grid-cols-3 gap-2">
+          <div className="border-t pt-3 grid grid-cols-3 gap-2 mb-3">
             <button
-              onClick={() => {
-                updateTime(9, 0);
-                setIsOpen(false);
-              }}
-              className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors"
+              type="button"
+              onClick={() => setQuickTime(9, 0)}
+              className="text-xs bg-gray-100 hover:bg-primary-100 px-2 py-1.5 rounded font-medium transition-colors"
             >
               9:00 AM
             </button>
             <button
-              onClick={() => {
-                updateTime(14, 0);
-                setIsOpen(false);
-              }}
-              className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors"
+              type="button"
+              onClick={() => setQuickTime(14, 0)}
+              className="text-xs bg-gray-100 hover:bg-primary-100 px-2 py-1.5 rounded font-medium transition-colors"
             >
               2:00 PM
             </button>
             <button
-              onClick={() => {
-                updateTime(18, 0);
-                setIsOpen(false);
-              }}
-              className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors"
+              type="button"
+              onClick={() => setQuickTime(18, 0)}
+              className="text-xs bg-gray-100 hover:bg-primary-100 px-2 py-1.5 rounded font-medium transition-colors"
             >
               6:00 PM
             </button>
@@ -126,8 +144,9 @@ export function TimePickerInput({ value, onChange, disabled }: TimePickerInputPr
 
           {/* Close Button */}
           <button
+            type="button"
             onClick={() => setIsOpen(false)}
-            className="w-full mt-3 bg-primary-500 text-white text-sm font-semibold py-2 rounded-lg hover:bg-primary-600 transition-colors"
+            className="w-full bg-primary-500 text-white text-sm font-semibold py-2 rounded-lg hover:bg-primary-600 transition-colors"
           >
             Done
           </button>
