@@ -36,6 +36,14 @@ export function AreaChartCard({
   annotation?: { label: string };
   testId?: string;
 }) {
+  if (!data || data.length === 0) {
+    return (
+      <CardShell title={title} subtitle={subtitle} testId={testId}>
+        <div className="mt-2 flex h-[280px] items-center justify-center text-sm text-muted">No data available</div>
+      </CardShell>
+    );
+  }
+
   const peakIndex = data.reduce((maxIdx, d, i, arr) => (d.value > arr[maxIdx].value ? i : maxIdx), 0);
   const leftPct = data.length > 1 ? (peakIndex / (data.length - 1)) * 100 : 50;
   const clampedLeftPct = Math.min(85, Math.max(15, leftPct));
@@ -90,6 +98,13 @@ export function AreaChartCard({
 }
 
 export function BarChartCard({ title, subtitle, data, testId }: { title: string; subtitle?: string; data: StatDatum[]; testId?: string }) {
+  if (!data || data.length === 0) {
+    return (
+      <CardShell title={title} subtitle={subtitle} testId={testId}>
+        <div className="h-[220px] flex items-center justify-center text-muted text-sm">No data available</div>
+      </CardShell>
+    );
+  }
   return (
     <CardShell title={title} subtitle={subtitle} testId={testId}>
       <ResponsiveContainer width="100%" height={220}>
@@ -214,6 +229,13 @@ export function DonutChartCard({ title, subtitle, data, testId }: { title: strin
 }
 
 export function FunnelChartCard({ title, subtitle, data, testId }: { title: string; subtitle?: string; data: { stage: string; value: number }[]; testId?: string }) {
+  if (!data || data.length === 0) {
+    return (
+      <CardShell title={title} subtitle={subtitle} testId={testId}>
+        <div className="h-[220px] flex items-center justify-center text-muted text-sm">No data available</div>
+      </CardShell>
+    );
+  }
   const max = data[0]?.value || 1;
   return (
     <CardShell title={title} subtitle={subtitle} testId={testId}>
