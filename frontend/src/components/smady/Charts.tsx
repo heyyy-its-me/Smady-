@@ -115,8 +115,16 @@ export function MultiLineChartCard({
   data: Array<{ label: string; [key: string]: string | number }>;
   testId?: string;
 }) {
+  if (!data || data.length === 0) {
+    return (
+      <CardShell title={title} subtitle={subtitle} testId={testId}>
+        <div className="h-[260px] flex items-center justify-center text-muted text-sm">No data available</div>
+      </CardShell>
+    );
+  }
+
   // Determine which keys to plot (exclude 'label')
-  const lineKeys = data.length > 0 ? Object.keys(data[0]).filter(k => k !== "label") : [];
+  const lineKeys = Object.keys(data[0] || {}).filter(k => k !== "label");
   const colors = ["#F9622C", "#22C55E", "#171412", "#3B82F6", "#8B5CF6"];
   const legendLabels: Record<string, string> = {
     sent: "Sent", opened: "Opened", replied: "Replied",
@@ -130,7 +138,7 @@ export function MultiLineChartCard({
         {isSingleLine ? (
           <ComposedChart data={data} margin={{ top: 16, right: 4, left: -20, bottom: 0 }}>
             <defs>
-              <linearGradient id="softGlow" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id={`softGlow-${title}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={colors[0]} stopOpacity={0.2} />
                 <stop offset="100%" stopColor={colors[0]} stopOpacity={0.01} />
               </linearGradient>
@@ -138,27 +146,31 @@ export function MultiLineChartCard({
             <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#A39A93" }} />
             <YAxis hide />
             <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #F1E9E3" }} />
-            {lineKeys.map((key, idx) => (
-              <Area
-                key={`area-${key}`}
-                type="monotone"
-                dataKey={key}
-                stroke={colors[idx % colors.length]}
-                strokeWidth={2}
-                fill="url(#softGlow)"
-                dot={false}
-                isAnimationActive={false}
-              />
-            ))}
+            {lineKeys.length > 0 ? (
+              lineKeys.map((key, idx) => (
+                <Area
+                  key={`area-${key}`}
+                  type="monotone"
+                  dataKey={key}
+                  stroke={colors[idx % colors.length]}
+                  strokeWidth={2}
+                  fill={`url(#softGlow-${title})`}
+                  dot={false}
+                  isAnimationActive={false}
+                />
+              ))
+            ) : null}
           </ComposedChart>
         ) : (
           <LineChart data={data} margin={{ top: 16, right: 4, left: -20, bottom: 0 }}>
             <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#A39A93" }} />
             <YAxis hide />
             <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #F1E9E3" }} />
-            {lineKeys.map((key, idx) => (
-              <Line key={key} type="monotone" dataKey={key} stroke={colors[idx % colors.length]} strokeWidth={2} dot={false} isAnimationActive={false} />
-            ))}
+            {lineKeys.length > 0 ? (
+              lineKeys.map((key, idx) => (
+                <Line key={key} type="monotone" dataKey={key} stroke={colors[idx % colors.length]} strokeWidth={2} dot={false} isAnimationActive={false} />
+              ))
+            ) : null}
           </LineChart>
         )}
       </ResponsiveContainer>

@@ -34,14 +34,18 @@ export function AppPillNav() {
     <div className="sticky top-4 z-40 mx-auto max-w-7xl px-4">
       <motion.header
         className={cn(
-          "flex items-center justify-between rounded-full backdrop-blur-xl bg-white/20 border border-white/30 px-3 shadow-lg transition-all",
-          scrolled ? "py-1.5" : "py-2.5"
+          "flex items-center justify-between rounded-2xl backdrop-blur-xl border px-4 transition-all",
+          scrolled ? "py-2" : "py-3"
         )}
         style={{
-          backgroundColor: "rgba(255, 255, 255, 0.12)",
-          backdropFilter: "blur(12px)",
-          borderColor: "rgba(255, 255, 255, 0.25)",
-          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.3)",
+          backgroundColor: "rgba(255, 255, 255, 0.14)",
+          backdropFilter: "blur(14px)",
+          borderColor: "rgba(255, 255, 255, 0.3)",
+          boxShadow: 
+            "0 20px 40px rgba(0, 0, 0, 0.15)," +
+            "inset 0 1px 2px rgba(255, 255, 255, 0.4)," +
+            "inset 0 -1px 2px rgba(0, 0, 0, 0.1)," +
+            "0 0 1px rgba(255, 255, 255, 0.5)",
         }}
         data-testid="app-pill-nav"
       >
@@ -59,15 +63,19 @@ export function AppPillNav() {
                 className={cn(
                   "rounded-full px-4 py-2 text-sm font-medium transition-all",
                   active
-                    ? "bg-white/15 backdrop-blur-sm text-primary-500 shadow-md relative"
-                    : "text-body hover:text-ink hover:bg-white/10"
+                    ? "text-primary-500 relative"
+                    : "text-body hover:text-ink hover:bg-white/5"
                 )}
                 style={
                   active
                     ? {
+                        backgroundColor: "rgba(249, 98, 44, 0.12)",
                         boxShadow:
-                          "0 0 24px rgba(249, 98, 44, 0.35), inset 0 0 16px rgba(249, 98, 44, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.2)",
-                        border: "1px solid rgba(249, 98, 44, 0.3)",
+                          "0 8px 16px rgba(249, 98, 44, 0.3)," +
+                          "inset 0 0 20px rgba(249, 98, 44, 0.3)," +
+                          "inset 0 1px 2px rgba(255, 255, 255, 0.2)," +
+                          "inset 0 -1px 2px rgba(0, 0, 0, 0.1)",
+                        border: "1px solid rgba(249, 98, 44, 0.4)",
                       }
                     : undefined
                 }
@@ -99,11 +107,16 @@ export function AppPillNav() {
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  className="absolute right-0 top-12 w-44 rounded-2xl backdrop-blur-xl border border-white/30 p-2 shadow-lg"
+                  className="absolute right-0 top-12 w-44 rounded-2xl backdrop-blur-xl border p-2"
                   style={{
-                    backgroundColor: "rgba(255, 255, 255, 0.12)",
-                    backdropFilter: "blur(12px)",
-                    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.3)",
+                    backgroundColor: "rgba(255, 255, 255, 0.14)",
+                    backdropFilter: "blur(14px)",
+                    borderColor: "rgba(255, 255, 255, 0.3)",
+                    boxShadow: 
+                      "0 20px 40px rgba(0, 0, 0, 0.15)," +
+                      "inset 0 1px 2px rgba(255, 255, 255, 0.4)," +
+                      "inset 0 -1px 2px rgba(0, 0, 0, 0.1)," +
+                      "0 0 1px rgba(255, 255, 255, 0.5)",
                   }}
                   data-testid="nav-profile-dropdown-menu"
                 >
@@ -127,11 +140,16 @@ export function AppPillNav() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="mt-2 overflow-hidden rounded-2xl backdrop-blur-xl border border-white/30 p-3 shadow-lg lg:hidden"
+            className="mt-2 overflow-hidden rounded-2xl backdrop-blur-xl border p-3 lg:hidden"
             style={{
-              backgroundColor: "rgba(255, 255, 255, 0.12)",
-              backdropFilter: "blur(12px)",
-              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.3)",
+              backgroundColor: "rgba(255, 255, 255, 0.14)",
+              backdropFilter: "blur(14px)",
+              borderColor: "rgba(255, 255, 255, 0.3)",
+              boxShadow: 
+                "0 20px 40px rgba(0, 0, 0, 0.15)," +
+                "inset 0 1px 2px rgba(255, 255, 255, 0.4)," +
+                "inset 0 -1px 2px rgba(0, 0, 0, 0.1)," +
+                "0 0 1px rgba(255, 255, 255, 0.5)",
             }}
           >
             {appNavItems.map((item) => (
