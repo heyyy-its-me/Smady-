@@ -23,6 +23,7 @@ const STATUS_STYLES: Record<string, string> = {
   "Rejected": "bg-red-50 text-red-700 border border-red-200",
   "webhook_not_configured": "bg-gray-50 text-gray-500 border border-gray-200",
   "pending": "bg-gray-50 text-gray-500 border border-gray-200",
+  "submitted": "bg-sky-50 text-sky-600 border border-sky-200",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -31,6 +32,7 @@ const STATUS_LABELS: Record<string, string> = {
   "sent": "Sent",
   "sent_after_revision": "Sent (Revised)",
   "pending": "Pending",
+  "submitted": "Submitted to n8n",
 };
 
 function StatusPill({ status }: { status: string }) {

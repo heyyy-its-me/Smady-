@@ -714,6 +714,10 @@ class GenerateProposalRequest(BaseModel):
 async def generate_proposal(body: GenerateProposalRequest, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     request_id = uuid.uuid4()
     configured = is_webhook_configured("proposals")
+    # Note: this row is just an app-side receipt of the request. The real reviewable
+    # proposal is written directly into public.proposal_review_log by n8n's Postgres node
+    # (n8n does NOT call back into this backend). Status "submitted" keeps this receipt
+    # out of the "Needs Review" queue/count so it doesn't show as a false pending item.
     result = await db.execute(
         insert(proposal_results).values(
             user_id=user["id"],
@@ -721,7 +725,7 @@ async def generate_proposal(body: GenerateProposalRequest, user: dict = Depends(
             lead_name=body.lead_name,
             lead_email=body.lead_email,
             proposal_json={},
-            final_status="Needs Review" if configured else "webhook_not_configured",
+            final_status="submitted" if configured else "webhook_not_configured",
         ).returning(proposal_results)
     )
     row = result.first()

@@ -24,7 +24,7 @@ export function FormSection({
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 300, damping: 26 }}
       className={cn(
-        "group relative overflow-hidden rounded-2xl border p-5 shadow-soft transition-shadow duration-200 hover:shadow-card sm:p-6",
+        "group relative rounded-2xl border p-5 shadow-soft transition-shadow duration-200 hover:shadow-card sm:p-6",
         tint
           ? "border-primary-200/70 bg-gradient-to-br from-primary-50/80 via-white to-orange-50/40"
           : "border-primary-100/60 bg-gradient-to-br from-amber-50/40 via-white to-primary-50/20",
@@ -33,7 +33,7 @@ export function FormSection({
       data-testid={`form-section-${label.toLowerCase().replace(/\s+/g, "-")}`}
     >
       <div
-        className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-primary-200/25 blur-2xl transition-transform duration-500 group-hover:scale-125"
+        className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 overflow-hidden rounded-full bg-primary-200/25 blur-2xl transition-transform duration-500 group-hover:scale-125"
         aria-hidden
       />
       <div className="relative mb-5 flex items-center gap-3">
