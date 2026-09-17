@@ -333,6 +333,8 @@ async def proposal_callback(
             stmt = update(public_proposal_review_log).where(
                 public_proposal_review_log.c.meeting_id == body.meeting_id
             ).values(
+                user_id=body.user_id,
+                lead_email=body.lead_email,
                 proposal_json=body.proposal_json,
                 guardrail_errors=body.guardrail_errors or [],
                 final_status=body.final_status,
