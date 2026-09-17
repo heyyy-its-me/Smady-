@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Table, Column, String, Integer, Text, DateTime, Date, ForeignKey, Boolean, Numeric, BigInteger
+from sqlalchemy import Table, Column, String, Integer, Text, DateTime, Date, ForeignKey, Boolean, Numeric, BigInteger, ARRAY
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 from database import metadata, DB_SCHEMA
@@ -118,9 +118,9 @@ public_proposal_review_log = Table(
     Column("meeting_id", Text),
     Column("lead_email", Text),
     Column("proposal_json", JSONB),
-    Column("guardrail_errors", JSONB),  # TEXT[] stored as JSONB-compatible
+    Column("guardrail_errors", ARRAY(Text)),
     Column("reviewer_approved", Boolean),
-    Column("reviewer_issues", JSONB),   # TEXT[] stored as JSONB-compatible
+    Column("reviewer_issues", ARRAY(Text)),
     Column("final_status", Text),
     Column("created_at", DateTime(timezone=True), server_default=func.now()),
     Column("context_json", JSONB),
