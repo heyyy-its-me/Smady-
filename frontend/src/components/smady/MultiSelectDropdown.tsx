@@ -19,11 +19,16 @@ export function MultiSelectDropdown({ options, value, onChange, label, placehold
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      // Close only if click is outside BOTH the component AND the dropdown portal
+      if (ref.current && !ref.current.contains(e.target as Node) &&
+          dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
@@ -105,6 +110,7 @@ export function MultiSelectDropdown({ options, value, onChange, label, placehold
       </div>
       {open && available.length > 0 && createPortal(
         <div 
+          ref={dropdownRef}
           className="fixed z-50 mt-1 max-h-48 overflow-y-auto rounded-xl border border-border bg-white p-1.5 shadow-nav"
           style={{ top: `${dropdownPos.top}px`, left: `${dropdownPos.left}px`, width: `${dropdownPos.width}px` }}
         >
