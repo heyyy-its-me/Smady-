@@ -134,23 +134,114 @@ async def _get_user_lead_emails(db: AsyncSession, user_id: str) -> set:
 
 # ── GET /api/proposals/packages ───────────────────────────────────────────────
 
+def _serialize_package(r) -> dict:
+    return {
+        "id": r.id,
+        "user_id": str(r.user_id) if r.user_id else None,
+        "package_name": r.package_name,
+        "floor_price": float(r.floor_price),
+        "ceiling_price": float(r.ceiling_price),
+        "includes": r.includes,
+        "valid_days": r.valid_days,
+        "active": r.active,
+        "is_own": r.user_id is not None,
+    }
+
+
+class PricingPackageCreate(BaseModel):
+    package_name: str
+    floor_price: float
+    ceiling_price: float
+    includes: Optional[str] = None
+    valid_days: int = 30
+    active: bool = True
+
+    @field_validator("ceiling_price")
+    @classmethod
+    def _ceiling_gte_floor(cls, v, info):
+        floor = info.data.get("floor_price")
+        if floor is not None and v < floor:
+            raise ValueError("ceiling_price must be >= floor_price")
+        return v
+
+
+class PricingPackageUpdate(BaseModel):
+    package_name: Optional[str] = None
+    floor_price: Optional[float] = None
+    ceiling_price: Optional[float] = None
+    includes: Optional[str] = None
+    valid_days: Optional[int] = None
+    active: Optional[bool] = None
+
+
 @router.get("/packages")
 async def list_packages(user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Return the active pricing catalog (public.pricing_packages)."""
+    """Return this user's own pricing plans plus any global (user_id IS NULL) fallback plans."""
     result = await db.execute(
-        select(pricing_packages).where(pricing_packages.c.active == True).order_by(pricing_packages.c.floor_price)
+        select(pricing_packages)
+        .where(
+            pricing_packages.c.active == True,
+            (pricing_packages.c.user_id == user["id"]) | (pricing_packages.c.user_id.is_(None)),
+        )
+        .order_by(pricing_packages.c.user_id.desc().nullslast(), pricing_packages.c.floor_price)
     )
-    out = []
-    for r in result.fetchall():
-        out.append({
-            "id": r.id,
-            "package_name": r.package_name,
-            "floor_price": float(r.floor_price),
-            "ceiling_price": float(r.ceiling_price),
-            "includes": r.includes,
-            "valid_days": r.valid_days,
-        })
-    return out
+    return [_serialize_package(r) for r in result.fetchall()]
+
+
+@router.post("/packages", status_code=201)
+async def create_package(body: PricingPackageCreate, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Create a pricing plan owned by the current user."""
+    result = await db.execute(
+        insert(pricing_packages).values(
+            user_id=user["id"],
+            package_name=body.package_name,
+            floor_price=body.floor_price,
+            ceiling_price=body.ceiling_price,
+            includes=body.includes,
+            valid_days=body.valid_days,
+            active=body.active,
+            updated_at=datetime.now(),
+        ).returning(pricing_packages)
+    )
+    row = result.first()
+    await db.commit()
+    return _serialize_package(row)
+
+
+@router.put("/packages/{package_id}")
+async def update_package(package_id: int, body: PricingPackageUpdate, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Update a pricing plan. Only the owning user may edit it; global (user_id NULL) plans are read-only."""
+    existing = await db.execute(select(pricing_packages).where(pricing_packages.c.id == package_id))
+    row = existing.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Pricing plan not found")
+    if row.user_id is None or str(row.user_id) != str(user["id"]):
+        raise HTTPException(status_code=403, detail="You can only edit your own pricing plans")
+
+    updates = {k: v for k, v in body.model_dump(exclude_unset=True).items() if v is not None}
+    if updates:
+        updates["updated_at"] = datetime.now()
+        result = await db.execute(
+            update(pricing_packages).where(pricing_packages.c.id == package_id).values(**updates).returning(pricing_packages)
+        )
+        row = result.first()
+        await db.commit()
+    return _serialize_package(row)
+
+
+@router.delete("/packages/{package_id}", status_code=204)
+async def delete_package(package_id: int, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Delete a pricing plan owned by the current user."""
+    existing = await db.execute(select(pricing_packages).where(pricing_packages.c.id == package_id))
+    row = existing.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Pricing plan not found")
+    if row.user_id is None or str(row.user_id) != str(user["id"]):
+        raise HTTPException(status_code=403, detail="You can only delete your own pricing plans")
+
+    await db.execute(pricing_packages.delete().where(pricing_packages.c.id == package_id))
+    await db.commit()
+    return None
 
 
 # ── POST /api/proposals/webhook ───────────────────────────────────────────────
@@ -612,6 +703,10 @@ class GenerateProposalRequest(BaseModel):
     lead_name: str
     lead_email: str
     proposal_template: str
+    proposal_subject: str
+    proposal_body: str
+    quoted_price: float
+    valid_days: int = 30
     key_points: Optional[str] = ""
 
 
@@ -633,9 +728,11 @@ async def generate_proposal(body: GenerateProposalRequest, user: dict = Depends(
     await db.commit()
     if configured:
         await trigger_webhook("proposals", {
-            "request_id": str(request_id), "user_id": user["id"],
+            "request_id": str(request_id), "user_id": user["id"], "user_email": user["email"],
             "lead_name": body.lead_name, "lead_email": body.lead_email,
             "proposal_template": body.proposal_template, "key_points": body.key_points,
+            "proposal_subject": body.proposal_subject, "proposal_body": body.proposal_body,
+            "quoted_price": body.quoted_price, "valid_days": body.valid_days,
         })
     return _serialize_proposal_result(row)
 

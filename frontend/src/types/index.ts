@@ -95,11 +95,14 @@ export interface ReviewQueue {
 
 export interface PricingPackage {
   id: number;
+  user_id?: string | null;
   package_name: string;
   floor_price: number;
   ceiling_price: number;
   includes: string;
   valid_days: number;
+  active?: boolean;
+  is_own?: boolean;
 }
 
 export interface ICPResult {

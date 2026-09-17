@@ -269,8 +269,8 @@ export default function Leads() {
         </div>
       )}
 
-      <div ref={formRef} className="relative overflow-hidden rounded-2xl border border-primary-100/70 bg-surface p-6 shadow-card lg:p-8" data-testid="leads-filter-form-card">
-        <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-gradient-to-br from-primary-200/40 to-accent/10 blur-3xl" aria-hidden />
+      <div ref={formRef} className="relative rounded-2xl border border-primary-100/70 bg-surface p-6 shadow-card lg:p-8" data-testid="leads-filter-form-card">
+        <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 overflow-hidden rounded-full bg-gradient-to-br from-primary-200/40 to-accent/10 blur-3xl" aria-hidden />
         <div className="relative">
           <span className="inline-flex items-center gap-2 rounded-full border border-primary-200/60 bg-primary-50 px-3 py-1 text-xs font-bold text-primary-600 shadow-sm">
             <Sparkles className="h-3 w-3" strokeWidth={2} />

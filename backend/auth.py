@@ -17,6 +17,11 @@ JWT_ALGORITHM = "HS256"
 MAX_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
 
+# The frontend proxies /api same-origin (Vite dev proxy / Vercel rewrite), so cookies are
+# first-party by default (Lax, Secure). Override via env only if you call the backend cross-origin.
+COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "true").lower() != "false"
+COOKIE_SAMESITE = os.environ.get("COOKIE_SAMESITE", "lax")
+
 
 def get_jwt_secret() -> str:
     return os.environ["JWT_SECRET"]
@@ -67,8 +72,8 @@ def create_refresh_token(user_id: str) -> str:
 
 
 def set_auth_cookies(response, access_token: str, refresh_token: str):
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="none", max_age=10800, path="/")
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="none", max_age=604800, path="/")
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE, max_age=10800, path="/")
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE, max_age=604800, path="/")
 
 
 def clear_auth_cookies(response):

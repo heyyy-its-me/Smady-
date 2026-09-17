@@ -1,6 +1,9 @@
 import axios from "axios";
 
-export const API_BASE = `${import.meta.env.REACT_APP_BACKEND_URL}/api`;
+// Always same-origin: Vite dev proxy (vite.config.ts) or the Vercel rewrite (vercel.json)
+// forwards this to the real backend. Keeping it same-origin means auth cookies are
+// first-party, so they aren't blocked by browsers' third-party-cookie rules.
+export const API_BASE = "/api";
 
 export const api = axios.create({
   baseURL: API_BASE,

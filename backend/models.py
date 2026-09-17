@@ -131,9 +131,12 @@ public_proposal_review_log = Table(
 )
 
 # Active pricing packages — read by n8n Proposal Agent and displayed in the app.
+# user_id is nullable: NULL rows are "global" fallback plans visible to everyone;
+# a set user_id scopes the plan to that user only (their own custom pricing catalog).
 pricing_packages = Table(
     "pricing_packages", metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("user_id", UUID(as_uuid=True), ForeignKey("public.users.id"), nullable=True),
     Column("package_name", Text, nullable=False),
     Column("floor_price", Numeric, nullable=False),
     Column("ceiling_price", Numeric, nullable=False),

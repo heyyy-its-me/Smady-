@@ -158,9 +158,12 @@ interface AppDataContextType {
   reviewQueue: Proposal[];
   pricingPackages: PricingPackage[];
   generatingProposal: boolean;
-  generateProposal: (data: { lead_name: string; lead_email: string; proposal_template: string; key_points: string }) => Promise<void>;
+  generateProposal: (data: { lead_name: string; lead_email: string; proposal_template: string; proposal_subject: string; proposal_body: string; quoted_price: number; valid_days?: number; key_points?: string }) => Promise<void>;
   approveProposal: (id: string | number) => Promise<void>;
   rejectProposal: (id: string | number, feedback: string) => Promise<void>;
+  createPricingPackage: (data: { package_name: string; floor_price: number; ceiling_price: number; includes?: string; valid_days?: number; active?: boolean }) => Promise<void>;
+  updatePricingPackage: (id: number, data: Partial<{ package_name: string; floor_price: number; ceiling_price: number; includes: string; valid_days: number; active: boolean }>) => Promise<void>;
+  deletePricingPackage: (id: number) => Promise<void>;
 
   dashboardStats: DashboardStats;
   outreachStats: OutreachStats;
@@ -482,7 +485,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const generateProposal = async (data: { lead_name: string; lead_email: string; proposal_template: string; key_points: string }) => {
+  const generateProposal = async (data: { lead_name: string; lead_email: string; proposal_template: string; proposal_subject: string; proposal_body: string; quoted_price: number; valid_days?: number; key_points?: string }) => {
     setGeneratingProposal(true);
     try {
       const { data: proposal } = await api.post("/proposals/generate", data);
@@ -536,6 +539,39 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const createPricingPackage = async (data: { package_name: string; floor_price: number; ceiling_price: number; includes?: string; valid_days?: number; active?: boolean }) => {
+    try {
+      await api.post("/proposals/packages", data);
+      await refreshProposals();
+      toast.success("Pricing plan created");
+    } catch (e) {
+      toast.error(formatApiError(e));
+      throw e;
+    }
+  };
+
+  const updatePricingPackage = async (id: number, data: Partial<{ package_name: string; floor_price: number; ceiling_price: number; includes: string; valid_days: number; active: boolean }>) => {
+    try {
+      await api.put(`/proposals/packages/${id}`, data);
+      await refreshProposals();
+      toast.success("Pricing plan updated");
+    } catch (e) {
+      toast.error(formatApiError(e));
+      throw e;
+    }
+  };
+
+  const deletePricingPackage = async (id: number) => {
+    try {
+      await api.delete(`/proposals/packages/${id}`);
+      await refreshProposals();
+      toast.success("Pricing plan deleted");
+    } catch (e) {
+      toast.error(formatApiError(e));
+      throw e;
+    }
+  };
+
   return (
     <AppDataContext.Provider
       value={{
@@ -573,6 +609,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         generateProposal,
         approveProposal,
         rejectProposal,
+        createPricingPackage,
+        updatePricingPackage,
+        deletePricingPackage,
         dashboardStats,
         outreachStats,
         refreshDashboard,
