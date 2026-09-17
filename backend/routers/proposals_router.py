@@ -414,8 +414,12 @@ async def list_proposals(
     review_rows = []
     for r in n8n_rows:
         row_email = (r.lead_email or "").lower()
-        # Show row if user has no leads yet OR lead email matches
-        if not user_emails or row_email in user_emails:
+        row_user_id = str(r.user_id) if r.user_id else None
+        # Show row if:
+        # 1. User has no leads yet (first-time user), OR
+        # 2. Lead email matches user's imported leads, OR
+        # 3. user_id matches (manual proposals not in lead_results)
+        if not user_emails or row_email in user_emails or (row_user_id and row_user_id == str(uid)):
             d = _serialize_review_log(r)
             # Mark second-cycle reviews
             if r.meeting_id and r.meeting_id in revision_meeting_ids and r.final_status in ("needs_review", "Needs Review"):

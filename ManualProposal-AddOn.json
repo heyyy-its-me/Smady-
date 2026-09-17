@@ -16,7 +16,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Handle both body.user_id and direct user_id\nconst payload = $json.body || $json;\nlet userEmail = (payload.user_email || '').trim().toLowerCase();\nif (userEmail) return { userEmail };\n\n// If not provided, we'll look it up in the next Postgres node using user_id\nconst userId = payload.user_id;\nif (!userId) throw new Error('user_id is required in webhook body');\nreturn { userId, userEmail: null };"
+        "jsCode": "// Handle both body.user_id and direct user_id\nconst payload = $json.body || $json;\nconst userId = payload.user_id;\nif (!userId) throw new Error('user_id is required in webhook body');\n\nlet userEmail = (payload.user_email || '').trim().toLowerCase();\n\nreturn { userId, userEmail: userEmail || null };"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -76,13 +76,74 @@
     },
     {
       "parameters": {
-        "jsCode": "const triggerData = $('Manual Proposal Trigger').first().json;\nconst trigger = triggerData.body || triggerData;\nconst pricingRows = $input.all().map(i => i.json);\n\nconst rawId = (trigger.request_id || '').toString().trim();\nconst meetingId = rawId.length > 0 ? rawId : `manual-${Date.now()}`;\n\nconst validDays = parseInt(trigger.valid_days) || 30;\nconst validUntil = new Date();\nvalidUntil.setDate(validUntil.getDate() + validDays);\nconst formatDate = (d) => d.toISOString().split('T')[0];\n\nlet bodyHtml = (trigger.proposal_body || '').trim();\nif (!/<[a-z][\\s\\S]*>/i.test(bodyHtml)) {\n  bodyHtml = bodyHtml\n    .split(/\\n{2,}/)\n    .map(para => `<p>${para.replace(/\\n/g, '<br>')}</p>`)\n    .join('');\n}\n\nconst quotedPrice = Number(trigger.quoted_price);\nif (!Number.isFinite(quotedPrice)) {\n  throw new Error(`quoted_price missing or invalid in webhook body: ${JSON.stringify(trigger.quoted_price)}`);\n}\n\nreturn {\n  meeting_id: meetingId,\n  lead_email: trigger.lead_email,\n  overview: `Manual proposal drafted for ${trigger.lead_name}`,\n  requirements: {\n    budget_signal: null,\n    timeline: null,\n    key_requirements: [],\n    pain_points: [],\n    objections_raised: [],\n    competitors_mentioned: [],\n    decision_makers: []\n  },\n  pricing_catalog_json: pricingRows,\n  proposal: {\n    subject: trigger.proposal_subject,\n    body_html: bodyHtml,\n    package_selected: (trigger.proposal_template || '').trim(),\n    quoted_price: quotedPrice,\n    valid_until: formatDate(validUntil)\n  }\n};"
+        "jsCode": "const triggerData = $('Manual Proposal Trigger').first().json;\nconst trigger = triggerData.body || triggerData;\nconst pricingRows = $input.all().map(i => i.json);\n\nconst rawId = (trigger.request_id || '').toString().trim();\nconst meetingId = rawId.length > 0 ? rawId : `manual-${Date.now()}`;\n\nconst validDays = parseInt(trigger.valid_days) || 30;\nconst validUntil = new Date();\nvalidUntil.setDate(validUntil.getDate() + validDays);\nconst formatDate = (d) => d.toISOString().split('T')[0];\n\nlet bodyHtml = (trigger.proposal_body || '').trim();\nif (!/<[a-z][\\s\\S]*>/i.test(bodyHtml)) {\n  bodyHtml = bodyHtml\n    .split(/\\n{2,}/)\n    .map(para => `<p>${para.replace(/\\n/g, '<br>')}</p>`)\n    .join('');\n}\n\nconst quotedPrice = Number(trigger.quoted_price);\nif (!Number.isFinite(quotedPrice)) {\n  throw new Error(`quoted_price missing or invalid in webhook body: ${JSON.stringify(trigger.quoted_price)}`);\n}\n\nconst extractResult = $('Extract User Email').item.json;\n\nreturn {\n  user_id: extractResult.userId,\n  meeting_id: meetingId,\n  lead_email: trigger.lead_email,\n  lead_name: trigger.lead_name,\n  final_status: \"Needs Review\",\n  guardrail_errors: [],\n  context_json: {\n    overview: `Manual proposal drafted for ${trigger.lead_name}`,\n    requirements: {\n      budget_signal: null,\n      timeline: null,\n      key_requirements: [],\n      pain_points: [],\n      objections_raised: [],\n      competitors_mentioned: [],\n      decision_makers: []\n    },\n    pricing_catalog_json: pricingRows\n  },\n  proposal_json: {\n    subject: trigger.proposal_subject,\n    body_html: bodyHtml,\n    package_selected: (trigger.proposal_template || '').trim(),\n    quoted_price: quotedPrice,\n    valid_until: formatDate(validUntil)\n  }\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [-2450, 700],
       "id": "manual-prepare-context-001",
       "name": "Prepare Manual Proposal Context"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BACKEND_URL || 'http://localhost:8000' }}/api/proposals/webhook",
+        "authentication": "headerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Callback-Secret",
+              "value": "={{ $env.N8N_CALLBACK_SECRET || '' }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{ $json.user_id }}"
+            },
+            {
+              "name": "meeting_id",
+              "value": "={{ $json.meeting_id }}"
+            },
+            {
+              "name": "lead_email",
+              "value": "={{ $json.lead_email }}"
+            },
+            {
+              "name": "lead_name",
+              "value": "={{ $json.lead_name }}"
+            },
+            {
+              "name": "proposal_json",
+              "value": "={{ $json.proposal_json }}"
+            },
+            {
+              "name": "guardrail_errors",
+              "value": "={{ $json.guardrail_errors }}"
+            },
+            {
+              "name": "final_status",
+              "value": "={{ $json.final_status }}"
+            },
+            {
+              "name": "context_json",
+              "value": "={{ $json.context_json }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-2200, 700],
+      "id": "send-to-backend-001",
+      "name": "Send Proposal to Backend"
     }
   ],
   "connections": {
@@ -124,7 +185,7 @@
     "Prepare Manual Proposal Context": {
       "main": [
         [
-          { "node": "Guardrail Check - Deterministic", "type": "main", "index": 0 }
+          { "node": "Send Proposal to Backend", "type": "main", "index": 0 }
         ]
       ]
     }
