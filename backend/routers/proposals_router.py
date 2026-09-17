@@ -285,7 +285,7 @@ async def proposal_callback(
     """
     # 1. Verify webhook secret
     try:
-        verify_callback_secret(x_callback_secret, os.environ.get("N8N_CALLBACK_SECRET"))
+        verify_callback_secret(x_callback_secret)
     except Exception as e:
         logger.error("Webhook secret verification failed: %s", e)
         raise HTTPException(status_code=401, detail="Invalid webhook secret")
