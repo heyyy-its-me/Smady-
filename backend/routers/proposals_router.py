@@ -736,7 +736,7 @@ async def generate_proposal(body: GenerateProposalRequest, user: dict = Depends(
             "lead_name": body.lead_name, "lead_email": body.lead_email,
             "proposal_template": body.proposal_template, "key_points": body.key_points,
             "proposal_subject": body.proposal_subject, "proposal_body": body.proposal_body,
-            "quoted_price": body.quoted_price, "valid_days": body.valid_days,
+            "quoted_price": float(body.quoted_price), "valid_days": body.valid_days,
         })
     return _serialize_proposal_result(row)
 

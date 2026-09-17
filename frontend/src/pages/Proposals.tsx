@@ -639,7 +639,7 @@ export default function Proposals() {
           </div>
         </div>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-4">
           {activeTab === "queue" && (
             <>
               {queueItems.length === 0 ? (
@@ -649,9 +649,11 @@ export default function Proposals() {
                   <p className="mt-1 text-xs text-muted">No proposals awaiting manual review.</p>
                 </div>
               ) : (
-                queueItems.map((p) => (
-                  <ProposalCard key={p.id} p={p} onApprove={onApprove} onReject={onReject} />
-                ))
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {queueItems.map((p) => (
+                    <ProposalCard key={p.id} p={p} onApprove={onApprove} onReject={onReject} />
+                  ))}
+                </div>
               )}
             </>
           )}
