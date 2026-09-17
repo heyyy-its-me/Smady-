@@ -33,7 +33,10 @@ export function AppPillNav() {
   return (
     <div className="sticky top-4 z-40 mx-auto max-w-7xl px-4">
       <motion.header
-        className={cn("flex items-center justify-between rounded-full bg-white px-3 shadow-nav transition-all", scrolled ? "py-1.5" : "py-2.5")}
+        className={cn(
+          "flex items-center justify-between rounded-full backdrop-blur-md bg-white/10 border border-white/20 px-3 shadow-lg transition-all",
+          scrolled ? "py-1.5" : "py-2.5"
+        )}
         data-testid="app-pill-nav"
       >
         <Link to="/dashboard" className="flex items-center gap-2 pl-2">
@@ -47,7 +50,20 @@ export function AppPillNav() {
                 key={item.path}
                 to={item.path}
                 data-testid={`nav-link-${slug(item.label)}`}
-                className={cn("rounded-full px-4 py-2 text-sm font-medium transition-colors", active ? "bg-primary-500 text-white" : "text-body hover:text-ink")}
+                className={cn(
+                  "rounded-full px-4 py-2 text-sm font-medium transition-all",
+                  active
+                    ? "bg-white/20 backdrop-blur-sm text-primary-500 shadow-md ring-1 ring-inset ring-primary-500/50 relative"
+                    : "text-body hover:text-ink hover:bg-white/10"
+                )}
+                style={
+                  active
+                    ? {
+                        boxShadow:
+                          "0 0 20px rgba(249, 98, 44, 0.2), inset 0 0 12px rgba(249, 98, 44, 0.15)",
+                      }
+                    : undefined
+                }
               >
                 {item.label}
               </Link>
@@ -55,17 +71,17 @@ export function AppPillNav() {
           })}
         </nav>
         <div className="flex items-center gap-2 pr-1">
-          <button className="relative rounded-full p-2 text-body hover:bg-bg" data-testid="nav-mail-icon">
+          <button className="relative rounded-full p-2 text-body hover:bg-white/10 transition-colors" data-testid="nav-mail-icon">
             <Mail className="h-5 w-5" strokeWidth={1.5} />
             <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary-500 text-[10px] font-semibold text-white">3</span>
           </button>
-          <button className="relative rounded-full p-2 text-body hover:bg-bg" data-testid="nav-bell-icon">
+          <button className="relative rounded-full p-2 text-body hover:bg-white/10 transition-colors" data-testid="nav-bell-icon">
             <Bell className="h-5 w-5" strokeWidth={1.5} />
             <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500" />
           </button>
-          <div className="hidden h-6 w-px bg-border sm:block" />
+          <div className="hidden h-6 w-px bg-border/30 sm:block" />
           <div className="relative">
-            <button onClick={() => setProfileOpen((o) => !o)} data-testid="nav-profile-dropdown-toggle" className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 hover:bg-bg">
+            <button onClick={() => setProfileOpen((o) => !o)} data-testid="nav-profile-dropdown-toggle" className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 hover:bg-white/10 transition-colors">
               <AvatarInitial name={user?.name || "Alex Morgan"} size={32} />
               <span className="hidden text-sm font-medium text-ink sm:inline">{user?.name || "Alex Morgan"}</span>
               <ChevronDown className="h-4 w-4 text-muted" strokeWidth={1.5} />
@@ -76,19 +92,19 @@ export function AppPillNav() {
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  className="absolute right-0 top-12 w-44 rounded-2xl bg-white p-2 shadow-nav"
+                  className="absolute right-0 top-12 w-44 rounded-2xl backdrop-blur-md bg-white/20 border border-white/20 p-2 shadow-lg"
                   data-testid="nav-profile-dropdown-menu"
                 >
-                  <button className="block w-full rounded-lg px-3 py-2 text-left text-sm text-ink hover:bg-bg" data-testid="nav-profile-link">Profile</button>
-                  <button className="block w-full rounded-lg px-3 py-2 text-left text-sm text-ink hover:bg-bg" data-testid="nav-settings-link">Settings</button>
-                  <button onClick={logout} data-testid="nav-logout-button" className="block w-full rounded-lg px-3 py-2 text-left text-sm text-danger hover:bg-bg">
+                  <button className="block w-full rounded-lg px-3 py-2 text-left text-sm text-ink hover:bg-white/20 transition-colors" data-testid="nav-profile-link">Profile</button>
+                  <button className="block w-full rounded-lg px-3 py-2 text-left text-sm text-ink hover:bg-white/20 transition-colors" data-testid="nav-settings-link">Settings</button>
+                  <button onClick={logout} data-testid="nav-logout-button" className="block w-full rounded-lg px-3 py-2 text-left text-sm text-danger hover:bg-white/20 transition-colors">
                     Logout
                   </button>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
-          <button className="rounded-full p-2 text-ink lg:hidden" onClick={() => setMobileOpen((o) => !o)} data-testid="app-mobile-menu-toggle">
+          <button className="rounded-full p-2 text-ink hover:bg-white/10 transition-colors lg:hidden" onClick={() => setMobileOpen((o) => !o)} data-testid="app-mobile-menu-toggle">
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
@@ -99,7 +115,7 @@ export function AppPillNav() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="mt-2 overflow-hidden rounded-2xl bg-white p-3 shadow-nav lg:hidden"
+            className="mt-2 overflow-hidden rounded-2xl backdrop-blur-md bg-white/20 border border-white/20 p-3 shadow-lg lg:hidden"
           >
             {appNavItems.map((item) => (
               <Link
@@ -107,7 +123,12 @@ export function AppPillNav() {
                 to={item.path}
                 onClick={() => setMobileOpen(false)}
                 data-testid={`mobile-nav-link-${slug(item.label)}`}
-                className={cn("block rounded-lg px-3 py-2 text-sm font-medium", location.pathname === item.path ? "bg-primary-500 text-white" : "text-body")}
+                className={cn(
+                  "block rounded-lg px-3 py-2 text-sm font-medium transition-all",
+                  location.pathname === item.path
+                    ? "bg-white/30 text-primary-500 shadow-md"
+                    : "text-body hover:bg-white/10"
+                )}
               >
                 {item.label}
               </Link>

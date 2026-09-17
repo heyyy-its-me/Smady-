@@ -127,21 +127,18 @@ export function MultiLineChartCard({
   return (
     <CardShell title={title} subtitle={subtitle} testId={testId}>
       <ResponsiveContainer width="100%" height={260}>
-        <LineChart data={data} margin={{ top: 16, right: 4, left: -20, bottom: 0 }}>
-          <defs>
-            {isSingleLine && (
+        {isSingleLine ? (
+          <ComposedChart data={data} margin={{ top: 16, right: 4, left: -20, bottom: 0 }}>
+            <defs>
               <linearGradient id="softGlow" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={colors[0]} stopOpacity={0.2} />
                 <stop offset="100%" stopColor={colors[0]} stopOpacity={0.01} />
               </linearGradient>
-            )}
-          </defs>
-          <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#A39A93" }} />
-          <YAxis hide />
-          <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #F1E9E3" }} />
-          {lineKeys.map((key, idx) => {
-            const isFirst = idx === 0;
-            return isSingleLine ? (
+            </defs>
+            <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#A39A93" }} />
+            <YAxis hide />
+            <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #F1E9E3" }} />
+            {lineKeys.map((key, idx) => (
               <Area
                 key={`area-${key}`}
                 type="monotone"
@@ -152,11 +149,18 @@ export function MultiLineChartCard({
                 dot={false}
                 isAnimationActive={false}
               />
-            ) : (
+            ))}
+          </ComposedChart>
+        ) : (
+          <LineChart data={data} margin={{ top: 16, right: 4, left: -20, bottom: 0 }}>
+            <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#A39A93" }} />
+            <YAxis hide />
+            <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #F1E9E3" }} />
+            {lineKeys.map((key, idx) => (
               <Line key={key} type="monotone" dataKey={key} stroke={colors[idx % colors.length]} strokeWidth={2} dot={false} isAnimationActive={false} />
-            );
-          })}
-        </LineChart>
+            ))}
+          </LineChart>
+        )}
       </ResponsiveContainer>
       <div className="mt-2 flex gap-4 text-xs text-muted flex-wrap">
         {lineKeys.map((key, idx) => (
