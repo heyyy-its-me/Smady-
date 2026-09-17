@@ -118,7 +118,7 @@ export default function Dashboard() {
           <RadialGauge value={dashboardStats.leadsToday.value} target={Math.max(dashboardStats.leadsToday.value + 5, 20)} label="Leads Sourced Today" />
         </div>
         <StatCard label="Meetings Booked" value={dashboardStats.meetingsBooked.value} icon={CalendarCheck} sparkline={dashboardStats.meetingsBooked.sparkline} trend="up" />
-        <StatCard label="Proposals Sent" value={dashboardStats.proposalsSent.value} icon={Send} sparkline={dashboardStats.proposalsSent.sparkline} trend="up" />
+        <StatCard label="Proposals Sent" value={dashboardStats.proposalsSent?.value || 0} icon={Send} sparkline={dashboardStats.proposalsSent?.sparkline || [0, 0, 0, 0, 0, 0, 0]} trend="up" />
       </div>
 
       {/* ── Bento Row 2: Activity Heatmap (2) + Pipeline Funnel (1) + ICPs Generated Daily (1) ── */}
@@ -127,7 +127,13 @@ export default function Dashboard() {
           <HeatmapCard dailyActivity={dailyActivity ?? {}} testId="dashboard-heatmap" />
         </div>
         <FunnelChartCard title="Pipeline Funnel" subtitle="Leads by stage" data={pipelineFunnel} testId="dashboard-pipeline-funnel" />
-        <BarChartCard title="ICPs Generated" subtitle="Last 7 days by day" data={icpsGeneratedDaily} testId="dashboard-icps-daily" />
+        {icpsGeneratedDaily && icpsGeneratedDaily.length > 0 ? (
+          <BarChartCard title="ICPs Generated" subtitle="Last 7 days by day" data={icpsGeneratedDaily} testId="dashboard-icps-daily" />
+        ) : (
+          <div className="rounded-[24px] border border-border bg-surface p-6 shadow-card flex items-center justify-center">
+            <p className="text-sm text-muted">No ICPs generated yet this week</p>
+          </div>
+        )}
       </div>
 
       {/* ── Bento Row 3: Live Activity Feed (2) + Emails Sent (1) + Reply Rate (1) ── */}
