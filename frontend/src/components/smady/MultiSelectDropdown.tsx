@@ -112,7 +112,11 @@ export function MultiSelectDropdown({ options, value, onChange, label, placehold
             <button
               key={opt}
               type="button"
-              onClick={() => addTag(opt)}
+              onClick={(e) => {
+                e.stopPropagation();
+                addTag(opt);
+                setOpen(false);
+              }}
               data-testid={`option-${slug(opt)}`}
               className="block w-full rounded-lg px-3 py-2 text-left text-sm text-body transition-colors hover:bg-primary-50 hover:text-primary-600"
             >
