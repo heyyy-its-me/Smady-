@@ -293,6 +293,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       if (!isAuthenticated) return;
       refreshDashboard().catch(() => {});
       refreshMeetings().catch(() => {});
+      refreshProposals().catch(() => {});
     };
     document.addEventListener("visibilitychange", onFocus);
     window.addEventListener("focus", onFocus);
@@ -300,7 +301,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       document.removeEventListener("visibilitychange", onFocus);
       window.removeEventListener("focus", onFocus);
     };
-  }, [isAuthenticated, refreshDashboard, refreshMeetings]);
+  }, [isAuthenticated, refreshDashboard, refreshMeetings, refreshProposals]);
+
+  // Proposals arrive asynchronously from n8n, so poll periodically to pick up new rows
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const id = setInterval(() => {
+      refreshProposals().catch(() => {});
+    }, 20000);
+    return () => clearInterval(id);
+  }, [isAuthenticated, refreshProposals]);
 
   const generateIcp = async (input: Record<string, unknown>) => {
     icpAbortRef.current?.abort();

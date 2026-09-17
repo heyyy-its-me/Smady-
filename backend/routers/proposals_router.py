@@ -88,6 +88,7 @@ def _serialize_review_log(row) -> dict:
         "valid_until": pj.get("valid_until") if isinstance(pj, dict) else None,
         "subject": pj.get("subject") if isinstance(pj, dict) else None,
         "body_html": pj.get("body_html") if isinstance(pj, dict) else None,
+        "lead_name": pj.get("lead_name") if isinstance(pj, dict) else None,
         "context_json": row.context_json,
         # revision indicator: final_status was already 'sent_after_revision' in a previous row for same meeting_id
         "is_revision": False,  # populated by list endpoint
