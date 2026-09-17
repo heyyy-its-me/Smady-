@@ -303,35 +303,34 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
     ]
 
     # --- Outreach over time (last 6 months) ---
-    campaign_ids_r = await db.execute(select(outreach_campaigns.c.id).where(outreach_campaigns.c.user_id == user["id"]))
-    campaign_ids = [r.id for r in campaign_ids_r.fetchall()]
-
     outreach_over_time = []
     for i in range(5, -1, -1):
         m_date = today.replace(day=1) - timedelta(days=i * 28)
         m_label = m_date.strftime("%b")
-        sent_r, opened_r, replied_r = 0, 0, 0
-        if campaign_ids:
-            month_start = m_date.replace(day=1)
-            if m_date.month == 12:
-                month_end = m_date.replace(year=m_date.year + 1, month=1, day=1)
-            else:
-                month_end = m_date.replace(month=m_date.month + 1, day=1)
+        
+        month_start = m_date.replace(day=1)
+        if m_date.month == 12:
+            month_end = m_date.replace(year=m_date.year + 1, month=1, day=1)
+        else:
+            month_end = m_date.replace(month=m_date.month + 1, day=1)
 
-            async def _count_email_status(status: str, ms, me) -> int:
-                r = await db.execute(
-                    select(func.count()).select_from(outreach_emails).where(
-                        outreach_emails.c.campaign_id.in_(campaign_ids),
-                        outreach_emails.c.status == status,
-                        func.date(outreach_emails.c.created_at) >= ms,
-                        func.date(outreach_emails.c.created_at) < me,
-                    )
+        # Query emails by joining campaigns (filters by user_id)
+        async def _count_email_status_by_user(status: str, ms, me) -> int:
+            r = await db.execute(
+                select(func.count()).select_from(outreach_emails)
+                .join(outreach_campaigns, outreach_emails.c.campaign_id == outreach_campaigns.c.id)
+                .where(
+                    outreach_campaigns.c.user_id == user["id"],
+                    outreach_emails.c.status == status,
+                    func.date(outreach_emails.c.created_at) >= ms,
+                    func.date(outreach_emails.c.created_at) < me,
                 )
-                return r.scalar() or 0
+            )
+            return r.scalar() or 0
 
-            sent_r = await _count_email_status("sent", month_start, month_end)
-            opened_r = await _count_email_status("opened", month_start, month_end)
-            replied_r = await _count_email_status("replied", month_start, month_end)
+        sent_r = await _count_email_status_by_user("sent", month_start, month_end)
+        opened_r = await _count_email_status_by_user("opened", month_start, month_end)
+        replied_r = await _count_email_status_by_user("replied", month_start, month_end)
         outreach_over_time.append({"label": m_label, "sent": sent_r, "opened": opened_r, "replied": replied_r})
 
     # --- Leads by Country & Industry ---
@@ -384,8 +383,10 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
     tw_total = sum(this_week_meetings)
     lw_total = sum(last_week_meetings)
     pct = _pct_change(tw_total, lw_total)
+    
+    # Meeting Conversion Rate = total meetings / total leads
     total_leads_for_conv = max(total_leads, 1)
-    meeting_conversion_rate = round(tw_total / total_leads_for_conv * 100)
+    meeting_conversion_rate = round(meetings_total / total_leads_for_conv * 100)
 
     meeting_conversion = {
         "percent": meeting_conversion_rate,
@@ -461,12 +462,36 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
         r = await db.execute(select(func.count()).select_from(public_proposal_review_log).where(*conditions))
         return r.scalar() or 0
 
-    proposals_this_month = [
-        {"label": "Generated", "value": await _count_proposals(None)},
-        {"label": "Sent", "value": await _count_proposals(["sent", "Sent", "sent_after_revision"])},
-        {"label": "Accepted", "value": await _count_proposals(["Approved"])},
-        {"label": "Pending", "value": await _count_proposals(["needs_review", "Needs Review"])},
-    ]
+    # Proposals Lifecycle: by week for time-series line chart
+    proposals_by_week = []
+    for week_offset in range(4):  # Last 4 weeks
+        week_start = today - timedelta(days=(3 - week_offset) * 7)
+        week_end = week_start + timedelta(days=7)
+        week_label = f"Week {4 - week_offset}"
+        
+        async def _count_proposals_week(statuses: list | None, start, end) -> int:
+            conditions = [
+                public_proposal_review_log.c.user_id == user["id"],
+                func.date(public_proposal_review_log.c.created_at) >= start,
+                func.date(public_proposal_review_log.c.created_at) < end,
+            ]
+            if statuses:
+                conditions.append(public_proposal_review_log.c.final_status.in_(statuses))
+            r = await db.execute(select(func.count()).select_from(public_proposal_review_log).where(*conditions))
+            return r.scalar() or 0
+        
+        generated = await _count_proposals_week(None, week_start, week_end)
+        sent = await _count_proposals_week(["sent", "Sent", "sent_after_revision"], week_start, week_end)
+        accepted = await _count_proposals_week(["Approved"], week_start, week_end)
+        pending = await _count_proposals_week(["needs_review", "Needs Review"], week_start, week_end)
+        
+        proposals_by_week.append({
+            "label": week_label,
+            "generated": generated,
+            "sent": sent,
+            "accepted": accepted,
+            "pending": pending,
+        })
 
     return {
         "funnel": funnel,
@@ -476,5 +501,5 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
         "meeting_conversion": meeting_conversion,
         "campaign_performance": campaign_perf,
         "proposal_quality": proposal_quality,
-        "proposals_this_month": proposals_this_month,
+        "proposals_this_month": proposals_by_week,
     }

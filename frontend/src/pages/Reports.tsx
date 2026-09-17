@@ -67,15 +67,15 @@ export default function Reports() {
   const realByIndustry = analytics ? (analytics.leads_by_industry as typeof leadsByIndustry) : leadsByIndustry;
   const realMeetingConv = analytics ? (analytics.meeting_conversion as typeof meetingConversion) : meetingConversion;
   const realCampaigns = analytics ? (analytics.campaign_performance as typeof campaignPerformance) : campaignPerformance;
-  const proposalsThisMonth = analytics ? (analytics.proposals_this_month as { label: string; value: number }[]) : [
-    { label: "Generated", value: 14 },
-    { label: "Sent", value: 9 },
-    { label: "Accepted", value: 6 },
-    { label: "Pending", value: 3 },
-  ];
-
-  // Transform proposals data into time-series format for line chart
-  const proposalsTimeSeriesData = [
+  
+  // Proposals Lifecycle data for line chart (from analytics or fallback to mock)
+  const proposalsTimeSeriesData = analytics ? (analytics.proposals_this_month as Array<{
+    label: string;
+    generated: number;
+    sent: number;
+    accepted: number;
+    pending: number;
+  }>) : [
     { label: "Week 1", generated: 14, sent: 9, accepted: 6, pending: 3 },
     { label: "Week 2", generated: 18, sent: 12, accepted: 8, pending: 4 },
     { label: "Week 3", generated: 22, sent: 16, accepted: 11, pending: 5 },
