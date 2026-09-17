@@ -514,18 +514,24 @@ async def approve_proposal(
     LIVE-FIRE WARNING: if n8n approve URL is configured, calling this WILL send
     a real email to the lead. Only call after explicit user confirmation.
     """
+    logger.info(f"[APPROVE] received proposal_ref={proposal_ref} user_id={user['id']}")
     approve_url = os.environ.get("N8N_PROPOSALS_APPROVE_URL", "").strip()
+    logger.info(f"[APPROVE] approve_url configured: {bool(approve_url.strip())}")
 
     # --- n8n review log (integer id or meeting_id) ---
     meeting_id = None
     try:
         row_id = int(proposal_ref)
+        logger.info(f"[APPROVE] parsed as integer: {row_id}")
         result = await db.execute(
             select(public_proposal_review_log).where(public_proposal_review_log.c.id == row_id)
         )
         row = result.first()
         if row:
             meeting_id = row.meeting_id
+            logger.info(f"[APPROVE] found in review_log with meeting_id={meeting_id}")
+        else:
+            logger.warning(f"[APPROVE] integer {row_id} NOT found in public_proposal_review_log")
     except ValueError:
         pass
 
@@ -533,10 +539,13 @@ async def approve_proposal(
         # Try as UUID for app proposals
         try:
             proposal_uuid = uuid.UUID(proposal_ref)
+            logger.info(f"[APPROVE] parsed as UUID: {proposal_uuid}")
             owner_check = await db.execute(
                 select(proposal_results.c.user_id).where(proposal_results.c.id == proposal_uuid)
             )
             owner_row = owner_check.first()
+            if owner_row:
+                logger.info(f"[APPROVE] found in proposal_results (app proposal), updating to Approved")
             if not owner_row or str(owner_row.user_id) != user["id"]:
                 raise HTTPException(status_code=404, detail="Proposal not found")
             res = await db.execute(
@@ -545,18 +554,22 @@ async def approve_proposal(
             )
             row = res.first()
             await db.commit()
+            logger.info(f"[APPROVE] app proposal updated to Approved, not calling n8n")
             return _serialize_proposal_result(row)
         except ValueError:
             pass
         # Try as meeting_id string
+        logger.info(f"[APPROVE] using {proposal_ref} as meeting_id string")
         meeting_id = proposal_ref
 
     # Call n8n approve webhook
     if approve_url:
+        webhook_url = f"{approve_url}?meeting_id={meeting_id}"
+        logger.info(f"[APPROVE] calling n8n webhook: {webhook_url}")
         try:
             async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.get(f"{approve_url}?meeting_id={meeting_id}")
-            logger.info("n8n approve webhook responded: %s", resp.status_code)
+                resp = await client.get(webhook_url)
+            logger.info(f"[APPROVE] n8n responded: {resp.status_code}")
             if resp.status_code == 200:
                 # n8n accepted — email will be sent by n8n
                 return {"message": "Proposal approved and sent via n8n", "meeting_id": meeting_id, "n8n_status": 200}
@@ -622,7 +635,9 @@ async def reject_proposal(
     LIVE-FIRE WARNING: if the n8n webhook URL is configured, this WILL trigger n8n to
     regenerate and (if it passes) email a revised proposal. Only call after confirmation.
     """
+    logger.info(f"[REJECT] received proposal_ref={proposal_ref} user_id={user['id']} feedback_len={len(body.feedback)}")
     reject_url = os.environ.get("N8N_PROPOSALS_REJECT_WEBHOOK_URL", "").strip()
+    logger.info(f"[REJECT] reject_url configured: {bool(reject_url.strip())}")
 
     meeting_id = None
     try:
@@ -660,10 +675,11 @@ async def reject_proposal(
         # n8n form trigger expects form-encoded POST with the exact field names
         # the form defines: "Meeting ID" and "Feedback"
         form_data = {"Meeting ID": meeting_id, "Feedback": body.feedback}
+        logger.info(f"[REJECT] calling n8n webhook with form_data: {form_data}")
         try:
             async with httpx.AsyncClient(timeout=15) as client:
                 resp = await client.post(reject_url, data=form_data)
-            logger.info("n8n reject form responded: %s %s", resp.status_code, resp.text[:200])
+            logger.info(f"[REJECT] n8n responded: {resp.status_code}")
             if resp.status_code == 200:
                 return {
                     "message": "Feedback submitted — n8n will regenerate the proposal",
