@@ -73,6 +73,15 @@ def _safe_list(val) -> list:
 def _serialize_review_log(row) -> dict:
     """Serialise a row from public.proposal_review_log."""
     pj = row.proposal_json or {}
+    
+    # Handle case where proposal_json was stored as a string (n8n double-encoding bug)
+    if isinstance(pj, str):
+        try:
+            import json
+            pj = json.loads(pj)
+        except:
+            pj = {}
+    
     return {
         "id": row.id,  # INTEGER
         "meeting_id": row.meeting_id,
@@ -300,6 +309,16 @@ async def proposal_callback(
         body.meeting_id, body.lead_email, body.user_id, body.final_status
     )
     logger.info("Received proposal_json type: %s, content: %s", type(body.proposal_json), body.proposal_json)
+    
+    # AUTO-FIX: If proposal_json came as a string, parse it to dict
+    if isinstance(body.proposal_json, str):
+        try:
+            import json
+            body.proposal_json = json.loads(body.proposal_json)
+            logger.info("Parsed proposal_json from string to dict, lead_name=%s", body.proposal_json.get("lead_name"))
+        except json.JSONDecodeError as e:
+            logger.error("Failed to parse proposal_json string: %s", e)
+            body.proposal_json = {}
     
     try:
         # Check if proposal already exists for this meeting_id
