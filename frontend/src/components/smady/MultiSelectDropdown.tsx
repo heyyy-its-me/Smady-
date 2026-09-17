@@ -31,14 +31,23 @@ export function MultiSelectDropdown({ options, value, onChange, label, placehold
 
   // Track dropdown position for Portal rendering (fixed viewport-based)
   useEffect(() => {
-    if (open && ref.current) {
+    if (!open) return;
+    const updatePos = () => {
+      if (!ref.current) return;
       const rect = ref.current.getBoundingClientRect();
       setDropdownPos({
         top: rect.bottom,
         left: rect.left,
         width: rect.width,
       });
-    }
+    };
+    updatePos();
+    window.addEventListener("scroll", updatePos, true);
+    window.addEventListener("resize", updatePos);
+    return () => {
+      window.removeEventListener("scroll", updatePos, true);
+      window.removeEventListener("resize", updatePos);
+    };
   }, [open]);
 
   const available = options.filter((o) => !value.includes(o) && o.toLowerCase().includes(query.toLowerCase()));

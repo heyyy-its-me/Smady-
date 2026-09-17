@@ -422,8 +422,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const sendToOutreach = async (ids: string[]) => {
     try {
-      await api.post("/leads/send-to-outreach", { ids });
+      const { data } = await api.post("/leads/send-to-outreach", { ids });
       setLeads((prev) => prev.map((l) => (ids.includes(l.id) ? { ...l, status: "Contacted" as const } : l)));
+      toast.success(data.message || "Lead sent to outreach");
     } catch (e) {
       toast.error(formatApiError(e));
     }

@@ -571,7 +571,13 @@ async def approve_proposal(
                 resp = await client.get(webhook_url)
             logger.info(f"[APPROVE] n8n responded: {resp.status_code}")
             if resp.status_code == 200:
-                # n8n accepted — email will be sent by n8n
+                # n8n's own workflow never updates proposal_review_log.final_status, so do it here
+                await db.execute(
+                    update(public_proposal_review_log)
+                    .where(public_proposal_review_log.c.meeting_id == meeting_id)
+                    .values(final_status="sent")
+                )
+                await db.commit()
                 return {"message": "Proposal approved and sent via n8n", "meeting_id": meeting_id, "n8n_status": 200}
             elif resp.status_code == 404:
                 # n8n workflow is INACTIVE — mark locally, tell user to activate
@@ -681,6 +687,13 @@ async def reject_proposal(
                 resp = await client.post(reject_url, data=form_data)
             logger.info(f"[REJECT] n8n responded: {resp.status_code}")
             if resp.status_code == 200:
+                # n8n's own workflow never updates proposal_review_log.final_status, so do it here
+                await db.execute(
+                    update(public_proposal_review_log)
+                    .where(public_proposal_review_log.c.meeting_id == meeting_id)
+                    .values(final_status="Rejected")
+                )
+                await db.commit()
                 return {
                     "message": "Feedback submitted — n8n will regenerate the proposal",
                     "meeting_id": meeting_id,

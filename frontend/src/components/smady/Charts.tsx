@@ -108,11 +108,11 @@ export function BarChartCard({ title, subtitle, data, testId }: { title: string;
   return (
     <CardShell title={title} subtitle={subtitle} testId={testId}>
       <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={data} margin={{ top: 16, right: 4, left: -20, bottom: 0 }}>
+        <BarChart data={data} margin={{ top: 16, right: 4, left: -20, bottom: 0 }} barCategoryGap="30%">
           <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#A39A93" }} />
           <YAxis hide />
           <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #F1E9E3" }} />
-          <Bar dataKey="value" fill="#F9622C" radius={[6, 6, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="value" fill="#F9622C" radius={[6, 6, 0, 0]} isAnimationActive={false} maxBarSize={28} />
         </BarChart>
       </ResponsiveContainer>
     </CardShell>

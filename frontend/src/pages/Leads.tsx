@@ -45,8 +45,6 @@ export default function Leads() {
     generateLeads,
     checkLeadsAgain,
     uploadLeads,
-    sendToOutreach,
-    sendRunToOutreach,
     updateLead,
     deleteLead,
     refreshLeads,
@@ -187,7 +185,6 @@ export default function Leads() {
           items={[
             { label: "View lead", onClick: () => setViewLead(l) },
             { label: "Edit", onClick: () => setEditLead(l) },
-            { label: "Send to outreach", onClick: () => sendToOutreach([l.id]) },
             {
               label: "Remove",
               danger: true,
@@ -349,19 +346,6 @@ export default function Leads() {
               >
                 Download Leads
               </ButtonOutline>
-              {leadsRunId && leadsTotal > 0 && (
-                <ButtonOutline
-                  type="button"
-                  icon={<Send className="h-4 w-4" strokeWidth={1.5} />}
-                  onClick={async () => {
-                    await sendRunToOutreach(leadsRunId);
-                    refreshLeads(leadsRunId, (page - 1) * PAGE_SIZE, PAGE_SIZE);
-                  }}
-                  data-testid="leads-send-run-to-outreach-button"
-                >
-                  Send All {leadsTotal} to Outreach
-                </ButtonOutline>
-              )}
             </div>
             <ButtonPrimary
               type="submit"
@@ -481,13 +465,14 @@ export default function Leads() {
             <span className="text-sm text-white">{selected.length} selected</span>
             <ButtonPrimary
               onClick={() => {
-                sendToOutreach(selected);
-                toast.success("Leads sent to outreach");
-                setSelected([]);
+                if (window.confirm(`Remove ${selected.length} lead(s)? This cannot be undone.`)) {
+                  selected.forEach((id) => deleteLead(id));
+                  setSelected([]);
+                }
               }}
-              data-testid="leads-send-to-outreach-button"
+              data-testid="leads-bulk-remove-button"
             >
-              Send to Outreach
+              Remove Selected
             </ButtonPrimary>
           </motion.div>
         )}

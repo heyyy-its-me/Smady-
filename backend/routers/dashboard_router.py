@@ -440,50 +440,30 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
         "approval_rate_first_pass": round(n8n_approved / max(n8n_props_total, 1) * 100),
     }
 
-    # --- Proposals over time (last 6 months) - generated, accepted, pending ---
-    proposals_over_time = []
-    for i in range(5, -1, -1):
-        m_date = today.replace(day=1) - timedelta(days=i * 28)
-        m_label = m_date.strftime("%b")
-        month_start = m_date.replace(day=1)
-        if m_date.month == 12:
-            month_end = m_date.replace(year=m_date.year + 1, month=1, day=1)
-        else:
-            month_end = m_date.replace(month=m_date.month + 1, day=1)
-        
-        # Count proposals by status for this month
-        generated_r = await db.execute(
-            select(func.count()).select_from(public_proposal_review_log).where(
-                func.date(public_proposal_review_log.c.created_at) >= month_start,
-                func.date(public_proposal_review_log.c.created_at) < month_end,
-            )
-        )
-        generated = generated_r.scalar() or 0
-        
-        accepted_r = await db.execute(
-            select(func.count()).select_from(public_proposal_review_log).where(
-                public_proposal_review_log.c.final_status.in_(["sent", "sent_after_revision", "Approved", "Sent"]),
-                func.date(public_proposal_review_log.c.created_at) >= month_start,
-                func.date(public_proposal_review_log.c.created_at) < month_end,
-            )
-        )
-        accepted = accepted_r.scalar() or 0
-        
-        pending_r = await db.execute(
-            select(func.count()).select_from(public_proposal_review_log).where(
-                public_proposal_review_log.c.final_status.in_(["needs_review", "Needs Review"]),
-                func.date(public_proposal_review_log.c.created_at) >= month_start,
-                func.date(public_proposal_review_log.c.created_at) < month_end,
-            )
-        )
-        pending = pending_r.scalar() or 0
-        
-        proposals_over_time.append({
-            "label": m_label,
-            "generated": generated,
-            "accepted": accepted,
-            "pending": pending,
-        })
+    # --- Proposals this month (generated / sent / accepted / pending) ---
+    month_start = today.replace(day=1)
+    if today.month == 12:
+        month_end = today.replace(year=today.year + 1, month=1, day=1)
+    else:
+        month_end = today.replace(month=today.month + 1, day=1)
+
+    async def _count_proposals(statuses: list | None) -> int:
+        conditions = [
+            public_proposal_review_log.c.user_id == user["id"],
+            func.date(public_proposal_review_log.c.created_at) >= month_start,
+            func.date(public_proposal_review_log.c.created_at) < month_end,
+        ]
+        if statuses:
+            conditions.append(public_proposal_review_log.c.final_status.in_(statuses))
+        r = await db.execute(select(func.count()).select_from(public_proposal_review_log).where(*conditions))
+        return r.scalar() or 0
+
+    proposals_this_month = [
+        {"label": "Generated", "value": await _count_proposals(None)},
+        {"label": "Sent", "value": await _count_proposals(["sent", "Sent", "sent_after_revision"])},
+        {"label": "Accepted", "value": await _count_proposals(["Approved"])},
+        {"label": "Pending", "value": await _count_proposals(["needs_review", "Needs Review"])},
+    ]
 
     return {
         "funnel": funnel,
@@ -493,5 +473,5 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
         "meeting_conversion": meeting_conversion,
         "campaign_performance": campaign_perf,
         "proposal_quality": proposal_quality,
-        "proposals_over_time": proposals_over_time,
+        "proposals_this_month": proposals_this_month,
     }

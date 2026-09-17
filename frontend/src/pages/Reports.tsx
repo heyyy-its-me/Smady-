@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Download, ExternalLink, Eye } from "lucide-react";
 import { PageHeader } from "@/layouts/PageHeader";
 import { ButtonOutline } from "@/components/smady/Button";
-import { FunnelChartCard, MultiLineChartCard, DonutChartCard } from "@/components/smady/Charts";
+import { FunnelChartCard, MultiLineChartCard, DonutChartCard, BarChartCard } from "@/components/smady/Charts";
 import { ComparisonCard } from "@/components/smady/ComparisonCard";
 import { DataTable, type Column } from "@/components/smady/DataTable";
 import { StatusBadge } from "@/components/smady/Badge";
@@ -67,13 +67,11 @@ export default function Reports() {
   const realByIndustry = analytics ? (analytics.leads_by_industry as typeof leadsByIndustry) : leadsByIndustry;
   const realMeetingConv = analytics ? (analytics.meeting_conversion as typeof meetingConversion) : meetingConversion;
   const realCampaigns = analytics ? (analytics.campaign_performance as typeof campaignPerformance) : campaignPerformance;
-  const realProposals = analytics ? (analytics.proposals_over_time as Array<{label: string; generated: number; accepted: number; pending: number}>) : [
-    { label: "Jan", generated: 8, accepted: 5, pending: 2 },
-    { label: "Feb", generated: 10, accepted: 7, pending: 2 },
-    { label: "Mar", generated: 12, accepted: 9, pending: 2 },
-    { label: "Apr", generated: 9, accepted: 6, pending: 3 },
-    { label: "May", generated: 14, accepted: 11, pending: 2 },
-    { label: "Jun", generated: 11, accepted: 8, pending: 3 },
+  const proposalsThisMonth = analytics ? (analytics.proposals_this_month as { label: string; value: number }[]) : [
+    { label: "Generated", value: 14 },
+    { label: "Sent", value: 9 },
+    { label: "Accepted", value: 6 },
+    { label: "Pending", value: 3 },
   ];
 
   const rows = (realCampaigns || []).map((c, i) => ({
@@ -338,14 +336,10 @@ export default function Reports() {
           lastWeek={realMeetingConv.lastWeek}
           totalPerWeek={realMeetingConv.totalPerWeek}
         />
-      </div>
-
-      {/* Proposals Visualization - 3 curved lines (generated, accepted, pending) */}
-      <div className="mt-6">
-        <MultiLineChartCard
+        <BarChartCard
           title="Proposals Lifecycle"
-          subtitle={analytics ? "Generated, accepted, and pending (last 6 months)" : "Sample proposal trends"}
-          data={realProposals}
+          subtitle={analytics ? "This month" : "Sample data"}
+          data={proposalsThisMonth}
           testId="reports-proposals-lifecycle"
         />
       </div>
