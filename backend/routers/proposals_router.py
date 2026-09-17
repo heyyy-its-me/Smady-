@@ -320,6 +320,15 @@ async def proposal_callback(
             logger.error("Failed to parse proposal_json string: %s", e)
             body.proposal_json = {}
     
+    # Ensure proposal_json is always a dict
+    if not isinstance(body.proposal_json, dict):
+        body.proposal_json = {}
+    
+    # AUTO-FIX: If proposal_json is missing lead_name, add it from top-level field
+    if body.lead_name and "lead_name" not in body.proposal_json:
+        body.proposal_json["lead_name"] = body.lead_name
+        logger.info("Added lead_name=%s to proposal_json from top-level field", body.lead_name)
+    
     try:
         # Check if proposal already exists for this meeting_id
         existing = await db.execute(
