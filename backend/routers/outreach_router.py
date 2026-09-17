@@ -5,6 +5,7 @@ from sqlalchemy import select, insert, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone, date, timedelta
 import uuid
+import logging
 
 from database import get_db
 from models import outreach_campaigns, outreach_emails, lead_results
@@ -12,6 +13,7 @@ from auth import get_current_user
 from webhooks import trigger_webhook, is_webhook_configured, verify_callback_secret
 from routers.leads_router import _normalize_lead
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/outreach", tags=["outreach"])
 
 
@@ -168,4 +170,71 @@ async def outreach_stats(user: dict = Depends(get_current_user), db: AsyncSessio
         "replyRate": {"value": round(replied / denom * 100), "sparkline": [0] * 7},
         "bounceRate": {"value": round(bounced / denom * 100), "sparkline": [0] * 7},
         "weeklyEmailsSent": weekly,
+    }
+
+
+@router.post("/log-emails")
+async def log_emails_sent(
+    body: dict,
+    x_callback_secret: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Log emails sent from n8n to outreach_emails table.
+    This endpoint allows n8n to record emails sent directly (not via campaigns).
+    
+    POST body:
+    {
+      "campaign_id": "uuid" (optional - will be set if available),
+      "emails": [
+        {"email": "test@example.com", "lead_id": "123", "status": "sent"},
+        ...
+      ]
+    }
+    """
+    try:
+        verify_callback_secret(x_callback_secret)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Invalid webhook secret")
+    
+    emails = body.get("emails", [])
+    campaign_id = body.get("campaign_id")
+    
+    if not emails:
+        return {"logged": 0, "message": "No emails to log"}
+    
+    # If campaign_id is provided, verify it exists
+    if campaign_id:
+        camp_check = await db.execute(select(outreach_campaigns.c.id).where(outreach_campaigns.c.id == campaign_id))
+        if not camp_check.first():
+            raise HTTPException(status_code=400, detail=f"Campaign {campaign_id} not found")
+    
+    logged_count = 0
+    for email_data in emails:
+        if not campaign_id and not email_data.get("campaign_id"):
+            # Skip emails without a campaign unless default provided
+            continue
+        
+        try:
+            email_obj = {
+                "id": uuid.uuid4(),
+                "campaign_id": email_data.get("campaign_id") or campaign_id,
+                "lead_id": email_data.get("lead_id"),
+                "email": email_data.get("email"),
+                "status": email_data.get("status", "sent"),
+                "created_at": datetime.now(timezone.utc),
+            }
+            if email_data.get("status") == "sent":
+                email_obj["sent_at"] = datetime.now(timezone.utc)
+            
+            await db.execute(insert(outreach_emails).values(**email_obj))
+            logged_count += 1
+        except Exception as e:
+            logger.error("Failed to log email: %s", e)
+    
+    await db.commit()
+    return {
+        "logged": logged_count,
+        "total": len(emails),
+        "message": f"Logged {logged_count} emails"
     }
