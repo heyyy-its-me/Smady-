@@ -511,8 +511,20 @@ export default function Proposals() {
       toast.error("Enter the lead's name and email first");
       return;
     }
-    if (!subject.trim() || !body.trim() || !quotedPrice) {
-      toast.error("Subject, proposal body, and quoted price are required");
+    if (!subject.trim()) {
+      toast.error("Proposal subject is required");
+      return;
+    }
+    if (!body.trim()) {
+      toast.error("Proposal body is required");
+      return;
+    }
+    if (!quotedPrice) {
+      toast.error("Quoted price is required");
+      return;
+    }
+    if (!validDays || Number(validDays) < 1) {
+      toast.error("Valid days must be at least 1");
       return;
     }
     await generateProposal({

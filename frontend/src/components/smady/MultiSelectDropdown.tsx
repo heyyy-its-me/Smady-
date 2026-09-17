@@ -29,13 +29,13 @@ export function MultiSelectDropdown({ options, value, onChange, label, placehold
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  // Track dropdown position for Portal rendering
+  // Track dropdown position for Portal rendering (fixed viewport-based)
   useEffect(() => {
     if (open && ref.current) {
       const rect = ref.current.getBoundingClientRect();
       setDropdownPos({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
+        top: rect.bottom,
+        left: rect.left,
         width: rect.width,
       });
     }
