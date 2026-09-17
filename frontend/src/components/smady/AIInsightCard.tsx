@@ -6,17 +6,17 @@ interface AIInsightCardProps {
     totalLeads: { value: number };
     leadsGrowth: { label: string; value: number }[];
     emailsSentComparison: { percent: number; trend: "up" | "down" };
-    replyRateComparison: { percent: number; trend: "up" | "down" };
-    leadSourceBreakdown: { name: string; value: number }[];
+    proposalsSentComparison: { percent: number; trend: "up" | "down" };
+    icpsGeneratedDaily: { label: string; value: number }[];
   };
   testId?: string;
 }
 
 export function AIInsightCard({ dashboardStats, testId }: AIInsightCardProps) {
-  const { leadsGrowth, emailsSentComparison, replyRateComparison, leadSourceBreakdown, totalLeads } = dashboardStats;
+  const { leadsGrowth, emailsSentComparison, proposalsSentComparison, icpsGeneratedDaily, totalLeads } = dashboardStats;
 
   const peakMonth = leadsGrowth.reduce((best, d) => (d.value > best.value ? d : best), { label: "—", value: 0 });
-  const topSource = leadSourceBreakdown.reduce((best, d) => (d.value > best.value ? d : best), { name: "—", value: 0 });
+  const topIcpDay = icpsGeneratedDaily.reduce((best, d) => (d.value > best.value ? d : best), { label: "—", value: 0 });
 
   let insightText = "";
   let trend: "up" | "down" | "neutral" = "neutral";
@@ -28,15 +28,18 @@ export function AIInsightCard({ dashboardStats, testId }: AIInsightCardProps) {
     } else {
       insightText = `Email volume dipped ${Math.abs(emailsSentComparison.percent)}% this week. A new campaign could re-ignite the pipeline.`;
     }
-  } else if (replyRateComparison.percent !== 0) {
-    trend = replyRateComparison.trend;
-    insightText = `Reply rate is ${trend === "up" ? "up" : "down"} ${Math.abs(replyRateComparison.percent)}% vs last week. ${trend === "up" ? "Great engagement — keep the momentum." : "Try a different subject line to boost opens."}`;
+  } else if (proposalsSentComparison.percent !== 0) {
+    trend = proposalsSentComparison.trend;
+    insightText = `Proposals sent are ${trend === "up" ? "up" : "down"} ${Math.abs(proposalsSentComparison.percent)}% vs last week. ${trend === "up" ? "Great momentum — keep it going." : "Consider following up on pending leads."}`;
   } else if (peakMonth.value > 0) {
     trend = "up";
     insightText = `Your strongest month was ${peakMonth.label} with ${peakMonth.value.toLocaleString()} leads sourced. Keep the cadence to beat it.`;
+  } else if (topIcpDay.value > 0) {
+    trend = "neutral";
+    insightText = `${topIcpDay.label} was your top day for ICP generation with ${topIcpDay.value} profiles created.`;
   } else if (totalLeads.value > 0) {
     trend = "neutral";
-    insightText = `${totalLeads.value.toLocaleString()} total leads in your pipeline. Top source: ${topSource.name} (${topSource.value}% of pipeline).`;
+    insightText = `${totalLeads.value.toLocaleString()} total leads in your pipeline.`;
   } else {
     trend = "neutral";
     insightText = "Generate your first batch of leads to unlock AI-powered insights about your outbound performance.";
