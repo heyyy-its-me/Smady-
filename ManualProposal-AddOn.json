@@ -99,42 +99,7 @@
         },
         "sendBody": true,
         "bodyContentType": "json",
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "user_id",
-              "value": "={{ $json.user_id }}"
-            },
-            {
-              "name": "meeting_id",
-              "value": "={{ $json.meeting_id }}"
-            },
-            {
-              "name": "lead_email",
-              "value": "={{ $json.lead_email }}"
-            },
-            {
-              "name": "lead_name",
-              "value": "={{ $json.lead_name }}"
-            },
-            {
-              "name": "proposal_json",
-              "value": "={{ $json.proposal_json }}"
-            },
-            {
-              "name": "guardrail_errors",
-              "value": "={{ $json.guardrail_errors }}"
-            },
-            {
-              "name": "final_status",
-              "value": "={{ $json.final_status }}"
-            },
-            {
-              "name": "context_json",
-              "value": "={{ $json.context_json }}"
-            }
-          ]
-        }
+        "body": "={{{\n  \"user_id\": $json.user_id,\n  \"meeting_id\": $json.meeting_id,\n  \"lead_email\": $json.lead_email,\n  \"lead_name\": $json.lead_name,\n  \"proposal_json\": $json.proposal_json,\n  \"guardrail_errors\": $json.guardrail_errors,\n  \"final_status\": $json.final_status,\n  \"context_json\": $json.context_json\n}}}"
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
