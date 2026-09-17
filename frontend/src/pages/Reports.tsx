@@ -81,6 +81,36 @@ export default function Reports() {
     ...(c as Record<string, unknown>)
   })) as CampaignRow[];
 
+  // Unified history rows (lead runs + ICP + campaigns), sorted by date
+  const allHistoryRows = [
+    ...(history?.lead_runs ?? []).map((r) => ({
+      hid: r.id,
+      request_id: r.request_id,
+      type: "leads" as const,
+      label: `Lead Run · ${r.lead_count} leads`,
+      status: r.status,
+      date: r.created_at,
+    })),
+    ...(history?.icp_profiles ?? []).map((r) => ({
+      hid: r.id,
+      request_id: r.request_id,
+      type: "icp" as const,
+      label: "ICP Profile Generated",
+      status: r.status,
+      date: r.created_at,
+    })),
+    ...(history?.campaigns ?? []).map((r) => ({
+      hid: r.id,
+      request_id: r.request_id,
+      type: "outreach" as const,
+      label: `Campaign: ${r.name}`,
+      status: r.status,
+      date: r.created_at,
+    })),
+  ].sort((a, b) => b.date.localeCompare(a.date));
+
+  type HistoryRow = (typeof allHistoryRows)[number];
+
   // Pagination calculations
   const totalExecutionHistory = allHistoryRows.length;
   const totalRealHistory = realHistory.length;
@@ -168,36 +198,6 @@ export default function Reports() {
     { key: "proposals", label: "Proposals Sent", render: (r) => <span className="text-sm text-body">{r.proposals}</span> },
     { key: "won", label: "Won", render: (r) => <span className="text-sm font-semibold text-success">{r.won}</span> },
   ];
-
-  // Unified history rows (lead runs + ICP + campaigns), sorted by date
-  const allHistoryRows = [
-    ...(history?.lead_runs ?? []).map((r) => ({
-      hid: r.id,
-      request_id: r.request_id,
-      type: "leads" as const,
-      label: `Lead Run · ${r.lead_count} leads`,
-      status: r.status,
-      date: r.created_at,
-    })),
-    ...(history?.icp_profiles ?? []).map((r) => ({
-      hid: r.id,
-      request_id: r.request_id,
-      type: "icp" as const,
-      label: "ICP Profile Generated",
-      status: r.status,
-      date: r.created_at,
-    })),
-    ...(history?.campaigns ?? []).map((r) => ({
-      hid: r.id,
-      request_id: r.request_id,
-      type: "outreach" as const,
-      label: `Campaign: ${r.name}`,
-      status: r.status,
-      date: r.created_at,
-    })),
-  ].sort((a, b) => b.date.localeCompare(a.date));
-
-  type HistoryRow = (typeof allHistoryRows)[number];
 
   const historyColumns: Column<HistoryRow>[] = [
     {
