@@ -124,11 +124,12 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
         daily = [0] * 7
         week_end = week_start + timedelta(days=6)
         
-        # Fetch emails regardless of campaign association (some may be orphaned or direct)
+        # Join with campaigns to filter by user_id
         r = await db.execute(
             select(func.date(outreach_emails.c.created_at).label("d"), func.count().label("c"))
+            .join(outreach_campaigns, outreach_emails.c.campaign_id == outreach_campaigns.c.id)
             .where(
-                outreach_emails.c.user_id == user["id"],  # Add user filter
+                outreach_campaigns.c.user_id == user["id"],
                 outreach_emails.c.status == status,
                 func.date(outreach_emails.c.created_at) >= week_start, 
                 func.date(outreach_emails.c.created_at) <= week_end,
