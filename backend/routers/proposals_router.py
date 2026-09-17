@@ -255,35 +255,16 @@ async def proposal_callback(
 ):
     """
     Receive proposal callback from N8N Proposal workflow.
-    
-    This webhook fires after N8N generates a proposal:
-    1. Retrieves lead enrichment from database
-    2. Runs AI guardrail validation (checks for risky commitments, etc.)
-    3. If guardrails pass → marks final_status="Sent" and emails prospect
-    4. If guardrails fail → marks final_status="Needs Review" for human review
-    5. Calls this webhook to notify backend with result
-    
-    Backend then:
-    - Stores proposal_json + metadata in proposal_review_log
-    - Links user_id + meeting_id for proposal ownership tracking
-    - Enables frontend to display "Needs Review" proposals to user
-    
-    Frontend user can then:
-    - Click "Accept" → calls N8N approve webhook → sends email
-    - Click "Reject" + feedback → calls N8N reject webhook → triggers regeneration
-    
-    WORKFLOW DIAGRAM:
-        N8N: Meeting scheduled → 3h wait → Fetch transcript (Fireflies)
-             → Extract leads → Query lead DB for enrichment
-             → Claude AI: Generate proposal with lead context
-             → AI Guardrail: Check for risky terms/commitments
-             → If pass: Mark "Sent", send email via Gmail
-             → If fail: Mark "Needs Review", skip email
-             → POST /api/proposals/webhook (this endpoint)
-        Backend: Store proposal_review_log, link to user via meeting.user_id
-        Frontend: Poll /api/proposals, show "Needs Review" to user
-        User: Click Accept/Reject → triggers N8N approval/rejection workflows
     """
+    # DEBUG: Log exactly what was received
+    logger.info("=== WEBHOOK RAW BODY ===")
+    logger.info(f"body type: {type(body)}")
+    logger.info(f"body dict: {body.model_dump()}")
+    logger.info(f"proposal_json type: {type(body.proposal_json)}")
+    logger.info(f"proposal_json value: {body.proposal_json}")
+    logger.info(f"lead_name: {body.lead_name}")
+    logger.info("=== END RAW BODY ===")
+    
     # 1. Verify webhook secret
     try:
         verify_callback_secret(x_callback_secret)
