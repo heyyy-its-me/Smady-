@@ -56,7 +56,10 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
     # Proposals sent (approved or auto-sent via n8n)
     proposals_sent_r = await db.execute(
         select(func.count()).select_from(public_proposal_review_log)
-        .where(public_proposal_review_log.c.final_status.in_(["sent", "Sent", "Approved", "sent_after_revision"]))
+        .where(
+            public_proposal_review_log.c.user_id == user["id"],
+            public_proposal_review_log.c.final_status.in_(["sent", "Sent", "Approved", "sent_after_revision"])
+        )
     )
     proposals_sent = proposals_sent_r.scalar() or 0
 
@@ -141,6 +144,7 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
         r = await db.execute(
             select(func.date(public_proposal_review_log.c.created_at).label("d"), func.count().label("c"))
             .where(
+                public_proposal_review_log.c.user_id == user["id"],
                 public_proposal_review_log.c.final_status.in_(["sent", "Sent", "Approved", "sent_after_revision"]),
                 func.date(public_proposal_review_log.c.created_at) >= week_start, 
                 func.date(public_proposal_review_log.c.created_at) <= week_end,
@@ -268,10 +272,14 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
     meetings_total = meetings_count_r.scalar() or 0
 
     # Proposals from public.proposal_review_log (n8n) + proposal_results (app)
-    n8n_props_r = await db.execute(select(func.count()).select_from(public_proposal_review_log))
+    n8n_props_r = await db.execute(
+        select(func.count()).select_from(public_proposal_review_log)
+        .where(public_proposal_review_log.c.user_id == user["id"])
+    )
     n8n_props_total = n8n_props_r.scalar() or 0
     n8n_approved_r = await db.execute(
         select(func.count()).select_from(public_proposal_review_log).where(
+            public_proposal_review_log.c.user_id == user["id"],
             public_proposal_review_log.c.final_status.in_(["sent", "sent_after_revision", "Approved", "Sent"])
         )
     )
