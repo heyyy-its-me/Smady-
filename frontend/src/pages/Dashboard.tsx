@@ -1,10 +1,10 @@
-import { Download, Share2, CalendarCheck } from "lucide-react";
+import { Download, Share2, CalendarCheck, Send } from "lucide-react";
 import { PageHeader } from "@/layouts/PageHeader";
 import { ButtonOutline } from "@/components/smady/Button";
 import { StatCard } from "@/components/smady/StatCard";
 import { RadialGauge } from "@/components/smady/RadialGauge";
 import { CommandTower } from "@/components/smady/CommandTower";
-import { AreaChartCard, FunnelChartCard, DonutChartCard } from "@/components/smady/Charts";
+import { AreaChartCard, BarChartCard, FunnelChartCard } from "@/components/smady/Charts";
 import { ComparisonCard } from "@/components/smady/ComparisonCard";
 import { ActivityFeed } from "@/components/smady/ActivityFeed";
 import { HeatmapCard } from "@/components/smady/HeatmapCard";
@@ -28,7 +28,7 @@ export default function Dashboard() {
     emailsSentComparison,
     replyRateComparison,
     pipelineFunnel,
-    leadSourceBreakdown,
+    icpsGeneratedDaily,
     activityFeed,
     dailyActivity,
   } = dashboardStats;
@@ -118,15 +118,16 @@ export default function Dashboard() {
           <RadialGauge value={dashboardStats.leadsToday.value} target={Math.max(dashboardStats.leadsToday.value + 5, 20)} label="Leads Sourced Today" />
         </div>
         <StatCard label="Meetings Booked" value={dashboardStats.meetingsBooked.value} icon={CalendarCheck} sparkline={dashboardStats.meetingsBooked.sparkline} trend="up" />
+        <StatCard label="Proposals Sent" value={dashboardStats.proposalsSent.value} icon={Send} sparkline={dashboardStats.proposalsSent.sparkline} trend="up" />
       </div>
 
-      {/* ── Bento Row 2: Activity Heatmap (2) + Pipeline Funnel (1) + Lead Source Donut (1) ── */}
+      {/* ── Bento Row 2: Activity Heatmap (2) + Pipeline Funnel (1) + ICPs Generated Daily (1) ── */}
       <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
         <div className="md:col-span-2">
           <HeatmapCard dailyActivity={dailyActivity ?? {}} testId="dashboard-heatmap" />
         </div>
         <FunnelChartCard title="Pipeline Funnel" subtitle="Leads by stage" data={pipelineFunnel} testId="dashboard-pipeline-funnel" />
-        <DonutChartCard title="Lead Sources" subtitle="Where leads come from" data={leadSourceBreakdown} testId="dashboard-lead-source-donut" />
+        <BarChartCard title="ICPs Generated" subtitle="Last 7 days by day" data={icpsGeneratedDaily} testId="dashboard-icps-daily" />
       </div>
 
       {/* ── Bento Row 3: Live Activity Feed (2) + Emails Sent (1) + Reply Rate (1) ── */}

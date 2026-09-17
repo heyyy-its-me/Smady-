@@ -53,6 +53,13 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
     meetings_count_r = await db.execute(select(func.count()).select_from(meetings).where(meetings.c.user_id == user["id"]))
     meetings_booked = meetings_count_r.scalar() or 0
 
+    # Proposals sent (approved or auto-sent via n8n)
+    proposals_sent_r = await db.execute(
+        select(func.count()).select_from(public_proposal_review_log)
+        .where(public_proposal_review_log.c.final_status.in_(["sent", "Sent", "Approved", "sent_after_revision"]))
+    )
+    proposals_sent = proposals_sent_r.scalar() or 0
+
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     growth_map = {}
     for day, count in leads_by_day.items():
@@ -68,6 +75,25 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
         source_counts[l["source"]] = source_counts.get(l["source"], 0) + 1
     source_total = sum(source_counts.values()) or 1
     lead_source_breakdown = [{"name": k, "value": round(v / source_total * 100)} for k, v in source_counts.items()]
+
+    # ICPs generated per day (last 7 days)
+    icp_daily = [0] * 7
+    icp_week_start = today - timedelta(days=6)
+    icp_data_r = await db.execute(
+        select(func.date(icp_profiles.c.created_at).label("d"), func.count().label("c"))
+        .where(icp_profiles.c.user_id == user["id"], func.date(icp_profiles.c.created_at) >= icp_week_start)
+        .group_by("d")
+    )
+    for row in icp_data_r.fetchall():
+        idx = (row.d - icp_week_start).days
+        if 0 <= idx < 7:
+            icp_daily[idx] = row.c
+    
+    days_of_week = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    icps_generated_daily = [
+        {"label": days_of_week[(icp_week_start + timedelta(days=i)).weekday()], "value": icp_daily[i]}
+        for i in range(7)
+    ]
 
     activity = []
     icp_r = await db.execute(select(icp_profiles).where(icp_profiles.c.user_id == user["id"]).order_by(icp_profiles.c.created_at.desc()).limit(3))
@@ -126,9 +152,10 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
         "totalLeads": {"value": total_leads, "sparkline": [0, 0, 0, 0, 0, 0, total_leads]},
         "emailsSent": {"value": emails_sent, "sparkline": [0, 0, 0, 0, 0, 0, emails_sent]},
         "meetingsBooked": {"value": meetings_booked, "sparkline": [0, 0, 0, 0, 0, 0, meetings_booked]},
+        "proposalsSent": {"value": proposals_sent, "sparkline": [0, 0, 0, 0, 0, 0, proposals_sent]},
         "leadsGrowth": leads_growth,
         "pipelineFunnel": pipeline_funnel,
-        "leadSourceBreakdown": lead_source_breakdown,
+        "icpsGeneratedDaily": icps_generated_daily,
         "activityFeed": activity[:6],
         "dailyActivity": daily_activity,
         "emailsSentComparison": {

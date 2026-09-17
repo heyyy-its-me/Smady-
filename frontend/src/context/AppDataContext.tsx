@@ -12,9 +12,10 @@ interface DashboardStats {
   totalLeads: { value: number; sparkline: number[] };
   emailsSent: { value: number; sparkline: number[] };
   meetingsBooked: { value: number; sparkline: number[] };
+  proposalsSent: { value: number; sparkline: number[] };
   leadsGrowth: { label: string; value: number }[];
   pipelineFunnel: { stage: string; value: number }[];
-  leadSourceBreakdown: { name: string; value: number }[];
+  icpsGeneratedDaily: { day: string; value: number }[];
   activityFeed: { id: string; type: string; title: string; subtitle: string; time: string }[];
   emailsSentComparison: typeof emptyComparison;
   replyRateComparison: typeof emptyComparison;
@@ -34,9 +35,10 @@ const defaultDashboardStats: DashboardStats = {
   totalLeads: emptyStat,
   emailsSent: emptyStat,
   meetingsBooked: emptyStat,
+  proposalsSent: emptyStat,
   leadsGrowth: [],
   pipelineFunnel: [],
-  leadSourceBreakdown: [],
+  icpsGeneratedDaily: [],
   activityFeed: [],
   emailsSentComparison: emptyComparison,
   replyRateComparison: emptyComparison,
