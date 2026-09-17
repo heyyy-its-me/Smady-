@@ -26,7 +26,7 @@ export default function Dashboard() {
   const {
     leadsGrowth,
     emailsSentComparison,
-    replyRateComparison,
+    proposalsSentComparison,
     pipelineFunnel,
     icpsGeneratedDaily,
     activityFeed,
@@ -93,7 +93,7 @@ export default function Dashboard() {
 
   const insight =
     dashboardStats.totalLeads.value > 0
-      ? `You've sourced ${dashboardStats.totalLeads.value.toLocaleString()} leads and booked ${dashboardStats.meetingsBooked.value} meetings so far. Reply rate is trending ${replyRateComparison.trend === "up" ? "up" : "down"} ${Math.abs(replyRateComparison.percent)}% this week.`
+      ? `You've sourced ${dashboardStats.totalLeads.value.toLocaleString()} leads and booked ${dashboardStats.meetingsBooked.value} meetings so far. Proposals sent is trending ${proposalsSentComparison.trend === "up" ? "up" : "down"} ${Math.abs(proposalsSentComparison.percent)}% this week.`
       : "Generate your first batch of leads to unlock live AI recommendations here.";
 
   return (
@@ -118,7 +118,6 @@ export default function Dashboard() {
           <RadialGauge value={dashboardStats.leadsToday.value} target={Math.max(dashboardStats.leadsToday.value + 5, 20)} label="Leads Sourced Today" />
         </div>
         <StatCard label="Meetings Booked" value={dashboardStats.meetingsBooked.value} icon={CalendarCheck} sparkline={dashboardStats.meetingsBooked.sparkline} trend="up" />
-        <StatCard label="Proposals Sent" value={dashboardStats.proposalsSent?.value || 0} icon={Send} sparkline={dashboardStats.proposalsSent?.sparkline || [0, 0, 0, 0, 0, 0, 0]} trend="up" />
       </div>
 
       {/* ── Bento Row 2: Activity Heatmap (2) + Pipeline Funnel (1) + ICPs Generated Daily (1) ── */}
@@ -130,8 +129,14 @@ export default function Dashboard() {
         {icpsGeneratedDaily && icpsGeneratedDaily.length > 0 ? (
           <BarChartCard title="ICPs Generated" subtitle="Last 7 days by day" data={icpsGeneratedDaily} testId="dashboard-icps-daily" />
         ) : (
-          <div className="rounded-[24px] border border-border bg-surface p-6 shadow-card flex items-center justify-center">
-            <p className="text-sm text-muted">No ICPs generated yet this week</p>
+          <div className="rounded-[24px] border border-border bg-surface p-6 shadow-card flex flex-col items-center justify-center gap-3">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-muted/30">
+              <div className="w-6 h-6 rounded-full border-2 border-border"></div>
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-muted">No ICPs Generated</p>
+              <p className="text-xs text-muted/70">Start generating ICPs to see data here</p>
+            </div>
           </div>
         )}
       </div>
@@ -150,12 +155,12 @@ export default function Dashboard() {
           totalPerWeek={emailsSentComparison.totalPerWeek}
         />
         <ComparisonCard
-          title="Reply Rate"
-          percent={replyRateComparison.percent}
-          trend={replyRateComparison.trend}
-          thisWeek={replyRateComparison.thisWeek}
-          lastWeek={replyRateComparison.lastWeek}
-          totalPerWeek={replyRateComparison.totalPerWeek}
+          title="Proposals Sent"
+          percent={proposalsSentComparison.percent}
+          trend={proposalsSentComparison.trend}
+          thisWeek={proposalsSentComparison.thisWeek}
+          lastWeek={proposalsSentComparison.lastWeek}
+          totalPerWeek={proposalsSentComparison.totalPerWeek}
         />
       </div>
 

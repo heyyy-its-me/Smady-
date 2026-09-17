@@ -15,10 +15,10 @@ interface DashboardStats {
   proposalsSent: { value: number; sparkline: number[] };
   leadsGrowth: { label: string; value: number }[];
   pipelineFunnel: { stage: string; value: number }[];
-  icpsGeneratedDaily: { day: string; value: number }[];
+  icpsGeneratedDaily: { label: string; value: number }[];
   activityFeed: { id: string; type: string; title: string; subtitle: string; time: string }[];
   emailsSentComparison: typeof emptyComparison;
-  replyRateComparison: typeof emptyComparison;
+  proposalsSentComparison: typeof emptyComparison;
   dailyActivity: Record<string, number>;
 }
 
@@ -41,7 +41,7 @@ const defaultDashboardStats: DashboardStats = {
   icpsGeneratedDaily: [],
   activityFeed: [],
   emailsSentComparison: emptyComparison,
-  replyRateComparison: emptyComparison,
+  proposalsSentComparison: emptyComparison,
   dailyActivity: {},
 };
 

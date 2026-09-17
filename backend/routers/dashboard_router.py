@@ -135,12 +135,32 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
                     daily[idx] = row.c
         return daily
 
+    async def week_proposals(week_start: date):
+        daily = [0] * 7
+        week_end = week_start + timedelta(days=6)
+        r = await db.execute(
+            select(func.date(public_proposal_review_log.c.created_at).label("d"), func.count().label("c"))
+            .where(
+                public_proposal_review_log.c.final_status.in_(["sent", "Sent", "Approved", "sent_after_revision"]),
+                func.date(public_proposal_review_log.c.created_at) >= week_start, 
+                func.date(public_proposal_review_log.c.created_at) <= week_end,
+            )
+            .group_by("d")
+        )
+        for row in r.fetchall():
+            idx = (row.d - week_start).days
+            if 0 <= idx < 7:
+                daily[idx] = row.c
+        return daily
+
     this_week_start = today - timedelta(days=6)
     last_week_start = today - timedelta(days=13)
     sent_this = await week_daily("sent", this_week_start)
     sent_last = await week_daily("sent", last_week_start)
     replied_this = await week_daily("replied", this_week_start)
     replied_last = await week_daily("replied", last_week_start)
+    proposals_this = await week_proposals(this_week_start)
+    proposals_last = await week_proposals(last_week_start)
 
     def pct_change(cur, prev):
         if prev == 0:
@@ -163,10 +183,10 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
             "trend": "up" if sum(sent_this) >= sum(sent_last) else "down",
             "thisWeek": sent_this, "lastWeek": sent_last, "totalPerWeek": sum(sent_this),
         },
-        "replyRateComparison": {
-            "percent": pct_change(sum(replied_this), sum(replied_last)),
-            "trend": "up" if sum(replied_this) >= sum(replied_last) else "down",
-            "thisWeek": replied_this, "lastWeek": replied_last, "totalPerWeek": sum(replied_this),
+        "proposalsSentComparison": {
+            "percent": pct_change(sum(proposals_this), sum(proposals_last)),
+            "trend": "up" if sum(proposals_this) >= sum(proposals_last) else "down",
+            "thisWeek": proposals_this, "lastWeek": proposals_last, "totalPerWeek": sum(proposals_this),
         },
     }
 
@@ -412,6 +432,51 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
         "approval_rate_first_pass": round(n8n_approved / max(n8n_props_total, 1) * 100),
     }
 
+    # --- Proposals over time (last 6 months) - generated, accepted, pending ---
+    proposals_over_time = []
+    for i in range(5, -1, -1):
+        m_date = today.replace(day=1) - timedelta(days=i * 28)
+        m_label = m_date.strftime("%b")
+        month_start = m_date.replace(day=1)
+        if m_date.month == 12:
+            month_end = m_date.replace(year=m_date.year + 1, month=1, day=1)
+        else:
+            month_end = m_date.replace(month=m_date.month + 1, day=1)
+        
+        # Count proposals by status for this month
+        generated_r = await db.execute(
+            select(func.count()).select_from(public_proposal_review_log).where(
+                func.date(public_proposal_review_log.c.created_at) >= month_start,
+                func.date(public_proposal_review_log.c.created_at) < month_end,
+            )
+        )
+        generated = generated_r.scalar() or 0
+        
+        accepted_r = await db.execute(
+            select(func.count()).select_from(public_proposal_review_log).where(
+                public_proposal_review_log.c.final_status.in_(["sent", "sent_after_revision", "Approved", "Sent"]),
+                func.date(public_proposal_review_log.c.created_at) >= month_start,
+                func.date(public_proposal_review_log.c.created_at) < month_end,
+            )
+        )
+        accepted = accepted_r.scalar() or 0
+        
+        pending_r = await db.execute(
+            select(func.count()).select_from(public_proposal_review_log).where(
+                public_proposal_review_log.c.final_status.in_(["needs_review", "Needs Review"]),
+                func.date(public_proposal_review_log.c.created_at) >= month_start,
+                func.date(public_proposal_review_log.c.created_at) < month_end,
+            )
+        )
+        pending = pending_r.scalar() or 0
+        
+        proposals_over_time.append({
+            "label": m_label,
+            "generated": generated,
+            "accepted": accepted,
+            "pending": pending,
+        })
+
     return {
         "funnel": funnel,
         "outreach_over_time": outreach_over_time,
@@ -420,4 +485,5 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
         "meeting_conversion": meeting_conversion,
         "campaign_performance": campaign_perf,
         "proposal_quality": proposal_quality,
+        "proposals_over_time": proposals_over_time,
     }

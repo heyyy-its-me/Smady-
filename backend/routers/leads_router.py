@@ -117,6 +117,7 @@ def _normalize_lead(raw: Dict[str, Any], request_id: str, index: int) -> Dict[st
         "technologies": pick("Technologies"),
         "specialties": pick("Specialties"),
         "location": pick("Location"),
+        "country": pick("Country", "country"),
         "phone": pick("Phone"),
         "industry": pick("Industry"),
         "companyDescription": pick("Company Description"),

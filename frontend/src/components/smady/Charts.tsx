@@ -112,25 +112,59 @@ export function MultiLineChartCard({
 }: {
   title: string;
   subtitle?: string;
-  data: { label: string; sent: number; opened: number; replied: number }[];
+  data: Array<{ label: string; [key: string]: string | number }>;
   testId?: string;
 }) {
+  // Determine which keys to plot (exclude 'label')
+  const lineKeys = data.length > 0 ? Object.keys(data[0]).filter(k => k !== "label") : [];
+  const colors = ["#F9622C", "#22C55E", "#171412", "#3B82F6", "#8B5CF6"];
+  const legendLabels: Record<string, string> = {
+    sent: "Sent", opened: "Opened", replied: "Replied",
+    generated: "Generated", accepted: "Accepted", pending: "Pending"
+  };
+  const isSingleLine = lineKeys.length === 1;
+
   return (
     <CardShell title={title} subtitle={subtitle} testId={testId}>
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={data} margin={{ top: 16, right: 4, left: -20, bottom: 0 }}>
+          <defs>
+            {isSingleLine && (
+              <linearGradient id="softGlow" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={colors[0]} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={colors[0]} stopOpacity={0.01} />
+              </linearGradient>
+            )}
+          </defs>
           <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#A39A93" }} />
           <YAxis hide />
           <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #F1E9E3" }} />
-          <Line type="monotone" dataKey="sent" stroke="#F9622C" strokeWidth={2} dot={false} isAnimationActive={false} />
-          <Line type="monotone" dataKey="opened" stroke="#22C55E" strokeWidth={2} dot={false} isAnimationActive={false} />
-          <Line type="monotone" dataKey="replied" stroke="#171412" strokeWidth={2} dot={false} isAnimationActive={false} />
+          {lineKeys.map((key, idx) => {
+            const isFirst = idx === 0;
+            return isSingleLine ? (
+              <Area
+                key={`area-${key}`}
+                type="monotone"
+                dataKey={key}
+                stroke={colors[idx % colors.length]}
+                strokeWidth={2}
+                fill="url(#softGlow)"
+                dot={false}
+                isAnimationActive={false}
+              />
+            ) : (
+              <Line key={key} type="monotone" dataKey={key} stroke={colors[idx % colors.length]} strokeWidth={2} dot={false} isAnimationActive={false} />
+            );
+          })}
         </LineChart>
       </ResponsiveContainer>
-      <div className="mt-2 flex gap-4 text-xs text-muted">
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary-500" />Sent</span>
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-success" />Opened</span>
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-ink" />Replied</span>
+      <div className="mt-2 flex gap-4 text-xs text-muted flex-wrap">
+        {lineKeys.map((key, idx) => (
+          <span key={key} className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: colors[idx % colors.length] }} />
+            {legendLabels[key] || key.charAt(0).toUpperCase() + key.slice(1)}
+          </span>
+        ))}
       </div>
     </CardShell>
   );

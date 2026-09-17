@@ -33,6 +33,12 @@ export default function Reports() {
   const [detailContent, setDetailContent] = useState<Record<string, unknown> | null>(null);
   const [detailType, setDetailType] = useState<"icp" | "leads" | null>(null);
 
+  // Pagination state
+  const [executionHistoryPage, setExecutionHistoryPage] = useState(0);
+  const [realHistoryPage, setRealHistoryPage] = useState(0);
+  const [campaignPage, setCampaignPage] = useState(0);
+  const ITEMS_PER_PAGE = 5;
+
   // Real analytics state — falls back to mock data if unavailable
   const [analytics, setAnalytics] = useState<Record<string, unknown> | null>(null);
 
@@ -53,16 +59,41 @@ export default function Reports() {
 
   // Use real data when available, fall back to mock
   const realFunnel = analytics ? (analytics.funnel as typeof funnelData) : funnelData;
-  const realOutreach = analytics ? (analytics.outreach_over_time as typeof outreachOverTime) : outreachOverTime;
+  const realOutreach = analytics ? (analytics.outreach_over_time as Array<{label: string; sent: number}>) : outreachOverTime.map((d: Record<string, unknown>) => ({ label: d.label, sent: typeof d.sent === 'number' ? d.sent : 0 }));
   const realByCountry = analytics ? (analytics.leads_by_country as typeof leadsByCountry) : leadsByCountry;
   const realByIndustry = analytics ? (analytics.leads_by_industry as typeof leadsByIndustry) : leadsByIndustry;
   const realMeetingConv = analytics ? (analytics.meeting_conversion as typeof meetingConversion) : meetingConversion;
   const realCampaigns = analytics ? (analytics.campaign_performance as typeof campaignPerformance) : campaignPerformance;
+  const realProposals = analytics ? (analytics.proposals_over_time as Array<{label: string; generated: number; accepted: number; pending: number}>) : [
+    { label: "Jan", generated: 8, accepted: 5, pending: 2 },
+    { label: "Feb", generated: 10, accepted: 7, pending: 2 },
+    { label: "Mar", generated: 12, accepted: 9, pending: 2 },
+    { label: "Apr", generated: 9, accepted: 6, pending: 3 },
+    { label: "May", generated: 14, accepted: 11, pending: 2 },
+    { label: "Jun", generated: 11, accepted: 8, pending: 3 },
+  ];
 
   const rows = (realCampaigns || []).map((c, i) => ({
     id: (c as Record<string, unknown>).id ? String((c as Record<string, unknown>).id) : `cp-${i}`,
     ...(c as Record<string, unknown>)
   })) as CampaignRow[];
+
+  // Pagination calculations
+  const totalExecutionHistory = allHistoryRows.length;
+  const totalRealHistory = realHistory.length;
+  const totalCampaigns = rows.length;
+
+  const executionHistoryStart = executionHistoryPage * ITEMS_PER_PAGE;
+  const executionHistoryEnd = executionHistoryStart + ITEMS_PER_PAGE;
+  const paginatedExecutionHistory = allHistoryRows.slice(executionHistoryStart, executionHistoryEnd);
+
+  const realHistoryStart = realHistoryPage * ITEMS_PER_PAGE;
+  const realHistoryEnd = realHistoryStart + ITEMS_PER_PAGE;
+  const paginatedRealHistory = realHistory.slice(realHistoryStart, realHistoryEnd);
+
+  const campaignStart = campaignPage * ITEMS_PER_PAGE;
+  const campaignEnd = campaignStart + ITEMS_PER_PAGE;
+  const paginatedCampaigns = rows.slice(campaignStart, campaignEnd);
 
   const openRealHistoryRow = async (row: RealHistoryItem) => {
     if (row.type === "meeting") {
@@ -229,8 +260,31 @@ export default function Reports() {
           <h2 className="text-[15px] font-semibold text-ink">Execution History</h2>
           <p className="mt-1 text-xs text-muted">All agent runs, ICP profiles, and campaigns — click a Leads Run to view its contacts.</p>
           <div className="mt-4">
-            <DataTable columns={historyColumns} rows={allHistoryRows} testId="reports-history-table" />
+            <DataTable columns={historyColumns} rows={paginatedExecutionHistory} testId="reports-history-table" />
           </div>
+          {totalExecutionHistory > ITEMS_PER_PAGE && (
+            <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+              <span className="text-xs text-muted">
+                Page {executionHistoryPage + 1} of {Math.ceil(totalExecutionHistory / ITEMS_PER_PAGE)} • {totalExecutionHistory} total
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setExecutionHistoryPage(Math.max(0, executionHistoryPage - 1))}
+                  disabled={executionHistoryPage === 0}
+                  className="rounded-lg bg-bg px-3 py-1.5 text-xs font-semibold text-body disabled:opacity-50 hover:enabled:bg-border transition-colors"
+                >
+                  ← Prev
+                </button>
+                <button
+                  onClick={() => setExecutionHistoryPage(executionHistoryPage + 1)}
+                  disabled={executionHistoryEnd >= totalExecutionHistory}
+                  className="rounded-lg bg-bg px-3 py-1.5 text-xs font-semibold text-body disabled:opacity-50 hover:enabled:bg-border transition-colors"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -240,14 +294,37 @@ export default function Reports() {
           <h2 className="text-[15px] font-semibold text-ink">Meetings &amp; Proposals History</h2>
           <p className="mt-1 text-xs text-muted">Real ICP, leads, meetings, and proposal activity for your account — click View to inspect (isolated per account/login).</p>
           <div className="mt-4">
-            <DataTable columns={realHistoryColumns} rows={realHistory} testId="real-history-table" />
+            <DataTable columns={realHistoryColumns} rows={paginatedRealHistory} testId="real-history-table" />
           </div>
+          {totalRealHistory > ITEMS_PER_PAGE && (
+            <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+              <span className="text-xs text-muted">
+                Page {realHistoryPage + 1} of {Math.ceil(totalRealHistory / ITEMS_PER_PAGE)} • {totalRealHistory} total
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setRealHistoryPage(Math.max(0, realHistoryPage - 1))}
+                  disabled={realHistoryPage === 0}
+                  className="rounded-lg bg-bg px-3 py-1.5 text-xs font-semibold text-body disabled:opacity-50 hover:enabled:bg-border transition-colors"
+                >
+                  ← Prev
+                </button>
+                <button
+                  onClick={() => setRealHistoryPage(realHistoryPage + 1)}
+                  disabled={realHistoryEnd >= totalRealHistory}
+                  className="rounded-lg bg-bg px-3 py-1.5 text-xs font-semibold text-body disabled:opacity-50 hover:enabled:bg-border transition-colors"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <FunnelChartCard title="Outbound Funnel" subtitle={analytics ? "Real pipeline data" : "Leads to closed-won (sample)"} data={realFunnel} testId="reports-funnel-chart" />
-        <MultiLineChartCard title="Outreach Performance Over Time" subtitle={analytics ? "Real send/open/reply data" : "Sent, opened, and replied (sample)"} data={realOutreach} testId="reports-performance-chart" />
+        <MultiLineChartCard title="Outreach Performance Over Time" subtitle={analytics ? "Real emails sent data" : "Mails sent (sample)"} data={realOutreach} testId="reports-performance-chart" />
         <DonutChartCard title="Leads by Country" data={realByCountry} testId="reports-country-donut" />
         <DonutChartCard title="Leads by Industry" data={realByIndustry} testId="reports-industry-donut" />
         <ComparisonCard
@@ -260,11 +337,44 @@ export default function Reports() {
         />
       </div>
 
+      {/* Proposals Visualization - 3 curved lines (generated, accepted, pending) */}
+      <div className="mt-6">
+        <MultiLineChartCard
+          title="Proposals Lifecycle"
+          subtitle={analytics ? "Generated, accepted, and pending (last 6 months)" : "Sample proposal trends"}
+          data={realProposals}
+          testId="reports-proposals-lifecycle"
+        />
+      </div>
+
       <div className="mt-6 rounded-2xl bg-surface p-6 shadow-card">
         <h2 className="text-[15px] font-semibold text-ink">Campaign Performance</h2>
         <div className="mt-4">
-          <DataTable columns={tableColumns} rows={rows} testId="reports-campaign-table" />
+          <DataTable columns={tableColumns} rows={paginatedCampaigns} testId="reports-campaign-table" />
         </div>
+        {totalCampaigns > ITEMS_PER_PAGE && (
+          <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+            <span className="text-xs text-muted">
+              Page {campaignPage + 1} of {Math.ceil(totalCampaigns / ITEMS_PER_PAGE)} • {totalCampaigns} total
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCampaignPage(Math.max(0, campaignPage - 1))}
+                disabled={campaignPage === 0}
+                className="rounded-lg bg-bg px-3 py-1.5 text-xs font-semibold text-body disabled:opacity-50 hover:enabled:bg-border transition-colors"
+              >
+                ← Prev
+              </button>
+              <button
+                onClick={() => setCampaignPage(campaignPage + 1)}
+                disabled={campaignEnd >= totalCampaigns}
+                className="rounded-lg bg-bg px-3 py-1.5 text-xs font-semibold text-body disabled:opacity-50 hover:enabled:bg-border transition-colors"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
