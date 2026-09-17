@@ -34,9 +34,15 @@ export function AppPillNav() {
     <div className="sticky top-4 z-40 mx-auto max-w-7xl px-4">
       <motion.header
         className={cn(
-          "flex items-center justify-between rounded-full backdrop-blur-md bg-white/10 border border-white/20 px-3 shadow-lg transition-all",
+          "flex items-center justify-between rounded-full backdrop-blur-xl bg-white/20 border border-white/30 px-3 shadow-lg transition-all",
           scrolled ? "py-1.5" : "py-2.5"
         )}
+        style={{
+          backgroundColor: "rgba(255, 255, 255, 0.12)",
+          backdropFilter: "blur(12px)",
+          borderColor: "rgba(255, 255, 255, 0.25)",
+          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.3)",
+        }}
         data-testid="app-pill-nav"
       >
         <Link to="/dashboard" className="flex items-center gap-2 pl-2">
@@ -53,14 +59,15 @@ export function AppPillNav() {
                 className={cn(
                   "rounded-full px-4 py-2 text-sm font-medium transition-all",
                   active
-                    ? "bg-white/20 backdrop-blur-sm text-primary-500 shadow-md ring-1 ring-inset ring-primary-500/50 relative"
+                    ? "bg-white/15 backdrop-blur-sm text-primary-500 shadow-md relative"
                     : "text-body hover:text-ink hover:bg-white/10"
                 )}
                 style={
                   active
                     ? {
                         boxShadow:
-                          "0 0 20px rgba(249, 98, 44, 0.2), inset 0 0 12px rgba(249, 98, 44, 0.15)",
+                          "0 0 24px rgba(249, 98, 44, 0.35), inset 0 0 16px rgba(249, 98, 44, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.2)",
+                        border: "1px solid rgba(249, 98, 44, 0.3)",
                       }
                     : undefined
                 }
@@ -92,7 +99,12 @@ export function AppPillNav() {
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  className="absolute right-0 top-12 w-44 rounded-2xl backdrop-blur-md bg-white/20 border border-white/20 p-2 shadow-lg"
+                  className="absolute right-0 top-12 w-44 rounded-2xl backdrop-blur-xl border border-white/30 p-2 shadow-lg"
+                  style={{
+                    backgroundColor: "rgba(255, 255, 255, 0.12)",
+                    backdropFilter: "blur(12px)",
+                    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.3)",
+                  }}
                   data-testid="nav-profile-dropdown-menu"
                 >
                   <button className="block w-full rounded-lg px-3 py-2 text-left text-sm text-ink hover:bg-white/20 transition-colors" data-testid="nav-profile-link">Profile</button>
@@ -115,7 +127,12 @@ export function AppPillNav() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="mt-2 overflow-hidden rounded-2xl backdrop-blur-md bg-white/20 border border-white/20 p-3 shadow-lg lg:hidden"
+            className="mt-2 overflow-hidden rounded-2xl backdrop-blur-xl border border-white/30 p-3 shadow-lg lg:hidden"
+            style={{
+              backgroundColor: "rgba(255, 255, 255, 0.12)",
+              backdropFilter: "blur(12px)",
+              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.3)",
+            }}
           >
             {appNavItems.map((item) => (
               <Link
@@ -126,9 +143,18 @@ export function AppPillNav() {
                 className={cn(
                   "block rounded-lg px-3 py-2 text-sm font-medium transition-all",
                   location.pathname === item.path
-                    ? "bg-white/30 text-primary-500 shadow-md"
+                    ? "bg-white/15 text-primary-500 shadow-md"
                     : "text-body hover:bg-white/10"
                 )}
+                style={
+                  location.pathname === item.path
+                    ? {
+                        boxShadow:
+                          "0 0 24px rgba(249, 98, 44, 0.35), inset 0 0 16px rgba(249, 98, 44, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.2)",
+                        border: "1px solid rgba(249, 98, 44, 0.3)",
+                      }
+                    : undefined
+                }
               >
                 {item.label}
               </Link>
