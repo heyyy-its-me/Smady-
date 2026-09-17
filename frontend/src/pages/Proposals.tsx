@@ -544,8 +544,8 @@ export default function Proposals() {
   };
 
   // Queue = needs_review only; History = everything else
-  const queueItems = reviewQueue.filter((p) => ["needs_review", "Needs Review"].includes(p.final_status));
-  const historyItems = allProposals.filter((p) => !["needs_review", "Needs Review", "pending", "webhook_not_configured"].includes(p.final_status));
+  const queueItems = allProposals.filter((p) => ["needs_review", "Needs Review"].includes(p.final_status));
+  const historyItems = allProposals.filter((p) => !["needs_review", "Needs Review", "pending", "webhook_not_configured", "submitted"].includes(p.final_status));
 
   return (
     <div data-testid="proposals-page">

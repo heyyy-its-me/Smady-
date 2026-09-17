@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,6 +19,7 @@ export function MultiSelectDropdown({ options, value, onChange, label, placehold
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -26,6 +28,18 @@ export function MultiSelectDropdown({ options, value, onChange, label, placehold
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
+
+  // Track dropdown position for Portal rendering
+  useEffect(() => {
+    if (open && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setDropdownPos({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+  }, [open]);
 
   const available = options.filter((o) => !value.includes(o) && o.toLowerCase().includes(query.toLowerCase()));
   const addTag = (opt: string) => {
@@ -80,8 +94,11 @@ export function MultiSelectDropdown({ options, value, onChange, label, placehold
           className="min-w-[80px] flex-1 border-none bg-transparent text-sm text-ink outline-none placeholder:text-muted"
         />
       </div>
-      {open && available.length > 0 && (
-        <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-border bg-white p-1.5 shadow-nav">
+      {open && available.length > 0 && createPortal(
+        <div 
+          className="fixed z-50 mt-1 max-h-48 overflow-y-auto rounded-xl border border-border bg-white p-1.5 shadow-nav"
+          style={{ top: `${dropdownPos.top}px`, left: `${dropdownPos.left}px`, width: `${dropdownPos.width}px` }}
+        >
           {available.map((opt) => (
             <button
               key={opt}
@@ -93,7 +110,8 @@ export function MultiSelectDropdown({ options, value, onChange, label, placehold
               {opt}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

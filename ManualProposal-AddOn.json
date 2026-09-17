@@ -16,15 +16,25 @@
     },
     {
       "parameters": {
+        "jsCode": "const userEmail = ($json.body.user_email || '').trim().toLowerCase();\nif (!userEmail) throw new Error('user_email is required in request body');\nreturn [{ json: { userEmail } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-3100, 700],
+      "id": "extract-user-email-001",
+      "name": "Extract User Email"
+    },
+    {
+      "parameters": {
         "operation": "executeQuery",
         "query": "SELECT package_name, floor_price, ceiling_price, includes, valid_days FROM pricing_packages WHERE active = true AND (user_id = (SELECT id FROM users WHERE email = $1) OR user_id IS NULL) ORDER BY user_id DESC NULLS LAST, floor_price ASC;",
         "options": {
-          "queryReplacement": "={{ [$('Manual Proposal Trigger').item.json.body.user_email.trim().toLowerCase()] }}"
+          "queryReplacement": "={{ [$json.userEmail] }}"
         }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [-3200, 700],
+      "position": [-2900, 700],
       "id": "manual-get-pricing-001",
       "name": "Get Pricing (Manual)",
       "credentials": {
@@ -40,13 +50,20 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-2976, 700],
+      "position": [-2700, 700],
       "id": "manual-prepare-context-001",
       "name": "Prepare Manual Proposal Context"
     }
   ],
   "connections": {
     "Manual Proposal Trigger": {
+      "main": [
+        [
+          { "node": "Extract User Email", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Extract User Email": {
       "main": [
         [
           { "node": "Get Pricing (Manual)", "type": "main", "index": 0 }
