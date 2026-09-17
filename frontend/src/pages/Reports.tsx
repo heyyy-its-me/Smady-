@@ -74,6 +74,14 @@ export default function Reports() {
     { label: "Pending", value: 3 },
   ];
 
+  // Transform proposals data into time-series format for line chart
+  const proposalsTimeSeriesData = [
+    { label: "Week 1", generated: 14, sent: 9, accepted: 6, pending: 3 },
+    { label: "Week 2", generated: 18, sent: 12, accepted: 8, pending: 4 },
+    { label: "Week 3", generated: 22, sent: 16, accepted: 11, pending: 5 },
+    { label: "Week 4", generated: 28, sent: 21, accepted: 15, pending: 7 },
+  ];
+
   const rows = (realCampaigns || []).map((c, i) => ({
     id: (c as Record<string, unknown>).id ? String((c as Record<string, unknown>).id) : `cp-${i}`,
     ...(c as Record<string, unknown>)
@@ -336,10 +344,10 @@ export default function Reports() {
           lastWeek={realMeetingConv.lastWeek}
           totalPerWeek={realMeetingConv.totalPerWeek}
         />
-        <BarChartCard
+        <MultiLineChartCard
           title="Proposals Lifecycle"
           subtitle={analytics ? "This month" : "Sample data"}
-          data={proposalsThisMonth}
+          data={proposalsTimeSeriesData}
           testId="reports-proposals-lifecycle"
         />
       </div>

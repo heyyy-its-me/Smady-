@@ -122,20 +122,23 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
 
     async def week_daily(status: str, week_start: date):
         daily = [0] * 7
-        if campaign_ids:
-            week_end = week_start + timedelta(days=6)
-            r = await db.execute(
-                select(func.date(outreach_emails.c.created_at).label("d"), func.count().label("c"))
-                .where(
-                    outreach_emails.c.campaign_id.in_(campaign_ids), outreach_emails.c.status == status,
-                    func.date(outreach_emails.c.created_at) >= week_start, func.date(outreach_emails.c.created_at) <= week_end,
-                )
-                .group_by("d")
+        week_end = week_start + timedelta(days=6)
+        
+        # Fetch emails regardless of campaign association (some may be orphaned or direct)
+        r = await db.execute(
+            select(func.date(outreach_emails.c.created_at).label("d"), func.count().label("c"))
+            .where(
+                outreach_emails.c.user_id == user["id"],  # Add user filter
+                outreach_emails.c.status == status,
+                func.date(outreach_emails.c.created_at) >= week_start, 
+                func.date(outreach_emails.c.created_at) <= week_end,
             )
-            for row in r.fetchall():
-                idx = (row.d - week_start).days
-                if 0 <= idx < 7:
-                    daily[idx] = row.c
+            .group_by("d")
+        )
+        for row in r.fetchall():
+            idx = (row.d - week_start).days
+            if 0 <= idx < 7:
+                daily[idx] = row.c
         return daily
 
     async def week_proposals(week_start: date):
