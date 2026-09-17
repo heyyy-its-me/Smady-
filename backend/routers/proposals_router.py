@@ -356,6 +356,14 @@ async def proposal_callback(
                 body.proposal_json.get("lead_name") if isinstance(body.proposal_json, dict) else "N/A (not dict)"
             )
         
+        # DEBUG: Return debug info in response
+        debug_info = {
+            "proposal_json_type": str(type(body.proposal_json)),
+            "proposal_json_keys": list(body.proposal_json.keys()) if isinstance(body.proposal_json, dict) else "NOT_A_DICT",
+            "lead_name_received": body.lead_name,
+            "proposal_json_lead_name": body.proposal_json.get("lead_name") if isinstance(body.proposal_json, dict) else None,
+        }
+        
         return {
             "message": "Proposal stored successfully",
             "proposal_id": proposal_id,
@@ -363,6 +371,7 @@ async def proposal_callback(
             "meeting_id": body.meeting_id,
             "final_status": body.final_status,
             "stored_at": datetime.utcnow().isoformat(),
+            "debug": debug_info,
         }
     
     except Exception as e:
