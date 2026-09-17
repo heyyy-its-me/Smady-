@@ -318,6 +318,7 @@ async def proposal_callback(
         "Proposal webhook: meeting_id=%s, lead_email=%s, user_id=%s, status=%s",
         body.meeting_id, body.lead_email, body.user_id, body.final_status
     )
+    logger.info("Received proposal_json type: %s, content: %s", type(body.proposal_json), body.proposal_json)
     
     try:
         # Check if proposal already exists for this meeting_id
@@ -344,7 +345,12 @@ async def proposal_callback(
             result = await db.execute(stmt)
             proposal_id = result.scalar()
             await db.commit()
-            logger.info("Updated existing proposal_review_log id=%s", proposal_id)
+            logger.info(
+                "Updated existing proposal_review_log id=%s with proposal_json type=%s, lead_name=%s",
+                proposal_id,
+                type(body.proposal_json),
+                body.proposal_json.get("lead_name") if isinstance(body.proposal_json, dict) else "N/A (not dict)"
+            )
         else:
             # INSERT: Create new row
             stmt = insert(public_proposal_review_log).values(
@@ -362,7 +368,12 @@ async def proposal_callback(
             result = await db.execute(stmt)
             proposal_id = result.scalar()
             await db.commit()
-            logger.info("Created new proposal_review_log id=%s", proposal_id)
+            logger.info(
+                "Created new proposal_review_log id=%s with proposal_json type=%s, lead_name=%s",
+                proposal_id,
+                type(body.proposal_json),
+                body.proposal_json.get("lead_name") if isinstance(body.proposal_json, dict) else "N/A (not dict)"
+            )
         
         return {
             "message": "Proposal stored successfully",
