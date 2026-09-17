@@ -129,13 +129,13 @@ function ProposalCard({ p, onApprove, onReject }: {
     >
       {/* Header row */}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700">
-            {displayEmail.charAt(0).toUpperCase()}
+        <div className="flex items-center gap-3 flex-1">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700 flex-shrink-0">
+            {(p.lead_name || displayEmail).charAt(0).toUpperCase()}
           </div>
-          <div>
-            <p className="text-sm font-semibold text-ink">{displayEmail}</p>
-            <p className="text-xs text-muted">{displayDate}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-base font-bold text-ink truncate">{p.lead_name || "Unknown"}</p>
+            <p className="text-xs text-muted truncate">{p.lead_email || "—"}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
