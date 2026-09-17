@@ -59,7 +59,10 @@ export default function Reports() {
 
   // Use real data when available, fall back to mock
   const realFunnel = analytics ? (analytics.funnel as typeof funnelData) : funnelData;
-  const realOutreach = analytics ? (analytics.outreach_over_time as Array<{label: string; sent: number}>) : outreachOverTime.map((d: Record<string, unknown>) => ({ label: d.label, sent: typeof d.sent === 'number' ? d.sent : 0 }));
+  const realOutreach = analytics ? (analytics.outreach_over_time as Array<{label: string; [key: string]: string | number}>) : outreachOverTime.map((d: Record<string, unknown>) => ({
+    label: String(d.label || ""),
+    sent: typeof d.sent === 'number' ? d.sent : 0
+  }));
   const realByCountry = analytics ? (analytics.leads_by_country as typeof leadsByCountry) : leadsByCountry;
   const realByIndustry = analytics ? (analytics.leads_by_industry as typeof leadsByIndustry) : leadsByIndustry;
   const realMeetingConv = analytics ? (analytics.meeting_conversion as typeof meetingConversion) : meetingConversion;

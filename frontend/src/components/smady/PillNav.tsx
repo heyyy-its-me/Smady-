@@ -34,18 +34,18 @@ export function AppPillNav() {
     <div className="sticky top-4 z-40 mx-auto max-w-7xl px-4">
       <motion.header
         className={cn(
-          "flex items-center justify-between rounded-2xl backdrop-blur-xl border px-4 transition-all",
+          "flex items-center justify-between rounded-xl backdrop-blur-2xl border px-5 transition-all",
           scrolled ? "py-2" : "py-3"
         )}
         style={{
-          backgroundColor: "rgba(255, 255, 255, 0.14)",
-          backdropFilter: "blur(14px)",
-          borderColor: "rgba(255, 255, 255, 0.3)",
+          background: `linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.12) 100%)`,
+          backdropFilter: "blur(18px)",
+          borderColor: "rgba(255, 255, 255, 0.35)",
           boxShadow: 
-            "0 20px 40px rgba(0, 0, 0, 0.15)," +
-            "inset 0 1px 2px rgba(255, 255, 255, 0.4)," +
-            "inset 0 -1px 2px rgba(0, 0, 0, 0.1)," +
-            "0 0 1px rgba(255, 255, 255, 0.5)",
+            "0 8px 32px 0 rgba(0, 0, 0, 0.2)," +
+            "inset 0 1px 0 0 rgba(255, 255, 255, 0.5)," +
+            "inset 0 -1px 0 0 rgba(0, 0, 0, 0.15)," +
+            "0 0 0 1px rgba(255, 255, 255, 0.1)",
         }}
         data-testid="app-pill-nav"
       >
@@ -61,21 +61,22 @@ export function AppPillNav() {
                 to={item.path}
                 data-testid={`nav-link-${slug(item.label)}`}
                 className={cn(
-                  "rounded-full px-4 py-2 text-sm font-medium transition-all",
+                  "rounded-full px-4 py-2 text-sm font-medium transition-all duration-300",
                   active
-                    ? "text-primary-500 relative"
-                    : "text-body hover:text-ink hover:bg-white/5"
+                    ? "text-primary-500 relative font-semibold"
+                    : "text-body hover:text-ink"
                 )}
                 style={
                   active
                     ? {
-                        backgroundColor: "rgba(249, 98, 44, 0.12)",
+                        background: `linear-gradient(135deg, rgba(249, 98, 44, 0.18) 0%, rgba(249, 98, 44, 0.08) 100%)`,
                         boxShadow:
-                          "0 8px 16px rgba(249, 98, 44, 0.3)," +
-                          "inset 0 0 20px rgba(249, 98, 44, 0.3)," +
-                          "inset 0 1px 2px rgba(255, 255, 255, 0.2)," +
-                          "inset 0 -1px 2px rgba(0, 0, 0, 0.1)",
-                        border: "1px solid rgba(249, 98, 44, 0.4)",
+                          "0 0 32px rgba(249, 98, 44, 0.4)," +
+                          "inset 0 0 24px rgba(249, 98, 44, 0.25)," +
+                          "inset 0 1px 2px rgba(255, 255, 255, 0.3)," +
+                          "inset 0 -1px 1px rgba(0, 0, 0, 0.15)",
+                        border: "1px solid rgba(249, 98, 44, 0.5)",
+                        backdropFilter: "blur(8px)",
                       }
                     : undefined
                 }
@@ -107,16 +108,16 @@ export function AppPillNav() {
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  className="absolute right-0 top-12 w-44 rounded-2xl backdrop-blur-xl border p-2"
+                  className="absolute right-0 top-12 w-44 rounded-xl backdrop-blur-2xl border p-2"
                   style={{
-                    backgroundColor: "rgba(255, 255, 255, 0.14)",
-                    backdropFilter: "blur(14px)",
-                    borderColor: "rgba(255, 255, 255, 0.3)",
+                    background: `linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.12) 100%)`,
+                    backdropFilter: "blur(18px)",
+                    borderColor: "rgba(255, 255, 255, 0.35)",
                     boxShadow: 
-                      "0 20px 40px rgba(0, 0, 0, 0.15)," +
-                      "inset 0 1px 2px rgba(255, 255, 255, 0.4)," +
-                      "inset 0 -1px 2px rgba(0, 0, 0, 0.1)," +
-                      "0 0 1px rgba(255, 255, 255, 0.5)",
+                      "0 8px 32px 0 rgba(0, 0, 0, 0.2)," +
+                      "inset 0 1px 0 0 rgba(255, 255, 255, 0.5)," +
+                      "inset 0 -1px 0 0 rgba(0, 0, 0, 0.15)," +
+                      "0 0 0 1px rgba(255, 255, 255, 0.1)",
                   }}
                   data-testid="nav-profile-dropdown-menu"
                 >
@@ -140,16 +141,16 @@ export function AppPillNav() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="mt-2 overflow-hidden rounded-2xl backdrop-blur-xl border p-3 lg:hidden"
+            className="mt-2 overflow-hidden rounded-xl backdrop-blur-2xl border p-3 lg:hidden"
             style={{
-              backgroundColor: "rgba(255, 255, 255, 0.14)",
-              backdropFilter: "blur(14px)",
-              borderColor: "rgba(255, 255, 255, 0.3)",
+              background: `linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.12) 100%)`,
+              backdropFilter: "blur(18px)",
+              borderColor: "rgba(255, 255, 255, 0.35)",
               boxShadow: 
-                "0 20px 40px rgba(0, 0, 0, 0.15)," +
-                "inset 0 1px 2px rgba(255, 255, 255, 0.4)," +
-                "inset 0 -1px 2px rgba(0, 0, 0, 0.1)," +
-                "0 0 1px rgba(255, 255, 255, 0.5)",
+                "0 8px 32px 0 rgba(0, 0, 0, 0.2)," +
+                "inset 0 1px 0 0 rgba(255, 255, 255, 0.5)," +
+                "inset 0 -1px 0 0 rgba(0, 0, 0, 0.15)," +
+                "0 0 0 1px rgba(255, 255, 255, 0.1)",
             }}
           >
             {appNavItems.map((item) => (
@@ -159,17 +160,20 @@ export function AppPillNav() {
                 onClick={() => setMobileOpen(false)}
                 data-testid={`mobile-nav-link-${slug(item.label)}`}
                 className={cn(
-                  "block rounded-lg px-3 py-2 text-sm font-medium transition-all",
+                  "block rounded-lg px-3 py-2 text-sm font-medium transition-all duration-300",
                   location.pathname === item.path
-                    ? "bg-white/15 text-primary-500 shadow-md"
-                    : "text-body hover:bg-white/10"
+                    ? "text-primary-500 font-semibold"
+                    : "text-body hover:text-ink"
                 )}
                 style={
                   location.pathname === item.path
                     ? {
+                        background: `linear-gradient(135deg, rgba(249, 98, 44, 0.15) 0%, rgba(249, 98, 44, 0.08) 100%)`,
                         boxShadow:
-                          "0 0 24px rgba(249, 98, 44, 0.35), inset 0 0 16px rgba(249, 98, 44, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.2)",
-                        border: "1px solid rgba(249, 98, 44, 0.3)",
+                          "0 0 24px rgba(249, 98, 44, 0.35)," +
+                          "inset 0 0 16px rgba(249, 98, 44, 0.2)," +
+                          "inset 0 1px 1px rgba(255, 255, 255, 0.2)",
+                        border: "1px solid rgba(249, 98, 44, 0.4)",
                       }
                     : undefined
                 }
