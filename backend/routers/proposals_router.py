@@ -336,7 +336,6 @@ async def proposal_callback(
                 guardrail_errors=body.guardrail_errors or [],
                 final_status=body.final_status,
                 context_json=body.context_json,
-                updated_at=datetime.utcnow(),
             ).returning(public_proposal_review_log.c.id)
             
             result = await db.execute(stmt)
@@ -350,14 +349,11 @@ async def proposal_callback(
                 user_id=body.user_id,
                 customer_id=body.customer_id,
                 lead_email=body.lead_email,
-                lead_name=body.lead_name,
-                company=body.company,
                 proposal_json=body.proposal_json,
                 guardrail_errors=body.guardrail_errors or [],
                 final_status=body.final_status,
                 context_json=body.context_json,
                 created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
             ).returning(public_proposal_review_log.c.id)
             
             result = await db.execute(stmt)
