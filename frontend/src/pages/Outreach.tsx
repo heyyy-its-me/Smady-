@@ -70,12 +70,12 @@ export default function Outreach() {
       />
 
       {/* Top Stats */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-2">
         <StatCard 
           label="Campaigns Ran" 
           value={outreachStats.campaignsRan.value} 
           icon={Zap} 
-          highlighted 
+          highlighted={outreachStats.campaignsRan.value > 0}
           sparkline={outreachStats.campaignsRan.sparkline} 
           trend="up" 
         />
@@ -83,22 +83,9 @@ export default function Outreach() {
           label="Emails Sent" 
           value={outreachStats.emailsSent.value} 
           icon={Mail} 
-          highlighted 
+          highlighted={outreachStats.emailsSent.value > 0}
           sparkline={outreachStats.emailsSent.sparkline} 
           trend="up" 
-        />
-        <StatCard 
-          label="Email Conversion" 
-          value={outreachStats.emailsSent.value > 0 ? Math.round((outreachStats.emailsSent.value * 3.2) / 100) : 0}
-          icon={TrendingUp}
-          sparkline={outreachStats.emailsSent.sparkline}
-          trend="up"
-        />
-        <StatCard 
-          label="Avg per Campaign" 
-          value={outreachStats.campaignsRan.value > 0 ? Math.round(outreachStats.emailsSent.value / outreachStats.campaignsRan.value) : 0}
-          icon={Mail}
-          sparkline={[0, 0, 0, 0, 0, 0, 0]}
         />
       </div>
 
