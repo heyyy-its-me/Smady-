@@ -396,7 +396,7 @@ export default function Reports() {
             <div className="bg-white/60 rounded-xl p-4 -mx-6 -mb-6 mx-6 mb-6">
               <BarChartCard
                 title=""
-                data={((analytics?.campaignPerformance as Array<{name: string; emails: number}>) ?? []).map(c => ({
+                data={((analytics?.campaignPerformance && analytics.campaignPerformance.length > 0 ? analytics?.campaignPerformance as Array<{name: string; emails: number}> : null) ?? []).map(c => ({
                   label: c.name,
                   value: c.emails
                 }))}

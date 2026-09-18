@@ -421,26 +421,30 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
     }
 
     # --- Campaign performance (real data) ---
-    camp_r = await db.execute(
-        select(outreach_campaigns.c.id, outreach_campaigns.c.name)
+    # Use aggregation query to get campaign performance directly
+    camp_perf_r = await db.execute(
+        select(
+            outreach_campaigns.c.name,
+            func.count(outreach_emails.c.id).label("sent_count")
+        )
+        .select_from(outreach_campaigns)
+        .outerjoin(
+            outreach_emails,
+            (outreach_campaigns.c.id == outreach_emails.c.campaign_id) & 
+            (outreach_emails.c.status == "sent")
+        )
         .where(outreach_campaigns.c.user_id == user["id"])
-        .order_by(outreach_campaigns.c.created_at.desc()).limit(10)
+        .group_by(outreach_campaigns.c.id, outreach_campaigns.c.name)
+        .order_by(func.count(outreach_emails.c.id).desc())
+        .limit(10)
     )
     campaign_perf = []
-    for c in camp_r.fetchall():
-        # Count emails by status for this campaign
-        async def _c_status(cid, status):
-            r = await db.execute(
-                select(func.count()).select_from(outreach_emails).where(
-                    outreach_emails.c.campaign_id == cid, outreach_emails.c.status == status
-                )
-            )
-            return r.scalar() or 0
-        s = await _c_status(c.id, "sent")
-        campaign_perf.append({
-            "name": c.name or "Unnamed",
-            "emails": s,
-        })
+    for row in camp_perf_r.fetchall():
+        if row.name:  # Only include campaigns with names
+            campaign_perf.append({
+                "name": row.name,
+                "emails": row.sent_count or 0,
+            })
 
     # --- Proposal quality (from public.proposal_review_log) ---
     needs_review_r = await db.execute(
