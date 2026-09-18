@@ -41,9 +41,9 @@ export const meetingConversion = {
 };
 
 export const campaignPerformance = [
-  { campaign: "Q3 SaaS VP Outreach", contacted: 240, openRate: "58%", replyRate: "14%", meetings: 22, proposals: 9, won: 4 },
-  { campaign: "Fintech CRO Sequence", contacted: 180, openRate: "61%", replyRate: "17%", meetings: 19, proposals: 8, won: 3 },
-  { campaign: "Healthtech Growth Leads", contacted: 120, openRate: "54%", replyRate: "12%", meetings: 11, proposals: 5, won: 2 },
-  { campaign: "Retail Founders Batch 2", contacted: 95, openRate: "47%", replyRate: "9%", meetings: 6, proposals: 2, won: 1 },
-  { campaign: "Manufacturing Directors", contacted: 210, openRate: "52%", replyRate: "11%", meetings: 15, proposals: 6, won: 2 },
+  { name: "Q3 SaaS VP Outreach", emails: 240 },
+  { name: "Fintech CRO Sequence", emails: 180 },
+  { name: "Healthtech Growth Leads", emails: 120 },
+  { name: "Retail Founders Batch 2", emails: 95 },
+  { name: "Manufacturing Directors", emails: 210 },
 ];

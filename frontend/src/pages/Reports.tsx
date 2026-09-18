@@ -366,7 +366,7 @@ export default function Reports() {
                 <p className="text-xs text-muted mt-0.5">Campaign email delivery trends</p>
               </div>
             </div>
-            <div className="bg-white/60 rounded-xl p-4 -mx-6 -mb-6 mx-6 mb-6">
+            <div className="bg-white/60 rounded-xl -mx-6 -mb-6 mx-6 mb-6">
               <MultiLineChartCard 
                 title="" 
                 data={(analytics?.emailsOverTime as Array<{date: string; emails: number}>) ?? realOutreach.map((d: Record<string, unknown>) => ({
@@ -374,6 +374,7 @@ export default function Reports() {
                   emails: typeof d.sent === 'number' ? d.sent : 0
                 }))} 
                 testId="reports-outreach-chart"
+                chartHeight={180}
                 className="!bg-transparent !shadow-none !p-0"
               />
             </div>
@@ -393,14 +394,15 @@ export default function Reports() {
                 <p className="text-xs text-muted mt-0.5">Emails sent per campaign</p>
               </div>
             </div>
-            <div className="bg-white/60 rounded-xl p-4 -mx-6 -mb-6 mx-6 mb-6">
+            <div className="bg-white/60 rounded-xl -mx-6 -mb-6 mx-6 mb-6">
               <BarChartCard
                 title=""
-                data={((analytics?.campaignPerformance && analytics.campaignPerformance.length > 0 ? analytics?.campaignPerformance as Array<{name: string; emails: number}> : null) ?? []).map(c => ({
+                data={((analytics?.campaign_performance as Array<{name: string; emails: number}>) ?? campaignPerformance).map(c => ({
                   label: c.name,
                   value: c.emails
                 }))}
                 testId="reports-campaign-performance"
+                chartHeight={180}
                 className="!bg-transparent !shadow-none !p-0"
               />
             </div>
