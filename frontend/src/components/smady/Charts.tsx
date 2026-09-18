@@ -185,7 +185,6 @@ export function MultiLineChartCard({
           ))}
         </ComposedChart>
       </ResponsiveContainer>
-      </ResponsiveContainer>
       <div className="mt-2 flex gap-4 text-xs text-muted flex-wrap">
         {lineKeys.map((key, idx) => (
           <span key={key} className="flex items-center gap-1.5">
