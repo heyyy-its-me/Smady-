@@ -106,7 +106,10 @@ async def create_campaign(body: CampaignCreateRequest, user: dict = Depends(get_
         webhook_ok = await trigger_webhook("outreach", {
             "campaign_id": str(row.id),  # Include campaign_id for email logging
             "request_id": str(request_id), "user_id": user["id"],
-            "subject": body.subject, "body": body.body, "leads": recipient_leads,
+            "subject": body.subject, "body": body.body,
+            "company_name": "Smady",           # Company name for email template
+            "product_name": "Smady Outreach",  # Product name for email template
+            "leads": recipient_leads,
         })
         if not webhook_ok:
             await db.execute(update(outreach_campaigns).where(outreach_campaigns.c.request_id == request_id).values(status="Failed"))
