@@ -440,11 +440,10 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
     )
     campaign_perf = []
     for row in camp_perf_r.fetchall():
-        if row.name:  # Only include campaigns with names
-            campaign_perf.append({
-                "name": row.name,
-                "emails": row.sent_count or 0,
-            })
+        campaign_perf.append({
+            "name": row.name or "Untitled",
+            "emails": row.sent_count or 0,
+        })
 
     # --- Proposal quality (from public.proposal_review_log) ---
     needs_review_r = await db.execute(
