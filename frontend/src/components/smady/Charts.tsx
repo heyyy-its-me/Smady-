@@ -97,16 +97,16 @@ export function AreaChartCard({
   );
 }
 
-export function BarChartCard({ title, subtitle, data, testId }: { title: string; subtitle?: string; data: StatDatum[]; testId?: string }) {
+export function BarChartCard({ title, subtitle, data, testId, className }: { title: string; subtitle?: string; data: StatDatum[]; testId?: string; className?: string }) {
   if (!data || data.length === 0) {
     return (
-      <CardShell title={title} subtitle={subtitle} testId={testId}>
+      <CardShell title={title} subtitle={subtitle} testId={testId} className={className}>
         <div className="h-[220px] flex items-center justify-center text-muted text-sm">No data available</div>
       </CardShell>
     );
   }
   return (
-    <CardShell title={title} subtitle={subtitle} testId={testId}>
+    <CardShell title={title} subtitle={subtitle} testId={testId} className={className}>
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={data} margin={{ top: 16, right: 4, left: -20, bottom: 0 }} barCategoryGap="30%">
           <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#A39A93" }} />
@@ -124,15 +124,17 @@ export function MultiLineChartCard({
   subtitle,
   data,
   testId,
+  className,
 }: {
   title: string;
   subtitle?: string;
   data: Array<{ label: string; [key: string]: string | number }>;
   testId?: string;
+  className?: string;
 }) {
   if (!data || data.length === 0) {
     return (
-      <CardShell title={title} subtitle={subtitle} testId={testId}>
+      <CardShell title={title} subtitle={subtitle} testId={testId} className={className}>
         <div className="h-[260px] flex items-center justify-center text-muted text-sm">No data available</div>
       </CardShell>
     );
@@ -149,7 +151,7 @@ export function MultiLineChartCard({
   const gradientId = `softGlow-${Math.random().toString(36).substr(2, 9)}`;
 
   return (
-    <CardShell title={title} subtitle={subtitle} testId={testId}>
+    <CardShell title={title} subtitle={subtitle} testId={testId} className={className}>
       <ResponsiveContainer width="100%" height={260}>
         {isSingleLine ? (
           <ComposedChart data={data} margin={{ top: 16, right: 4, left: -20, bottom: 0 }}>

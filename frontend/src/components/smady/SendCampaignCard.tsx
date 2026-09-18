@@ -166,13 +166,13 @@ export function SendCampaignCard({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent data-testid="send-campaign-modal" className="max-w-md">
+      <DialogContent data-testid="send-campaign-modal" className="max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {subtitle && <p className="text-xs text-muted mt-1">{subtitle}</p>}
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3 overflow-y-auto flex-1 pr-4 -mr-4">
           {/* Recipient Source */}
           <div>
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">
@@ -289,7 +289,7 @@ export function SendCampaignCard({
               onChange={(e) => setProductDescription(e.target.value)}
               placeholder="What does your product do? (Used in email personalization)"
               data-testid="campaign-product-description-input"
-              rows={2}
+              rows={1}
             />
           </div>
 
@@ -327,7 +327,7 @@ export function SendCampaignCard({
             <Textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              rows={3}
+              rows={2}
               data-testid="campaign-body-textarea"
             />
           </div>
@@ -343,8 +343,10 @@ export function SendCampaignCard({
               data-testid="campaign-schedule-toggle"
             />
           </div>
+        </div>
 
-          {/* Send Button */}
+        {/* Send Button - Fixed at bottom */}
+        <div className="border-t border-border pt-3 mt-3">
           <ButtonPrimary
             fullWidth
             loading={sending}

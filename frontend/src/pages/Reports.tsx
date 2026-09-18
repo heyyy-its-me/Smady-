@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Download, ExternalLink, Eye } from "lucide-react";
+import { Download, ExternalLink, Eye, TrendingUp, BarChart3 } from "lucide-react";
 import { PageHeader } from "@/layouts/PageHeader";
 import { ButtonOutline } from "@/components/smady/Button";
 import { FunnelChartCard, MultiLineChartCard, DonutChartCard, BarChartCard } from "@/components/smady/Charts";
@@ -329,17 +329,8 @@ export default function Reports() {
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <FunnelChartCard title="Outbound Funnel" subtitle={analytics ? "Real pipeline data" : "Leads to closed-won (sample)"} data={realFunnel} testId="reports-funnel-chart" />
-        <MultiLineChartCard 
-          title="Emails Sent Over Time" 
-          subtitle={analytics ? "Real emails from campaigns" : "Sample data"} 
-          data={(analytics?.emailsOverTime as Array<{date: string; emails: number}>) ?? realOutreach.map((d: Record<string, unknown>) => ({
-            label: String(d.label || ""),
-            emails: typeof d.sent === 'number' ? d.sent : 0
-          }))} 
-          testId="reports-outreach-chart" 
-        />
-        <DonutChartCard title="Leads by Country" data={realByCountry} testId="reports-country-donut" />
         <DonutChartCard title="Leads by Industry" data={realByIndustry} testId="reports-industry-donut" />
+        <DonutChartCard title="Leads by Country" data={realByCountry} testId="reports-country-donut" />
         <ComparisonCard
           title="Meeting Conversion Rate"
           percent={realMeetingConv.percent}
@@ -348,21 +339,69 @@ export default function Reports() {
           lastWeek={realMeetingConv.lastWeek}
           totalPerWeek={realMeetingConv.totalPerWeek}
         />
-        <BarChartCard
-          title="Campaign Performance"
-          subtitle={analytics ? "Emails per campaign" : "Sample data"}
-          data={((analytics?.campaignPerformance as Array<{name: string; emails: number}>) ?? []).map(c => ({
-            label: c.name,
-            value: c.emails
-          }))}
-          testId="reports-campaign-performance"
-        />
         <MultiLineChartCard
           title="Proposals Lifecycle"
           subtitle={analytics ? "This month" : "Sample data"}
           data={proposalsTimeSeriesData}
           testId="reports-proposals-lifecycle"
         />
+      </div>
+
+      {/* Outreach Analytics - Side by Side with Enhanced Design */}
+      <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
+        {/* Emails Sent Over Time */}
+        <div className="relative rounded-2xl overflow-hidden shadow-card">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary-50/80 to-primary-25/40" />
+          <div className="relative p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-lg bg-primary-100">
+                <TrendingUp className="h-5 w-5 text-primary-600" strokeWidth={2} />
+              </div>
+              <div>
+                <h3 className="text-[15px] font-semibold text-ink">Emails Sent Over Time</h3>
+                <p className="text-xs text-muted mt-0.5">Campaign email delivery trends</p>
+              </div>
+            </div>
+            <div className="bg-white/60 rounded-xl p-4 -mx-6 -mb-6 mx-6 mb-6">
+              <MultiLineChartCard 
+                title="" 
+                data={(analytics?.emailsOverTime as Array<{date: string; emails: number}>) ?? realOutreach.map((d: Record<string, unknown>) => ({
+                  label: String(d.label || ""),
+                  emails: typeof d.sent === 'number' ? d.sent : 0
+                }))} 
+                testId="reports-outreach-chart"
+                className="!bg-transparent !shadow-none !p-0"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Campaign Performance */}
+        <div className="relative rounded-2xl overflow-hidden shadow-card">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/80 to-emerald-25/40" />
+          <div className="relative p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-lg bg-emerald-100">
+                <BarChart3 className="h-5 w-5 text-emerald-600" strokeWidth={2} />
+              </div>
+              <div>
+                <h3 className="text-[15px] font-semibold text-ink">Campaign Performance</h3>
+                <p className="text-xs text-muted mt-0.5">Emails sent per campaign</p>
+              </div>
+            </div>
+            <div className="bg-white/60 rounded-xl p-4 -mx-6 -mb-6 mx-6 mb-6">
+              <BarChartCard
+                title=""
+                data={((analytics?.campaignPerformance as Array<{name: string; emails: number}>) ?? []).map(c => ({
+                  label: c.name,
+                  value: c.emails
+                }))}
+                testId="reports-campaign-performance"
+                className="!bg-transparent !shadow-none !p-0"
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="mt-6 rounded-2xl bg-surface p-6 shadow-card">
