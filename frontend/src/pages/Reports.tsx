@@ -193,7 +193,7 @@ export default function Reports() {
     },
   ];
 
-  const tableColumns: Column<CampaignRow>[] = [
+  const campaignColumns: Column<CampaignRow>[] = [
     { key: "name", label: "Campaign Name", render: (r) => <span className="text-sm font-semibold text-ink">{r.name}</span> },
     { key: "emails", label: "Emails Sent", render: (r) => <span className="text-sm font-medium text-body">{r.emails}</span> },
     { key: "meetings", label: "Meetings Booked", render: (r) => <span className="text-sm text-body">{r.meetings}</span> },

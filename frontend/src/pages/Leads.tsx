@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import * as XLSX from "xlsx";
-import { Users, ShieldCheck, Send, Upload, Download, Linkedin, UploadCloud, Building2, Factory, UserRound, Globe2, MapPin, Sparkles, Coffee, RefreshCw, Clock } from "lucide-react";
+import { Users, ShieldCheck, Send, Upload, Download, Linkedin, UploadCloud, Building2, Factory, UserRound, Globe2, MapPin, Sparkles, Coffee, RefreshCw, Clock, Mail } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageHeader } from "@/layouts/PageHeader";
 import { FormSection } from "@/components/smady/FormSection";
@@ -23,6 +23,7 @@ import { LeadDetailModal } from "@/components/smady/LeadDetailModal";
 import { EditLeadModal } from "@/components/smady/EditLeadModal";
 import { RunHistoryPicker } from "@/components/smady/RunHistoryPicker";
 import { IcpPickerButton } from "@/components/smady/IcpPickerButton";
+import { SendCampaignCard } from "@/components/smady/SendCampaignCard";
 
 const industries = ["B2B SaaS", "Fintech", "Healthtech", "E-commerce", "Manufacturing"];
 const roles = ["VP of Sales", "Head of Growth", "CRO", "Founder", "Director of Marketing"];
@@ -60,6 +61,7 @@ export default function Leads() {
   const [companySize, setCompanySize] = useState(companySizes[1]);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
+  const [campaignOpen, setCampaignOpen] = useState(false);
   const [runInfo, setRunInfo] = useState<{ status: string; run_id: string; created_at: string } | null>(null);
   const [viewLead, setViewLead] = useState<Lead | null>(null);
   const [editLead, setEditLead] = useState<Lead | null>(null);
@@ -113,6 +115,14 @@ export default function Leads() {
 
   const toggleSelect = (id: string) => setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
+  const toggleSelectAll = () => {
+    if (selected.length === leads.length && leads.length > 0) {
+      setSelected([]);
+    } else {
+      setSelected(leads.map((l) => l.id));
+    }
+  };
+
   const allSelectedFilters = [...selectedIndustries, ...selectedRoles, ...selectedCountries, ...selectedCities];
   const estimatedMatches = allSelectedFilters.length === 0 ? 0 : Math.min(500, allSelectedFilters.length * 35 + 40);
 
@@ -124,14 +134,24 @@ export default function Leads() {
   const columns: Column<Lead>[] = [
     {
       key: "checkbox",
-      label: "",
+      label: (
+        <input
+          type="checkbox"
+          checked={selected.length > 0 && selected.length === leads.length && leads.length > 0}
+          indeterminate={selected.length > 0 && selected.length < leads.length}
+          onChange={toggleSelectAll}
+          data-testid="lead-checkbox-select-all"
+          className="h-4 w-4 rounded border-border text-primary-500 cursor-pointer"
+          title={selected.length === leads.length && leads.length > 0 ? "Deselect all" : "Select all"}
+        />
+      ),
       render: (l) => (
         <input
           type="checkbox"
           checked={selected.includes(l.id)}
           onChange={() => toggleSelect(l.id)}
           data-testid={`lead-checkbox-${l.id}`}
-          className="h-4 w-4 rounded border-border text-primary-500"
+          className="h-4 w-4 rounded border-border text-primary-500 cursor-pointer"
         />
       ),
     },
@@ -459,21 +479,32 @@ export default function Leads() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 40 }}
-            className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-4 rounded-full border border-primary-500/40 bg-ink/95 px-6 py-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-md"
+            className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 flex-wrap items-center justify-center gap-3 rounded-full border border-primary-500/40 bg-ink/95 px-6 py-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-md max-w-sm"
             data-testid="leads-bulk-action-bar"
           >
-            <span className="text-sm text-white">{selected.length} selected</span>
-            <ButtonPrimary
-              onClick={() => {
-                if (window.confirm(`Remove ${selected.length} lead(s)? This cannot be undone.`)) {
-                  selected.forEach((id) => deleteLead(id));
-                  setSelected([]);
-                }
-              }}
-              data-testid="leads-bulk-remove-button"
-            >
-              Remove Selected
-            </ButtonPrimary>
+            <span className="text-sm text-white whitespace-nowrap">{selected.length} selected</span>
+            <div className="flex flex-wrap items-center gap-2 justify-center">
+              <ButtonPrimary
+                onClick={() => setCampaignOpen(true)}
+                className="h-8 text-xs px-3"
+                icon={<Mail className="h-3 w-3" strokeWidth={2} />}
+                data-testid="leads-send-campaign-button"
+              >
+                Send Campaign
+              </ButtonPrimary>
+              <button
+                onClick={() => {
+                  if (window.confirm(`Remove ${selected.length} lead(s)? This cannot be undone.`)) {
+                    selected.forEach((id) => deleteLead(id));
+                    setSelected([]);
+                  }
+                }}
+                className="h-8 px-3 rounded-full text-xs font-semibold text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                data-testid="leads-bulk-remove-button"
+              >
+                Remove
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -504,6 +535,14 @@ export default function Leads() {
 
       <LeadDetailModal lead={viewLead} open={!!viewLead} onOpenChange={(v) => !v && setViewLead(null)} />
       <EditLeadModal lead={editLead} open={!!editLead} onOpenChange={(v) => !v && setEditLead(null)} onSave={updateLead} />
+      <SendCampaignCard
+        open={campaignOpen}
+        onOpenChange={setCampaignOpen}
+        selectedLeadIds={selected}
+        onSuccess={() => setSelected([])}
+        title={selected.length === 1 ? "Send Campaign to Lead" : `Send Campaign to ${selected.length} Leads`}
+        subtitle={selected.length === 1 ? "Create and send a campaign directly to this lead" : `Create a campaign for your selected leads`}
+      />
     </div>
   );
 }

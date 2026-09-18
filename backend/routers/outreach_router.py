@@ -39,6 +39,7 @@ class CampaignCreateRequest(BaseModel):
     body: str
     recipientSource: str = "all"
     runId: Optional[str] = None
+    selectedLeadIds: Optional[List[str]] = None
 
 
 class EmailEvent(BaseModel):
@@ -77,6 +78,12 @@ async def list_campaigns(user: dict = Depends(get_current_user), db: AsyncSessio
 @router.post("/campaigns")
 async def create_campaign(body: CampaignCreateRequest, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     eligible = await _eligible_leads(db, user["id"], run_id=body.runId if body.recipientSource == "run" else None)
+    
+    # If recipientSource is "selected", filter to only the selected lead IDs
+    if body.recipientSource == "selected" and body.selectedLeadIds:
+        selected_ids_set = set(body.selectedLeadIds)
+        eligible = [lead for lead in eligible if lead.get("id") in selected_ids_set]
+    
     leads_count = len(eligible)
 
     request_id = uuid.uuid4()
