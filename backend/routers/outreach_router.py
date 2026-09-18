@@ -206,11 +206,16 @@ async def outreach_stats(user: dict = Depends(get_current_user), db: AsyncSessio
     ]
 
     # Get campaign performance (emails per campaign)
+    # Filter sent emails in the join condition to avoid WHERE clause converting OUTERJOIN to INNER JOIN
     campaign_perf_result = await db.execute(
         select(outreach_campaigns.c.name, func.count(outreach_emails.c.id).label("count"))
         .select_from(outreach_campaigns)
-        .outerjoin(outreach_emails, outreach_campaigns.c.id == outreach_emails.c.campaign_id)
-        .where(outreach_campaigns.c.user_id == user["id"], outreach_emails.c.status == "sent")
+        .outerjoin(
+            outreach_emails,
+            (outreach_campaigns.c.id == outreach_emails.c.campaign_id) & 
+            (outreach_emails.c.status == "sent")
+        )
+        .where(outreach_campaigns.c.user_id == user["id"])
         .group_by(outreach_campaigns.c.id, outreach_campaigns.c.name)
         .order_by(func.count(outreach_emails.c.id).desc())
     )
