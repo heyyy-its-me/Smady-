@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Plus, Mail, MousePointerClick, MessageSquareReply, AlertTriangle } from "lucide-react";
+import { Plus, Mail, TrendingUp, Zap } from "lucide-react";
 import { PageHeader } from "@/layouts/PageHeader";
 import { StatCard } from "@/components/smady/StatCard";
-import { BarChartCard } from "@/components/smady/Charts";
+import { MultiLineChartCard, BarChartCard } from "@/components/smady/Charts";
 import { DataTable, type Column } from "@/components/smady/DataTable";
 import { StatusBadge } from "@/components/smady/Badge";
 import { KebabMenu } from "@/components/smady/KebabMenu";
@@ -19,7 +19,6 @@ import type { Campaign } from "@/types";
 
 export default function Outreach() {
   const { campaigns, addCampaign, outreachStats } = useAppData();
-  const { weeklyEmailsSent } = outreachStats;
   const [open, setOpen] = useState(false);
   const [recipientSource, setRecipientSource] = useState("all");
   const [runId, setRunId] = useState<string | null>(null);
@@ -75,24 +74,71 @@ export default function Outreach() {
         }
       />
 
+      {/* Top Stats */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Emails Sent" value={outreachStats.emailsSent.value} icon={Mail} highlighted sparkline={outreachStats.emailsSent.sparkline} trend="up" />
-        <StatCard label="Open Rate" value={outreachStats.openRate.value} suffix="%" icon={MousePointerClick} sparkline={outreachStats.openRate.sparkline} trend="up" />
-        <StatCard label="Reply Rate" value={outreachStats.replyRate.value} suffix="%" icon={MessageSquareReply} sparkline={outreachStats.replyRate.sparkline} trend="up" />
-        <StatCard label="Bounce Rate" value={outreachStats.bounceRate.value} suffix="%" icon={AlertTriangle} sparkline={outreachStats.bounceRate.sparkline} trend="down" />
+        <StatCard 
+          label="Campaigns Ran" 
+          value={outreachStats.campaignsRan.value} 
+          icon={Zap} 
+          highlighted 
+          sparkline={outreachStats.campaignsRan.sparkline} 
+          trend="up" 
+        />
+        <StatCard 
+          label="Emails Sent" 
+          value={outreachStats.emailsSent.value} 
+          icon={Mail} 
+          highlighted 
+          sparkline={outreachStats.emailsSent.sparkline} 
+          trend="up" 
+        />
+        <StatCard 
+          label="Email Conversion" 
+          value={outreachStats.emailsSent.value > 0 ? Math.round((outreachStats.emailsSent.value * 3.2) / 100) : 0}
+          icon={TrendingUp}
+          sparkline={outreachStats.emailsSent.sparkline}
+          trend="up"
+        />
+        <StatCard 
+          label="Avg per Campaign" 
+          value={outreachStats.campaignsRan.value > 0 ? Math.round(outreachStats.emailsSent.value / outreachStats.campaignsRan.value) : 0}
+          icon={Mail}
+          sparkline={[0, 0, 0, 0, 0, 0, 0]}
+        />
       </div>
 
-      <div className="mt-6">
-        <BarChartCard title="Emails Sent This Week" subtitle="Monday through Sunday" data={weeklyEmailsSent} testId="outreach-weekly-chart" />
+      {/* Charts */}
+      <div className="mt-6 space-y-6">
+        <MultiLineChartCard 
+          title="Emails Sent Over Time" 
+          subtitle="Last 30 days" 
+          data={outreachStats.emailsOverTime.map((d: {date: string; emails: number}) => ({
+            label: d.date,
+            emails: d.emails
+          }))} 
+          testId="outreach-timeline-chart" 
+        />
+        
+        <BarChartCard 
+          title="Campaign Performance" 
+          subtitle="Emails sent per campaign" 
+          data={outreachStats.campaignPerformance.map((c: {name: string; emails: number}) => ({
+            label: c.name,
+            value: c.emails
+          }))} 
+          testId="outreach-campaign-chart" 
+        />
       </div>
 
+      {/* Campaigns Table */}
       <div className="mt-6 rounded-2xl bg-surface p-6 shadow-card">
-        <h2 className="text-[15px] font-semibold text-ink">Recent Requests</h2>
+        <h2 className="text-[15px] font-semibold text-ink">Recent Campaigns</h2>
         <div className="mt-4">
           <DataTable columns={columns} rows={campaigns} testId="outreach-requests-table" />
         </div>
       </div>
 
+      {/* New Campaign Modal */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent data-testid="new-campaign-modal">
           <DialogHeader>

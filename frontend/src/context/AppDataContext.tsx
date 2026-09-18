@@ -23,11 +23,10 @@ interface DashboardStats {
 }
 
 interface OutreachStats {
+  campaignsRan: { value: number; sparkline: number[] };
   emailsSent: { value: number; sparkline: number[] };
-  openRate: { value: number; sparkline: number[] };
-  replyRate: { value: number; sparkline: number[] };
-  bounceRate: { value: number; sparkline: number[] };
-  weeklyEmailsSent: { label: string; value: number }[];
+  emailsOverTime: Array<{ date: string; emails: number }>;
+  campaignPerformance: Array<{ name: string; emails: number }>;
 }
 
 const defaultDashboardStats: DashboardStats = {
@@ -46,11 +45,10 @@ const defaultDashboardStats: DashboardStats = {
 };
 
 const defaultOutreachStats: OutreachStats = {
+  campaignsRan: emptyStat,
   emailsSent: emptyStat,
-  openRate: emptyStat,
-  replyRate: emptyStat,
-  bounceRate: emptyStat,
-  weeklyEmailsSent: [],
+  emailsOverTime: [],
+  campaignPerformance: [],
 };
 
 // ─── Smart Polling ────────────────────────────────────────────────────────────

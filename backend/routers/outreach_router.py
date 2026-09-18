@@ -134,24 +134,33 @@ async def outreach_callback(body: CampaignCallbackRequest, x_callback_secret: Op
 
 @router.get("/stats")
 async def outreach_stats(user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """
+    Return outreach statistics: campaigns run, emails sent, and time-series data
+    """
     campaign_ids_result = await db.execute(select(outreach_campaigns.c.id).where(outreach_campaigns.c.user_id == user["id"]))
     campaign_ids = [r.id for r in campaign_ids_result.fetchall()]
+    
+    # Count campaigns
+    campaigns_count = len(campaign_ids)
+    
     if not campaign_ids:
-        empty = {"value": 0, "sparkline": [0, 0, 0, 0, 0, 0, 0]}
-        return {"emailsSent": empty, "openRate": empty, "replyRate": empty, "bounceRate": empty, "weeklyEmailsSent": []}
+        return {
+            "campaignsRan": {"value": 0, "sparkline": [0] * 7},
+            "emailsSent": {"value": 0, "sparkline": [0] * 7},
+            "emailsOverTime": [],
+            "campaignPerformance": []
+        }
 
-    async def count_status(status: str) -> int:
-        r = await db.execute(
-            select(func.count()).select_from(outreach_emails).where(outreach_emails.c.campaign_id.in_(campaign_ids), outreach_emails.c.status == status)
+    # Count total emails sent
+    sent_result = await db.execute(
+        select(func.count()).select_from(outreach_emails).where(
+            outreach_emails.c.campaign_id.in_(campaign_ids), 
+            outreach_emails.c.status == "sent"
         )
-        return r.scalar() or 0
+    )
+    total_emails_sent = sent_result.scalar() or 0
 
-    sent = await count_status("sent")
-    opened = await count_status("opened")
-    replied = await count_status("replied")
-    bounced = await count_status("bounced")
-    denom = sent or 1
-
+    # Get daily email count for last 7 days (sparkline)
     daily_result = await db.execute(
         select(func.date(outreach_emails.c.created_at).label("d"), func.count().label("c"))
         .where(outreach_emails.c.campaign_id.in_(campaign_ids), outreach_emails.c.status == "sent")
@@ -165,12 +174,42 @@ async def outreach_stats(user: dict = Depends(get_current_user), db: AsyncSessio
         d = today - timedelta(days=i)
         weekly.append({"label": days[d.weekday()], "value": daily_map.get(str(d), 0)})
 
+    # Get emails sent over time (last 30 days) for line graph
+    thirty_days_ago = today - timedelta(days=30)
+    emails_over_time_result = await db.execute(
+        select(func.date(outreach_emails.c.created_at).label("d"), func.count().label("c"))
+        .where(
+            outreach_emails.c.campaign_id.in_(campaign_ids),
+            outreach_emails.c.status == "sent",
+            func.date(outreach_emails.c.created_at) >= thirty_days_ago
+        )
+        .group_by(func.date(outreach_emails.c.created_at))
+        .order_by("d")
+    )
+    emails_over_time = [
+        {"date": str(r.d), "emails": r.c}
+        for r in emails_over_time_result.fetchall()
+    ]
+
+    # Get campaign performance (emails per campaign)
+    campaign_perf_result = await db.execute(
+        select(outreach_campaigns.c.name, func.count(outreach_emails.c.id).label("count"))
+        .select_from(outreach_campaigns)
+        .outerjoin(outreach_emails, outreach_campaigns.c.id == outreach_emails.c.campaign_id)
+        .where(outreach_campaigns.c.user_id == user["id"], outreach_emails.c.status == "sent")
+        .group_by(outreach_campaigns.c.id, outreach_campaigns.c.name)
+        .order_by(func.count(outreach_emails.c.id).desc())
+    )
+    campaign_performance = [
+        {"name": r.name or "Untitled", "emails": r.count or 0}
+        for r in campaign_perf_result.fetchall()
+    ]
+
     return {
-        "emailsSent": {"value": sent, "sparkline": [w["value"] for w in weekly]},
-        "openRate": {"value": round(opened / denom * 100), "sparkline": [0] * 7},
-        "replyRate": {"value": round(replied / denom * 100), "sparkline": [0] * 7},
-        "bounceRate": {"value": round(bounced / denom * 100), "sparkline": [0] * 7},
-        "weeklyEmailsSent": weekly,
+        "campaignsRan": {"value": campaigns_count, "sparkline": [w["value"] for w in weekly]},
+        "emailsSent": {"value": total_emails_sent, "sparkline": [w["value"] for w in weekly]},
+        "emailsOverTime": emails_over_time,
+        "campaignPerformance": campaign_performance
     }
 
 

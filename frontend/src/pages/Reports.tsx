@@ -16,10 +16,8 @@ import type { RealHistoryItem } from "@/types";
 
 interface CampaignRow {
   id: string;
-  campaign: string;
-  contacted: number;
-  openRate: string;
-  replyRate: string;
+  name: string;
+  emails: number;
   meetings: number;
   proposals: number;
   won: number;
@@ -196,10 +194,8 @@ export default function Reports() {
   ];
 
   const tableColumns: Column<CampaignRow>[] = [
-    { key: "campaign", label: "Campaign", sortable: true, render: (r) => <span className="text-sm font-semibold text-ink">{r.campaign}</span> },
-    { key: "contacted", label: "Leads Contacted", render: (r) => <span className="text-sm text-body">{r.contacted}</span> },
-    { key: "openRate", label: "Open Rate", render: (r) => <span className="text-sm text-body">{r.openRate}</span> },
-    { key: "replyRate", label: "Reply Rate", render: (r) => <span className="text-sm text-body">{r.replyRate}</span> },
+    { key: "name", label: "Campaign Name", render: (r) => <span className="text-sm font-semibold text-ink">{r.name}</span> },
+    { key: "emails", label: "Emails Sent", render: (r) => <span className="text-sm font-medium text-body">{r.emails}</span> },
     { key: "meetings", label: "Meetings Booked", render: (r) => <span className="text-sm text-body">{r.meetings}</span> },
     { key: "proposals", label: "Proposals Sent", render: (r) => <span className="text-sm text-body">{r.proposals}</span> },
     { key: "won", label: "Won", render: (r) => <span className="text-sm font-semibold text-success">{r.won}</span> },
@@ -333,7 +329,15 @@ export default function Reports() {
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <FunnelChartCard title="Outbound Funnel" subtitle={analytics ? "Real pipeline data" : "Leads to closed-won (sample)"} data={realFunnel} testId="reports-funnel-chart" />
-        <MultiLineChartCard title="Outreach Performance Over Time" subtitle={analytics ? "Real emails sent data" : "Mails sent (sample)"} data={realOutreach} testId="reports-performance-chart" />
+        <MultiLineChartCard 
+          title="Emails Sent Over Time" 
+          subtitle={analytics ? "Real emails from campaigns" : "Sample data"} 
+          data={(analytics?.emailsOverTime as Array<{date: string; emails: number}>) ?? realOutreach.map((d: Record<string, unknown>) => ({
+            label: String(d.label || ""),
+            emails: typeof d.sent === 'number' ? d.sent : 0
+          }))} 
+          testId="reports-outreach-chart" 
+        />
         <DonutChartCard title="Leads by Country" data={realByCountry} testId="reports-country-donut" />
         <DonutChartCard title="Leads by Industry" data={realByIndustry} testId="reports-industry-donut" />
         <ComparisonCard
@@ -343,6 +347,15 @@ export default function Reports() {
           thisWeek={realMeetingConv.thisWeek}
           lastWeek={realMeetingConv.lastWeek}
           totalPerWeek={realMeetingConv.totalPerWeek}
+        />
+        <BarChartCard
+          title="Campaign Performance"
+          subtitle={analytics ? "Emails per campaign" : "Sample data"}
+          data={((analytics?.campaignPerformance as Array<{name: string; emails: number}>) ?? []).map(c => ({
+            label: c.name,
+            value: c.emails
+          }))}
+          testId="reports-campaign-performance"
         />
         <MultiLineChartCard
           title="Proposals Lifecycle"
@@ -355,7 +368,7 @@ export default function Reports() {
       <div className="mt-6 rounded-2xl bg-surface p-6 shadow-card">
         <h2 className="text-[15px] font-semibold text-ink">Campaign Performance</h2>
         <div className="mt-4">
-          <DataTable columns={tableColumns} rows={paginatedCampaigns} testId="reports-campaign-table" />
+          <DataTable columns={campaignColumns} rows={paginatedCampaigns} testId="reports-campaign-table" />
         </div>
         {totalCampaigns > ITEMS_PER_PAGE && (
           <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
