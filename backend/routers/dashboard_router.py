@@ -350,9 +350,16 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
         sorted_items = sorted(counts_dict.items(), key=lambda x: -x[1])
         top_n = sorted_items[:n]
         other_count = sum(v for _, v in sorted_items[n:])
-        result = [{"name": k, "value": v} for k, v in top_n]
+        
+        # Calculate total for percentage
+        total = sum(v for _, v in sorted_items)
+        if total == 0:
+            return []
+        
+        # Convert to percentages
+        result = [{"name": k, "value": round(v / total * 100)} for k, v in top_n]
         if other_count > 0:
-            result.append({"name": "Other", "value": other_count})
+            result.append({"name": "Other", "value": round(other_count / total * 100)})
         return result
 
     leads_by_country = get_top_n_with_other(country_counts, 6)
