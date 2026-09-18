@@ -427,14 +427,8 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
         rep = await _c_status(c.id, "replied")
         den = s or 1
         campaign_perf.append({
-            "id": str(c.id),
-            "campaign": c.name or "Unnamed",
-            "contacted": c.leads_count or 0,
-            "openRate": f"{round(o / den * 100)}%",
-            "replyRate": f"{round(rep / den * 100)}%",
-            "meetings": 0,
-            "proposals": 0,
-            "won": 0,
+            "name": c.name or "Unnamed",
+            "emails": s,
         })
 
     # --- Proposal quality (from public.proposal_review_log) ---
