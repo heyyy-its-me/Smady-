@@ -345,8 +345,18 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
         if ind and ind != "Unknown":
             industry_counts[ind] = industry_counts.get(ind, 0) + 1
 
-    leads_by_country = sorted([{"name": k, "value": v} for k, v in country_counts.items()], key=lambda x: -x["value"])[:6]
-    leads_by_industry = sorted([{"name": k, "value": v} for k, v in industry_counts.items()], key=lambda x: -x["value"])[:6]
+    # Get top 6 and group remaining as "Other"
+    def get_top_n_with_other(counts_dict, n=6):
+        sorted_items = sorted(counts_dict.items(), key=lambda x: -x[1])
+        top_n = sorted_items[:n]
+        other_count = sum(v for _, v in sorted_items[n:])
+        result = [{"name": k, "value": v} for k, v in top_n]
+        if other_count > 0:
+            result.append({"name": "Other", "value": other_count})
+        return result
+
+    leads_by_country = get_top_n_with_other(country_counts, 6)
+    leads_by_industry = get_top_n_with_other(industry_counts, 6)
 
     # Ensure at least some placeholder data if empty
     if not leads_by_country:

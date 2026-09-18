@@ -327,8 +327,8 @@ export default function Reports() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <FunnelChartCard title="Outbound Funnel" subtitle={analytics ? "Real pipeline data" : "Leads to closed-won (sample)"} data={realFunnel} testId="reports-funnel-chart" />
+      {/* Analytics Grid - Structured Layout */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <DonutChartCard title="Leads by Industry" data={realByIndustry} testId="reports-industry-donut" />
         <DonutChartCard title="Leads by Country" data={realByCountry} testId="reports-country-donut" />
         <ComparisonCard
@@ -339,6 +339,10 @@ export default function Reports() {
           lastWeek={realMeetingConv.lastWeek}
           totalPerWeek={realMeetingConv.totalPerWeek}
         />
+      </div>
+
+      {/* Proposals Lifecycle */}
+      <div className="mt-6">
         <MultiLineChartCard
           title="Proposals Lifecycle"
           subtitle={analytics ? "This month" : "Sample data"}
