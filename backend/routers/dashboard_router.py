@@ -345,7 +345,7 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
         if ind and ind != "Unknown":
             industry_counts[ind] = industry_counts.get(ind, 0) + 1
 
-    # Get top 6 and group remaining as "Other"
+    # Get top 6 and group remaining as "Other" - ensure sum to 100%
     def get_top_n_with_other(counts_dict, n=6):
         sorted_items = sorted(counts_dict.items(), key=lambda x: -x[1])
         top_n = sorted_items[:n]
@@ -356,10 +356,16 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
         if total == 0:
             return []
         
-        # Convert to percentages
-        result = [{"name": k, "value": round(v / total * 100)} for k, v in top_n]
+        # Convert to percentages, rounding down to ensure sum <= 100
+        result = [{"name": k, "value": int(v / total * 100)} for k, v in top_n]
         if other_count > 0:
-            result.append({"name": "Other", "value": round(other_count / total * 100)})
+            result.append({"name": "Other", "value": int(other_count / total * 100)})
+        
+        # Adjust largest item to make sum exactly 100
+        current_sum = sum(item["value"] for item in result)
+        if current_sum < 100 and result:
+            result[0]["value"] += (100 - current_sum)
+        
         return result
 
     leads_by_country = get_top_n_with_other(country_counts, 6)
@@ -416,7 +422,8 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
 
     # --- Campaign performance (real data) ---
     camp_r = await db.execute(
-        select(outreach_campaigns).where(outreach_campaigns.c.user_id == user["id"])
+        select(outreach_campaigns.c.id, outreach_campaigns.c.name)
+        .where(outreach_campaigns.c.user_id == user["id"])
         .order_by(outreach_campaigns.c.created_at.desc()).limit(10)
     )
     campaign_perf = []
@@ -430,9 +437,6 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
             )
             return r.scalar() or 0
         s = await _c_status(c.id, "sent")
-        o = await _c_status(c.id, "opened")
-        rep = await _c_status(c.id, "replied")
-        den = s or 1
         campaign_perf.append({
             "name": c.name or "Unnamed",
             "emails": s,

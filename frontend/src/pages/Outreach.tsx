@@ -104,19 +104,18 @@ export default function Outreach() {
                 <p className="text-xs text-muted">Campaign email delivery trends</p>
               </div>
             </div>
-            <div className="bg-white/60 rounded-lg p-2 -mx-4 -mb-4 mx-4 mb-4">
-              <div style={{ height: "140px" }}>
-                <MultiLineChartCard 
-                  title="" 
-                  subtitle="" 
-                  data={outreachStats.emailsOverTime.map((d: {date: string; emails: number}) => ({
-                    label: d.date,
-                    emails: d.emails
-                  }))} 
-                  testId="outreach-timeline-chart"
-                  className="!bg-transparent !shadow-none !p-0"
-                />
-              </div>
+            <div className="bg-white/60 rounded-lg -mx-4 -mb-4 mx-4 mb-4">
+              <MultiLineChartCard 
+                title="" 
+                subtitle="" 
+                data={outreachStats.emailsOverTime.map((d: {date: string; emails: number}) => ({
+                  label: d.date,
+                  emails: d.emails
+                }))} 
+                testId="outreach-timeline-chart"
+                chartHeight={140}
+                className="!bg-transparent !shadow-none !p-0"
+              />
             </div>
           </div>
         </div>
@@ -134,19 +133,18 @@ export default function Outreach() {
                 <p className="text-xs text-muted">Emails sent per campaign</p>
               </div>
             </div>
-            <div className="bg-white/60 rounded-lg p-2 -mx-4 -mb-4 mx-4 mb-4">
-              <div style={{ height: "140px" }}>
-                <BarChartCard 
-                  title="" 
-                  subtitle="" 
-                  data={outreachStats.campaignPerformance.map((c: {name: string; emails: number}) => ({
-                    label: c.name,
-                    value: c.emails
-                  }))} 
-                  testId="outreach-campaign-chart"
-                  className="!bg-transparent !shadow-none !p-0"
-                />
-              </div>
+            <div className="bg-white/60 rounded-lg -mx-4 -mb-4 mx-4 mb-4">
+              <BarChartCard 
+                title="" 
+                subtitle="" 
+                data={outreachStats.campaignPerformance.map((c: {name: string; emails: number}) => ({
+                  label: c.name,
+                  value: c.emails
+                }))} 
+                testId="outreach-campaign-chart"
+                chartHeight={140}
+                className="!bg-transparent !shadow-none !p-0"
+              />
             </div>
           </div>
         </div>

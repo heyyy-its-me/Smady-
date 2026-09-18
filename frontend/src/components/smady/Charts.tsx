@@ -97,7 +97,7 @@ export function AreaChartCard({
   );
 }
 
-export function BarChartCard({ title, subtitle, data, testId, className }: { title: string; subtitle?: string; data: StatDatum[]; testId?: string; className?: string }) {
+export function BarChartCard({ title, subtitle, data, testId, className, chartHeight = 220 }: { title: string; subtitle?: string; data: StatDatum[]; testId?: string; className?: string; chartHeight?: number }) {
   if (!data || data.length === 0) {
     return (
       <CardShell title={title} subtitle={subtitle} testId={testId} className={className}>
@@ -110,7 +110,7 @@ export function BarChartCard({ title, subtitle, data, testId, className }: { tit
   }
   return (
     <CardShell title={title} subtitle={subtitle} testId={testId} className={className}>
-      <ResponsiveContainer width="100%" height={220}>
+      <ResponsiveContainer width="100%" height={chartHeight}>
         <BarChart data={data} margin={{ top: 16, right: 4, left: -20, bottom: 0 }} barCategoryGap="30%">
           <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#A39A93" }} />
           <YAxis hide />
@@ -128,12 +128,14 @@ export function MultiLineChartCard({
   data,
   testId,
   className,
+  chartHeight = 260,
 }: {
   title: string;
   subtitle?: string;
   data: Array<{ label: string; [key: string]: string | number }>;
   testId?: string;
   className?: string;
+  chartHeight?: number;
 }) {
   if (!data || data.length === 0) {
     return (
@@ -158,7 +160,7 @@ export function MultiLineChartCard({
 
   return (
     <CardShell title={title} subtitle={subtitle} testId={testId} className={className}>
-      <ResponsiveContainer width="100%" height={260}>
+      <ResponsiveContainer width="100%" height={chartHeight}>
         {isSingleLine ? (
           <ComposedChart data={data} margin={{ top: 16, right: 4, left: -20, bottom: 0 }}>
             <defs>
