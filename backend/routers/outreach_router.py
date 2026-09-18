@@ -97,6 +97,7 @@ async def create_campaign(body: CampaignCreateRequest, user: dict = Depends(get_
         # N8N outreach workflow uses these fields to compose personalized emails
         recipient_leads = eligible  # l already has 30+ fields from _normalize_lead()
         webhook_ok = await trigger_webhook("outreach", {
+            "campaign_id": str(row.id),  # Include campaign_id for email logging
             "request_id": str(request_id), "user_id": user["id"],
             "subject": body.subject, "body": body.body, "leads": recipient_leads,
         })
