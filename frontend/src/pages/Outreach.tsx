@@ -69,8 +69,8 @@ export default function Outreach() {
         }
       />
 
-      {/* Top Stats */}
-      <div className="grid grid-cols-2 gap-5">
+      {/* Top Stats - Compact */}
+      <div className="grid grid-cols-2 gap-3">
         <StatCard 
           label="Campaigns Ran" 
           value={outreachStats.campaignsRan.value} 
@@ -89,60 +89,64 @@ export default function Outreach() {
         />
       </div>
 
-      {/* Charts - Side by Side */}
-      <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
+      {/* Charts - Side by Side Compact */}
+      <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
         {/* Emails Sent Over Time */}
-        <div className="relative rounded-2xl overflow-hidden shadow-card">
+        <div className="relative rounded-xl overflow-hidden shadow-card">
           <div className="absolute inset-0 bg-gradient-to-br from-primary-50/80 to-primary-25/40" />
-          <div className="relative p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 rounded-lg bg-primary-100">
-                <TrendingUp className="h-5 w-5 text-primary-600" strokeWidth={2} />
+          <div className="relative p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-1.5 rounded-lg bg-primary-100">
+                <TrendingUp className="h-4 w-4 text-primary-600" strokeWidth={2} />
               </div>
               <div>
-                <h3 className="text-[15px] font-semibold text-ink">Emails Sent Over Time</h3>
-                <p className="text-xs text-muted mt-0.5">Campaign email delivery trends</p>
+                <h3 className="text-sm font-semibold text-ink">Emails Sent Over Time</h3>
+                <p className="text-xs text-muted">Campaign email delivery trends</p>
               </div>
             </div>
-            <div className="bg-white/60 rounded-xl p-4 -mx-6 -mb-6 mx-6 mb-6">
-              <MultiLineChartCard 
-                title="" 
-                subtitle="" 
-                data={outreachStats.emailsOverTime.map((d: {date: string; emails: number}) => ({
-                  label: d.date,
-                  emails: d.emails
-                }))} 
-                testId="outreach-timeline-chart"
-                className="!bg-transparent !shadow-none !p-0"
-              />
+            <div className="bg-white/60 rounded-lg p-2 -mx-4 -mb-4 mx-4 mb-4">
+              <div style={{ height: "140px" }}>
+                <MultiLineChartCard 
+                  title="" 
+                  subtitle="" 
+                  data={outreachStats.emailsOverTime.map((d: {date: string; emails: number}) => ({
+                    label: d.date,
+                    emails: d.emails
+                  }))} 
+                  testId="outreach-timeline-chart"
+                  className="!bg-transparent !shadow-none !p-0"
+                />
+              </div>
             </div>
           </div>
         </div>
         
         {/* Campaign Performance */}
-        <div className="relative rounded-2xl overflow-hidden shadow-card">
+        <div className="relative rounded-xl overflow-hidden shadow-card">
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/80 to-emerald-25/40" />
-          <div className="relative p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 rounded-lg bg-emerald-100">
-                <BarChart3 className="h-5 w-5 text-emerald-600" strokeWidth={2} />
+          <div className="relative p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-1.5 rounded-lg bg-emerald-100">
+                <BarChart3 className="h-4 w-4 text-emerald-600" strokeWidth={2} />
               </div>
               <div>
-                <h3 className="text-[15px] font-semibold text-ink">Campaign Performance</h3>
-                <p className="text-xs text-muted mt-0.5">Emails sent per campaign</p>
+                <h3 className="text-sm font-semibold text-ink">Campaign Performance</h3>
+                <p className="text-xs text-muted">Emails sent per campaign</p>
               </div>
             </div>
-            <div className="bg-white/60 rounded-xl p-4 -mx-6 -mb-6 mx-6 mb-6">
-              <BarChartCard 
-                title="" 
-                subtitle="" 
-                data={outreachStats.campaignPerformance.map((c: {name: string; emails: number}) => ({
-                  label: c.name,
-                  value: c.emails
-                }))} 
-                testId="outreach-campaign-chart"
-                className="!bg-transparent !shadow-none !p-0"
-              />
+            <div className="bg-white/60 rounded-lg p-2 -mx-4 -mb-4 mx-4 mb-4">
+              <div style={{ height: "140px" }}>
+                <BarChartCard 
+                  title="" 
+                  subtitle="" 
+                  data={outreachStats.campaignPerformance.map((c: {name: string; emails: number}) => ({
+                    label: c.name,
+                    value: c.emails
+                  }))} 
+                  testId="outreach-campaign-chart"
+                  className="!bg-transparent !shadow-none !p-0"
+                />
+              </div>
             </div>
           </div>
         </div>
