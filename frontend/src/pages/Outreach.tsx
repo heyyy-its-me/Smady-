@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Mail, TrendingUp, Zap, ChevronDown } from "lucide-react";
+import { Plus, Mail, TrendingUp, Zap, ChevronDown, BarChart3 } from "lucide-react";
 import { PageHeader } from "@/layouts/PageHeader";
 import { StatCard } from "@/components/smady/StatCard";
 import { MultiLineChartCard, BarChartCard } from "@/components/smady/Charts";
@@ -89,27 +89,63 @@ export default function Outreach() {
         />
       </div>
 
-      {/* Charts */}
-      <div className="mt-6 space-y-6">
-        <MultiLineChartCard 
-          title="Emails Sent Over Time" 
-          subtitle="Last 30 days" 
-          data={outreachStats.emailsOverTime.map((d: {date: string; emails: number}) => ({
-            label: d.date,
-            emails: d.emails
-          }))} 
-          testId="outreach-timeline-chart" 
-        />
+      {/* Charts - Side by Side */}
+      <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
+        {/* Emails Sent Over Time */}
+        <div className="relative rounded-2xl overflow-hidden shadow-card">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary-50/80 to-primary-25/40" />
+          <div className="relative p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-lg bg-primary-100">
+                <TrendingUp className="h-5 w-5 text-primary-600" strokeWidth={2} />
+              </div>
+              <div>
+                <h3 className="text-[15px] font-semibold text-ink">Emails Sent Over Time</h3>
+                <p className="text-xs text-muted mt-0.5">Campaign email delivery trends</p>
+              </div>
+            </div>
+            <div className="bg-white/60 rounded-xl p-4 -mx-6 -mb-6 mx-6 mb-6">
+              <MultiLineChartCard 
+                title="" 
+                subtitle="" 
+                data={outreachStats.emailsOverTime.map((d: {date: string; emails: number}) => ({
+                  label: d.date,
+                  emails: d.emails
+                }))} 
+                testId="outreach-timeline-chart"
+                className="!bg-transparent !shadow-none !p-0"
+              />
+            </div>
+          </div>
+        </div>
         
-        <BarChartCard 
-          title="Campaign Performance" 
-          subtitle="Emails sent per campaign" 
-          data={outreachStats.campaignPerformance.map((c: {name: string; emails: number}) => ({
-            label: c.name,
-            value: c.emails
-          }))} 
-          testId="outreach-campaign-chart" 
-        />
+        {/* Campaign Performance */}
+        <div className="relative rounded-2xl overflow-hidden shadow-card">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/80 to-emerald-25/40" />
+          <div className="relative p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-lg bg-emerald-100">
+                <BarChart3 className="h-5 w-5 text-emerald-600" strokeWidth={2} />
+              </div>
+              <div>
+                <h3 className="text-[15px] font-semibold text-ink">Campaign Performance</h3>
+                <p className="text-xs text-muted mt-0.5">Emails sent per campaign</p>
+              </div>
+            </div>
+            <div className="bg-white/60 rounded-xl p-4 -mx-6 -mb-6 mx-6 mb-6">
+              <BarChartCard 
+                title="" 
+                subtitle="" 
+                data={outreachStats.campaignPerformance.map((c: {name: string; emails: number}) => ({
+                  label: c.name,
+                  value: c.emails
+                }))} 
+                testId="outreach-campaign-chart"
+                className="!bg-transparent !shadow-none !p-0"
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Campaigns Table */}
