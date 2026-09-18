@@ -101,7 +101,10 @@ export function BarChartCard({ title, subtitle, data, testId, className }: { tit
   if (!data || data.length === 0) {
     return (
       <CardShell title={title} subtitle={subtitle} testId={testId} className={className}>
-        <div className="h-[220px] flex items-center justify-center text-muted text-sm">No data available</div>
+        <div className="h-[220px] flex flex-col items-center justify-center text-center">
+          <p className="text-sm text-muted">No campaigns with sent emails yet</p>
+          <p className="text-xs text-muted mt-1">Send your first campaign to see performance metrics</p>
+        </div>
       </CardShell>
     );
   }
@@ -135,7 +138,10 @@ export function MultiLineChartCard({
   if (!data || data.length === 0) {
     return (
       <CardShell title={title} subtitle={subtitle} testId={testId} className={className}>
-        <div className="h-[260px] flex items-center justify-center text-muted text-sm">No data available</div>
+        <div className="h-[260px] flex flex-col items-center justify-center text-center">
+          <p className="text-sm text-muted">No email data available yet</p>
+          <p className="text-xs text-muted mt-1">Send campaigns to see email delivery trends</p>
+        </div>
       </CardShell>
     );
   }
