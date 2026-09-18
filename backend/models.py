@@ -240,7 +240,7 @@ outreach_campaigns = Table(
 outreach_emails = Table(
     "outreach_emails", metadata,
     Column("id", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4),
-    Column("campaign_id", UUID(as_uuid=True), ForeignKey(f"{DB_SCHEMA}.outreach_campaigns.id"), nullable=False),
+    Column("campaign_id", UUID(as_uuid=True), ForeignKey(f"{DB_SCHEMA}.outreach_campaigns.id"), nullable=True),
     Column("lead_id", Text, nullable=True),
     Column("email", String),
     Column("status", String, server_default="queued"),

@@ -99,7 +99,7 @@
         },
         "sendBody": true,
         "bodyContentType": "json",
-        "body": "={{{\n  \"user_id\": $json.user_id,\n  \"meeting_id\": $json.meeting_id,\n  \"lead_email\": $json.lead_email,\n  \"lead_name\": $json.lead_name,\n  \"proposal_json\": $json.proposal_json,\n  \"guardrail_errors\": $json.guardrail_errors,\n  \"final_status\": $json.final_status,\n  \"context_json\": $json.context_json\n}}}"
+        "body": "={{ {user_id: $json.user_id, meeting_id: $json.meeting_id, lead_email: $json.lead_email, lead_name: $json.lead_name, proposal_json: $json.proposal_json, guardrail_errors: $json.guardrail_errors, final_status: $json.final_status, context_json: $json.context_json} }}"
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,

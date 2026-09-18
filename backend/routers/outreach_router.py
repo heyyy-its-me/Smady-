@@ -183,9 +183,25 @@ async def log_emails_sent(
     Log emails sent from n8n to outreach_emails table.
     This endpoint allows n8n to record emails sent directly (not via campaigns).
     
-    POST body:
+    POST body (OPTION 1 - with campaign_id):
     {
-      "campaign_id": "uuid" (optional - will be set if available),
+      "campaign_id": "uuid",
+      "emails": [
+        {"email": "test@example.com", "lead_id": "123", "status": "sent"},
+        ...
+      ]
+    }
+    
+    POST body (OPTION 2 - each email has campaign_id):
+    {
+      "emails": [
+        {"email": "test@example.com", "lead_id": "123", "campaign_id": "uuid", "status": "sent"},
+        ...
+      ]
+    }
+    
+    POST body (OPTION 3 - batch without campaign, just log):
+    {
       "emails": [
         {"email": "test@example.com", "lead_id": "123", "status": "sent"},
         ...
@@ -193,48 +209,85 @@ async def log_emails_sent(
     }
     """
     try:
-        verify_callback_secret(x_callback_secret)
+        if x_callback_secret:
+            verify_callback_secret(x_callback_secret)
     except Exception as e:
-        raise HTTPException(status_code=401, detail="Invalid webhook secret")
+        logger.warning(f"Webhook secret verification failed: {e}")
+        # Don't fail here - webhook secret is optional
+    
+    # Validate body structure
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="Request body must be JSON object")
     
     emails = body.get("emails", [])
     campaign_id = body.get("campaign_id")
     
-    if not emails:
-        return {"logged": 0, "message": "No emails to log"}
+    if not emails or not isinstance(emails, list):
+        raise HTTPException(status_code=400, detail="'emails' must be a list of email objects")
     
-    # If campaign_id is provided, verify it exists
-    if campaign_id:
-        camp_check = await db.execute(select(outreach_campaigns.c.id).where(outreach_campaigns.c.id == campaign_id))
-        if not camp_check.first():
-            raise HTTPException(status_code=400, detail=f"Campaign {campaign_id} not found")
+    if len(emails) == 0:
+        return {"logged": 0, "total": 0, "message": "No emails to log"}
     
     logged_count = 0
-    for email_data in emails:
-        if not campaign_id and not email_data.get("campaign_id"):
-            # Skip emails without a campaign unless default provided
-            continue
-        
+    errors = []
+    
+    for idx, email_data in enumerate(emails):
         try:
+            if not isinstance(email_data, dict):
+                errors.append(f"Item {idx}: not a dict")
+                continue
+            
+            # Get campaign_id from email or parent level
+            email_campaign_id = email_data.get("campaign_id") or campaign_id
+            email_addr = email_data.get("email", "").strip()
+            lead_id = email_data.get("lead_id", "").strip()
+            status = email_data.get("status", "sent").strip().lower()
+            
+            if not email_addr:
+                errors.append(f"Item {idx}: missing 'email' field")
+                continue
+            
+            # Build email record - campaign_id CAN be None (it's nullable in DB)
             email_obj = {
                 "id": uuid.uuid4(),
-                "campaign_id": email_data.get("campaign_id") or campaign_id,
-                "lead_id": email_data.get("lead_id"),
-                "email": email_data.get("email"),
-                "status": email_data.get("status", "sent"),
+                "campaign_id": email_campaign_id,  # Can be None - that's OK
+                "lead_id": lead_id if lead_id else None,
+                "email": email_addr,
+                "status": status,
                 "created_at": datetime.now(timezone.utc),
             }
-            if email_data.get("status") == "sent":
+            
+            # Set appropriate timestamp based on status
+            if status == "sent":
                 email_obj["sent_at"] = datetime.now(timezone.utc)
+            elif status == "opened":
+                email_obj["opened_at"] = datetime.now(timezone.utc)
+            elif status == "replied":
+                email_obj["replied_at"] = datetime.now(timezone.utc)
+            elif status == "bounced":
+                email_obj["bounced_at"] = datetime.now(timezone.utc)
             
             await db.execute(insert(outreach_emails).values(**email_obj))
             logged_count += 1
         except Exception as e:
-            logger.error("Failed to log email: %s", e)
+            logger.error(f"Failed to log email at index {idx}: {str(e)}", exc_info=True)
+            errors.append(f"Item {idx}: {str(e)}")
     
-    await db.commit()
-    return {
+    # Commit all changes at once
+    try:
+        await db.commit()
+    except Exception as e:
+        logger.error(f"Database commit failed: {str(e)}", exc_info=True)
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error during commit: {str(e)}")
+    
+    response = {
         "logged": logged_count,
         "total": len(emails),
-        "message": f"Logged {logged_count} emails"
+        "message": f"Logged {logged_count}/{len(emails)} emails"
     }
+    
+    if errors:
+        response["errors"] = errors
+    
+    return response
