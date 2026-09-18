@@ -37,6 +37,9 @@ class CampaignCreateRequest(BaseModel):
     name: str
     subject: str
     body: str
+    companyName: Optional[str] = None
+    productName: Optional[str] = None
+    productDescription: Optional[str] = None
     recipientSource: str = "all"
     runId: Optional[str] = None
     selectedLeadIds: Optional[List[str]] = None
@@ -107,8 +110,9 @@ async def create_campaign(body: CampaignCreateRequest, user: dict = Depends(get_
             "campaign_id": str(row.id),  # Include campaign_id for email logging
             "request_id": str(request_id), "user_id": user["id"],
             "subject": body.subject, "body": body.body,
-            "company_name": "Smady",           # Company name for email template
-            "product_name": "Smady Outreach",  # Product name for email template
+            "company_name": body.companyName or "Smady",           # Use form value or default
+            "product_name": body.productName or "Smady Outreach",  # Use form value or default
+            "product_description": body.productDescription or "",  # Product description for personalization
             "leads": recipient_leads,
         })
         if not webhook_ok:

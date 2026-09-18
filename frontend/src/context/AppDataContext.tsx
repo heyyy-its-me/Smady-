@@ -148,7 +148,7 @@ interface AppDataContextType {
   refreshLeads: (runId?: string, offset?: number, limit?: number) => Promise<void>;
 
   campaigns: Campaign[];
-  addCampaign: (data: { name: string; subject: string; body: string; recipientSource?: string; runId?: string; selectedLeadIds?: string[] }) => Promise<void>;
+  addCampaign: (data: { name: string; subject: string; body: string; companyName?: string; productName?: string; productDescription?: string; recipientSource?: string; runId?: string; selectedLeadIds?: string[] }) => Promise<void>;
 
   meetings: Meeting[];
   refreshMeetings: () => Promise<void>;
@@ -470,7 +470,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addCampaign = async (data: { name: string; subject: string; body: string; recipientSource?: string; runId?: string; selectedLeadIds?: string[] }) => {
+  const addCampaign = async (data: { name: string; subject: string; body: string; companyName?: string; productName?: string; productDescription?: string; recipientSource?: string; runId?: string; selectedLeadIds?: string[] }) => {
     try {
       const { data: campaign } = await api.post("/outreach/campaigns", data);
       setCampaigns((prev) => [campaign, ...prev]);

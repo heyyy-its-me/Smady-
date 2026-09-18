@@ -9,6 +9,15 @@ import { useAppData } from "@/context/AppDataContext";
 import { api } from "@/lib/api";
 import { toast } from "@/components/ui/sonner";
 
+interface ICP {
+  request_id: string;
+  company_name: string;
+  product_name: string;
+  product_description?: string;
+  created_at: string;
+  result?: any;
+}
+
 interface SendCampaignCardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -32,16 +41,36 @@ export function SendCampaignCard({
   );
   const [runId, setRunId] = useState<string | null>(null);
   const [runLeadCount, setRunLeadCount] = useState<number | null>(null);
+  
+  // ICP-related state
+  const [icps, setIcps] = useState<ICP[]>([]);
+  const [selectedIcpId, setSelectedIcpId] = useState<string | null>(null);
+  const [loadingIcps, setLoadingIcps] = useState(false);
+  
+  const [companyName, setCompanyName] = useState("Smady");
+  const [productName, setProductName] = useState("Smady Outreach");
+  const [productDescription, setProductDescription] = useState("");
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("Hi {first_name}, ...");
   const [scheduled, setScheduled] = useState(false);
   const [sending, setSending] = useState(false);
 
+  // Fetch ICPs when dialog opens
+  useEffect(() => {
+    if (open) {
+      fetchICPs();
+    }
+  }, [open]);
+
   // Reset form when dialog opens
   useEffect(() => {
     if (open) {
       setRecipientSource(selectedLeadIds.length > 0 ? "selected" : "all");
+      setSelectedIcpId(null);
+      setCompanyName("Smady");
+      setProductName("Smady Outreach");
+      setProductDescription("");
       setName("");
       setSubject("");
       setBody("Hi {first_name}, ...");
@@ -50,6 +79,31 @@ export function SendCampaignCard({
       setRunLeadCount(null);
     }
   }, [open, selectedLeadIds.length]);
+
+  const fetchICPs = async () => {
+    setLoadingIcps(true);
+    try {
+      const { data } = await api.get("/icp/list");
+      setIcps(data);
+    } catch (error) {
+      console.error("Failed to fetch ICPs", error);
+      setIcps([]);
+    } finally {
+      setLoadingIcps(false);
+    }
+  };
+
+  const onSelectICP = (icpId: string) => {
+    setSelectedIcpId(icpId);
+    const icp = icps.find((i) => i.request_id === icpId);
+    if (icp) {
+      setCompanyName(icp.company_name || "Smady");
+      setProductName(icp.product_name || "Smady Outreach");
+      // Extract product description from result if available
+      const description = icp.result?.positioning || "";
+      setProductDescription(description);
+    }
+  };
 
   const onSelectRun = async (id: string) => {
     setRunId(id);
@@ -70,6 +124,14 @@ export function SendCampaignCard({
       toast.error("Subject line is required");
       return;
     }
+    if (!companyName.trim()) {
+      toast.error("Company name is required");
+      return;
+    }
+    if (!productName.trim()) {
+      toast.error("Product name is required");
+      return;
+    }
 
     setSending(true);
     try {
@@ -77,6 +139,9 @@ export function SendCampaignCard({
         name: name || "Untitled Campaign",
         subject,
         body,
+        companyName,
+        productName,
+        productDescription,
         recipientSource: recipientSource === "selected" ? "selected" : recipientSource,
         runId: recipientSource === "run" ? runId ?? undefined : undefined,
         selectedLeadIds: recipientSource === "selected" ? selectedLeadIds : undefined,
@@ -95,6 +160,8 @@ export function SendCampaignCard({
   const isValid =
     name.trim() &&
     subject.trim() &&
+    companyName.trim() &&
+    productName.trim() &&
     (recipientSource === "all" || recipientSource === "selected" || runId);
 
   return (
@@ -155,6 +222,76 @@ export function SendCampaignCard({
               )}
             </div>
           )}
+
+          {/* ICP Selector */}
+          <div>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">
+              Use ICP Profile (Optional)
+            </label>
+            <select
+              value={selectedIcpId || ""}
+              onChange={(e) => {
+                const icpId = e.target.value;
+                if (icpId) {
+                  onSelectICP(icpId);
+                } else {
+                  setSelectedIcpId(null);
+                }
+              }}
+              disabled={loadingIcps}
+              className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+              data-testid="campaign-icp-selector"
+            >
+              <option value="">
+                {loadingIcps ? "Loading ICPs..." : "Select an ICP profile to populate fields..."}
+              </option>
+              {icps.map((icp) => (
+                <option key={icp.request_id} value={icp.request_id}>
+                  {icp.product_name} ({icp.company_name}) - {new Date(icp.created_at).toLocaleDateString()}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Company Name */}
+          <div>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">
+              Company Name
+            </label>
+            <Input
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              placeholder="Smady"
+              data-testid="campaign-company-name-input"
+            />
+          </div>
+
+          {/* Product Name */}
+          <div>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">
+              Product Name
+            </label>
+            <Input
+              value={productName}
+              onChange={(e) => setProductName(e.target.value)}
+              placeholder="Smady Outreach"
+              data-testid="campaign-product-name-input"
+            />
+          </div>
+
+          {/* Product Description */}
+          <div>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">
+              Product Description (Optional)
+            </label>
+            <Textarea
+              value={productDescription}
+              onChange={(e) => setProductDescription(e.target.value)}
+              placeholder="What does your product do? (Used in email personalization)"
+              data-testid="campaign-product-description-input"
+              rows={2}
+            />
+          </div>
 
           {/* Campaign Name */}
           <div>
