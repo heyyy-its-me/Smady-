@@ -344,15 +344,16 @@ export default function ICPEngine() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="rounded-2xl border border-primary-200/70 bg-surface p-6 shadow-card"
+                className="rounded-2xl border border-primary-200/70 bg-surface p-6 shadow-card max-h-full"
+                data-testid="icp-selected-results-card"
               >
                 <div className="flex items-center justify-between pb-3">
                   <div className="flex items-center gap-2 text-primary-500">
                     <Sparkles className="h-4 w-4" strokeWidth={1.5} />
-                    <h2 className="font-display text-[15px] font-bold text-ink">Saved ICP</h2>
+                    <h2 className="font-display text-[15px] font-bold text-ink">Saved ICP - DETAILED VIEW</h2>
                   </div>
                 </div>
-                {resultGroups.map(({ key, label }, i) => (
+                {resultGroups.filter(({ key }) => key === "geography" || key === "painPoints").map(({ key, label }, i) => (
                   <motion.div
                     key={key}
                     initial={{ opacity: 0, y: 12 }}
@@ -370,17 +371,21 @@ export default function ICPEngine() {
                     </div>
                   </motion.div>
                 ))}
-                <div className="mt-6 flex flex-col gap-3">
+                <div className="mt-8 flex flex-col gap-3 border-t border-primary-100/50 pt-6">
                   <ButtonPrimary
                     fullWidth
                     onClick={() => {
                       toast.success("ICP saved");
                       navigate("/leads");
                     }}
+                    data-testid="icp-save-selected-button"
                   >
                     Save &amp; Use in Lead Management
                   </ButtonPrimary>
-                  <ButtonOutline fullWidth onClick={handleBackToNew}>
+                  <ButtonOutline fullWidth onClick={() => setShowFullAnalysis(true)} data-testid="icp-view-selected-full-analysis-button">
+                    📊 Show Detailed ICP
+                  </ButtonOutline>
+                  <ButtonOutline fullWidth onClick={handleBackToNew} data-testid="icp-back-to-new-button">
                     Back to New
                   </ButtonOutline>
                 </div>
@@ -390,7 +395,7 @@ export default function ICPEngine() {
           </div>
         </div>
       </div>
-      <IcpDetailModal icp={icp} open={showFullAnalysis} onOpenChange={setShowFullAnalysis} />
+      <IcpDetailModal icp={selectedIcpData ? (selectedIcpData as any) : icp} open={showFullAnalysis} onOpenChange={setShowFullAnalysis} />
     </div>
   );
 }
