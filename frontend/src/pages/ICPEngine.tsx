@@ -296,7 +296,7 @@ export default function ICPEngine() {
                     <h2 className="font-display text-[15px] font-bold text-ink">Your Ideal Customer Profile</h2>
                   </div>
                 </div>
-                {resultGroups.map(({ key, label }, i) => (
+                {resultGroups.filter(({ key }) => key === "geography" || key === "painPoints").map(({ key, label }, i) => (
                   <motion.div
                     key={key}
                     initial={{ opacity: 0, y: 12 }}
@@ -326,7 +326,7 @@ export default function ICPEngine() {
                     Save &amp; Use in Lead Management
                   </ButtonPrimary>
                   <ButtonOutline fullWidth onClick={() => setShowFullAnalysis(true)} data-testid="icp-view-full-analysis-button">
-                    View Full Analysis
+                    Show Detailed ICP
                   </ButtonOutline>
                   <ButtonOutline fullWidth onClick={() => generateIcp(form)} data-testid="icp-regenerate-button">
                     Regenerate

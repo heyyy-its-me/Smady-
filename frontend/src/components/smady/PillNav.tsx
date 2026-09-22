@@ -59,15 +59,15 @@ export function AppPillNav() {
           scrolled ? "py-2" : "py-3"
         )}
         style={{
-          background: `linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.1) 100%)`,
-          backdropFilter: "blur(24px) saturate(180%)",
-          WebkitBackdropFilter: "blur(24px) saturate(180%)",
-          borderColor: "rgba(255, 255, 255, 0.4)",
+          background: `linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.12) 100%)`,
+          backdropFilter: "blur(32px) saturate(200%)",
+          WebkitBackdropFilter: "blur(32px) saturate(200%)",
+          borderColor: "rgba(255, 255, 255, 0.5)",
           boxShadow:
             "0 8px 32px 0 rgba(0, 0, 0, 0.18)," +
-            "inset 0 1px 0 0 rgba(255, 255, 255, 0.6)," +
+            "inset 0 1px 0 0 rgba(255, 255, 255, 0.8)," +
             "inset 0 -1px 0 0 rgba(0, 0, 0, 0.1)," +
-            "0 0 0 1px rgba(255, 255, 255, 0.12)",
+            "0 0 0 1px rgba(255, 255, 255, 0.2)",
         }}
         data-testid="app-pill-nav"
       >
@@ -124,15 +124,15 @@ export function AppPillNav() {
                   exit={{ opacity: 0, y: -8 }}
                   className="absolute right-0 top-12 w-80 max-h-96 rounded-2xl backdrop-blur-2xl border p-2 overflow-y-auto"
                   style={{
-                    background: `linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.1) 100%)`,
-                    backdropFilter: "blur(24px) saturate(180%)",
-                    WebkitBackdropFilter: "blur(24px) saturate(180%)",
-                    borderColor: "rgba(255, 255, 255, 0.4)",
+                    background: `linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.12) 100%)`,
+                    backdropFilter: "blur(32px) saturate(200%)",
+                    WebkitBackdropFilter: "blur(32px) saturate(200%)",
+                    borderColor: "rgba(255, 255, 255, 0.5)",
                     boxShadow:
                       "0 8px 32px 0 rgba(0, 0, 0, 0.18)," +
-                      "inset 0 1px 0 0 rgba(255, 255, 255, 0.6)," +
+                      "inset 0 1px 0 0 rgba(255, 255, 255, 0.8)," +
                       "inset 0 -1px 0 0 rgba(0, 0, 0, 0.1)," +
-                      "0 0 0 1px rgba(255, 255, 255, 0.12)",
+                      "0 0 0 1px rgba(255, 255, 255, 0.2)",
                   }}
                   data-testid="nav-mail-dropdown"
                 >
@@ -172,15 +172,15 @@ export function AppPillNav() {
                   exit={{ opacity: 0, y: -8 }}
                   className="absolute right-0 top-12 w-80 max-h-96 rounded-2xl backdrop-blur-2xl border p-2 overflow-y-auto"
                   style={{
-                    background: `linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.1) 100%)`,
-                    backdropFilter: "blur(24px) saturate(180%)",
-                    WebkitBackdropFilter: "blur(24px) saturate(180%)",
-                    borderColor: "rgba(255, 255, 255, 0.4)",
+                    background: `linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.12) 100%)`,
+                    backdropFilter: "blur(32px) saturate(200%)",
+                    WebkitBackdropFilter: "blur(32px) saturate(200%)",
+                    borderColor: "rgba(255, 255, 255, 0.5)",
                     boxShadow:
                       "0 8px 32px 0 rgba(0, 0, 0, 0.18)," +
-                      "inset 0 1px 0 0 rgba(255, 255, 255, 0.6)," +
+                      "inset 0 1px 0 0 rgba(255, 255, 255, 0.8)," +
                       "inset 0 -1px 0 0 rgba(0, 0, 0, 0.1)," +
-                      "0 0 0 1px rgba(255, 255, 255, 0.12)",
+                      "0 0 0 1px rgba(255, 255, 255, 0.2)",
                   }}
                   data-testid="nav-notifications-dropdown"
                 >
@@ -220,15 +220,15 @@ export function AppPillNav() {
                   exit={{ opacity: 0, y: -8 }}
                   className="absolute right-0 top-12 w-44 rounded-2xl backdrop-blur-2xl border p-2"
                   style={{
-                    background: `linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.1) 100%)`,
-                    backdropFilter: "blur(24px) saturate(180%)",
-                    WebkitBackdropFilter: "blur(24px) saturate(180%)",
-                    borderColor: "rgba(255, 255, 255, 0.4)",
+                    background: `linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.12) 100%)`,
+                    backdropFilter: "blur(32px) saturate(200%)",
+                    WebkitBackdropFilter: "blur(32px) saturate(200%)",
+                    borderColor: "rgba(255, 255, 255, 0.5)",
                     boxShadow:
                       "0 8px 32px 0 rgba(0, 0, 0, 0.18)," +
-                      "inset 0 1px 0 0 rgba(255, 255, 255, 0.6)," +
+                      "inset 0 1px 0 0 rgba(255, 255, 255, 0.8)," +
                       "inset 0 -1px 0 0 rgba(0, 0, 0, 0.1)," +
-                      "0 0 0 1px rgba(255, 255, 255, 0.12)",
+                      "0 0 0 1px rgba(255, 255, 255, 0.2)",
                   }}
                   data-testid="nav-profile-dropdown-menu"
                 >
@@ -253,15 +253,15 @@ export function AppPillNav() {
             exit={{ opacity: 0, height: 0 }}
             className="mt-2 overflow-hidden rounded-2xl backdrop-blur-2xl border p-3 lg:hidden"
             style={{
-              background: `linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.1) 100%)`,
-              backdropFilter: "blur(24px) saturate(180%)",
-              WebkitBackdropFilter: "blur(24px) saturate(180%)",
-              borderColor: "rgba(255, 255, 255, 0.4)",
+              background: `linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.12) 100%)`,
+              backdropFilter: "blur(32px) saturate(200%)",
+              WebkitBackdropFilter: "blur(32px) saturate(200%)",
+              borderColor: "rgba(255, 255, 255, 0.5)",
               boxShadow:
                 "0 8px 32px 0 rgba(0, 0, 0, 0.18)," +
-                "inset 0 1px 0 0 rgba(255, 255, 255, 0.6)," +
+                "inset 0 1px 0 0 rgba(255, 255, 255, 0.8)," +
                 "inset 0 -1px 0 0 rgba(0, 0, 0, 0.1)," +
-                "0 0 0 1px rgba(255, 255, 255, 0.12)",
+                "0 0 0 1px rgba(255, 255, 255, 0.2)",
             }}
           >
             {appNavItems.map((item) => (
