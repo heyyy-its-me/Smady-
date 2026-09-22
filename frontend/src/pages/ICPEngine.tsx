@@ -27,6 +27,7 @@ const resultGroups: { key: "industry" | "targetRoles" | "companySize" | "geograp
 ];
 
 export default function ICPEngine() {
+  // Force rebuild - clear Vercel cache
   const { icp, generatingIcp, generateIcp } = useAppData();
   const navigate = useNavigate();
   const [selectedIcpId, setSelectedIcpId] = useState<string | null>(null);
@@ -41,6 +42,7 @@ export default function ICPEngine() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Generating ICP with filters enabled");
     await generateIcp({ ...form, countries: selectedCountries, industries: selectedIndustries, businessStage, priority });
     setGeneratedInSession(true);
   };

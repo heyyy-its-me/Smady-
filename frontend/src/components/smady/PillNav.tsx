@@ -19,6 +19,7 @@ const appNavItems = [
 ];
 
 export function AppPillNav() {
+  // Frosted glass dropdown nav - cache bust
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();

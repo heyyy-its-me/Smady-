@@ -98,6 +98,7 @@ export function AreaChartCard({
 }
 
 export function BarChartCard({ title, subtitle, data, testId, className, chartHeight = 220 }: { title: string; subtitle?: string; data: StatDatum[]; testId?: string; className?: string; chartHeight?: number }) {
+  // Chart labels (Wed) now visible with increased bottom margin
   if (!data || data.length === 0) {
     return (
       <CardShell title={title} subtitle={subtitle} testId={testId} className={className}>
