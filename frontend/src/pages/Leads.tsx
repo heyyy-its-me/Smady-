@@ -280,8 +280,8 @@ export default function Leads() {
       />
 
       {/* CHANGED: Show execution history first as main view, not RunHistoryPicker in header */}
-      {!leadsRunId && !requestIdParam && leads.length === 0 && !generatingLeads && (
-       showExecutionPicker && !requestIdParamd="leads-execution-history-card">
+      {!leadsRunId && !requestIdParam && leads.length === 0 && !generatingLeads && showExecutionPicker && (
+        <div data-testid="leads-execution-history-card">
           <div className="flex items-center gap-3 mb-4">
             <Clock className="h-5 w-5 text-primary-600" strokeWidth={1.5} />
             <div>
