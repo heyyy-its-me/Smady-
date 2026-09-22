@@ -219,7 +219,7 @@ export default function ICPEngine() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto max-h-screen">
+          <div className="flex-1 overflow-y-auto">
             <AnimatePresence mode="wait">
               {!selectedIcpData && !icp && !generatingIcp && (
               <motion.div
@@ -290,7 +290,7 @@ export default function ICPEngine() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="rounded-2xl border border-primary-200/70 bg-surface p-6 shadow-card"
+                className="rounded-2xl border border-primary-200/70 bg-surface p-6 shadow-card max-h-full"
                 data-testid="icp-results-card"
               >
                 <div className="flex items-center justify-between pb-3">
@@ -317,7 +317,7 @@ export default function ICPEngine() {
                     </div>
                   </motion.div>
                 ))}
-                <div className="mt-6 flex flex-col gap-3">
+                <div className="mt-8 flex flex-col gap-3 border-t border-primary-100/50 pt-6">
                   <ButtonPrimary
                     fullWidth
                     onClick={() => {
@@ -329,7 +329,7 @@ export default function ICPEngine() {
                     Save &amp; Use in Lead Management
                   </ButtonPrimary>
                   <ButtonOutline fullWidth onClick={() => setShowFullAnalysis(true)} data-testid="icp-view-full-analysis-button">
-                    Show Detailed ICP
+                    📊 Show Detailed ICP
                   </ButtonOutline>
                   <ButtonOutline fullWidth onClick={() => generateIcp(form)} data-testid="icp-regenerate-button">
                     Regenerate
