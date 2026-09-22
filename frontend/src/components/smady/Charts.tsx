@@ -112,8 +112,8 @@ export function BarChartCard({ title, subtitle, data, testId, className, chartHe
   return (
     <CardShell title={title} subtitle={subtitle} testId={testId} className={className}>
       <ResponsiveContainer width="100%" height={chartHeight}>
-        <BarChart data={data} margin={{ top: 16, right: 48, left: 0, bottom: 28 }} barCategoryGap="30%">
-          <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#A39A93" }} />
+        <BarChart data={data} margin={{ top: 16, right: 8, left: 0, bottom: 40 }} barCategoryGap="30%">
+          <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#A39A93" }} angle={0} />
           <YAxis hide />
           <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #F1E9E3" }} />
           <Bar dataKey="value" fill="#F9622C" radius={[6, 6, 0, 0]} isAnimationActive={false} maxBarSize={28} />
