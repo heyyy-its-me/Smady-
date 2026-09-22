@@ -74,7 +74,7 @@ export default function ICPEngine() {
     <div data-testid="icp-page">
       <PageHeader />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px] items-start">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px] items-stretch">
         {/* ── Left Column: Form ── */}
         <div>
             {/* Show form for creating new ICP */}
@@ -204,9 +204,9 @@ export default function ICPEngine() {
         </div>
 
         {/* ── Right Column: History Picker & Preview or Results ── */}
-        <div>
+        <div className="flex flex-col h-full">
           {/* History Picker Card */}
-          <div className="rounded-2xl border border-primary-100/70 bg-gradient-to-br from-primary-50/50 to-accent-50/30 p-6 mb-4">
+          <div className="rounded-2xl border border-primary-100/70 bg-gradient-to-br from-primary-50/50 to-accent-50/30 p-6 mb-4 flex-shrink-0">
             <div className="flex flex-col items-center justify-center gap-3 text-center">
               <div className="flex h-10 w-10 items-center justify-center rounded-full border border-primary-200/60 bg-primary-50">
                 <Clock className="h-5 w-5 text-primary-600" strokeWidth={1.5} />
@@ -219,8 +219,9 @@ export default function ICPEngine() {
             </div>
           </div>
 
-          <AnimatePresence mode="wait">
-            {!selectedIcpData && !icp && !generatingIcp && (
+          <div className="flex-1 overflow-y-auto">
+            <AnimatePresence mode="wait">
+              {!selectedIcpData && !icp && !generatingIcp && (
               <motion.div
                 key="preview"
                 initial={{ opacity: 0, y: 10 }}
@@ -385,7 +386,8 @@ export default function ICPEngine() {
                 </div>
               </motion.div>
             )}
-          </AnimatePresence>
+            </AnimatePresence>
+          </div>
         </div>
       </div>
       <IcpDetailModal icp={icp} open={showFullAnalysis} onOpenChange={setShowFullAnalysis} />

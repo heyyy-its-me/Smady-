@@ -16,10 +16,10 @@ export function IcpDetailModal({ icp, open, onOpenChange }: { icp: ICPResult | n
   if (!icp) return null;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto" data-testid="icp-detail-modal">
+      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto" data-testid="icp-detail-modal">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary-500" strokeWidth={1.5} /> Full ICP Analysis
+            <Sparkles className="h-4 w-4 text-primary-500" strokeWidth={1.5} /> Complete ICP Analysis
           </DialogTitle>
         </DialogHeader>
 
@@ -36,6 +36,73 @@ export function IcpDetailModal({ icp, open, onOpenChange }: { icp: ICPResult | n
           <Block label="Core Problem" value={icp.coreProblem} />
           <Block label="Buyer Pain" value={icp.buyerPain} />
         </div>
+
+        {(icp.industry?.length || icp.targetRoles?.length || icp.companySize?.length || icp.geography?.length || icp.painPoints?.length) && (
+          <div className="space-y-4 border-b border-border py-4">
+            <p className="text-[11px] font-extrabold uppercase tracking-wide text-primary-700">Core Profile</p>
+            {icp.industry?.length > 0 && (
+              <div data-testid="icp-detail-industry">
+                <p className="text-[10px] font-bold text-primary-600 mb-2">Industries</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {icp.industry.map((item) => (
+                    <span key={item} className="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-600">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {icp.geography?.length > 0 && (
+              <div data-testid="icp-detail-geography">
+                <p className="text-[10px] font-bold text-primary-600 mb-2">Geography</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {icp.geography.map((item) => (
+                    <span key={item} className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-600">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {icp.targetRoles?.length > 0 && (
+              <div data-testid="icp-detail-roles">
+                <p className="text-[10px] font-bold text-primary-600 mb-2">Target Roles</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {icp.targetRoles.map((item) => (
+                    <span key={item} className="rounded-full bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-600">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {icp.companySize?.length > 0 && (
+              <div data-testid="icp-detail-company-size">
+                <p className="text-[10px] font-bold text-primary-600 mb-2">Company Size</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {icp.companySize.map((item) => (
+                    <span key={item} className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-600">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {icp.painPoints?.length > 0 && (
+              <div data-testid="icp-detail-pain-points">
+                <p className="text-[10px] font-bold text-primary-600 mb-2">Key Pain Points</p>
+                <ul className="space-y-2">
+                  {icp.painPoints.map((pain, i) => (
+                    <li key={i} className="flex gap-2 text-sm text-body">
+                      <span className="shrink-0 text-primary-500 font-bold">•</span>
+                      <span>{pain}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
 
         {(icp.gtmChannels?.length || icp.gtmRegions?.length) ? (
           <div className="space-y-3 border-b border-border py-4">
