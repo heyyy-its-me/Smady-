@@ -72,10 +72,10 @@ export default function ICPEngine() {
     <div data-testid="icp-page">
       <PageHeader />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px] items-start">
         {/* ── Left Column: Form ── */}
         <div>
-            /* Show form for creating new ICP */
+            {/* Show form for creating new ICP */}
             <div className="relative overflow-hidden rounded-2xl border border-primary-100/70 bg-surface p-6 shadow-card lg:p-8" data-testid="icp-form-card">
               <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-gradient-to-br from-primary-200/40 to-accent/10 blur-3xl" aria-hidden />
               <div className="relative mb-6 flex items-center justify-between border-b border-border/80 pb-6">
@@ -202,7 +202,7 @@ export default function ICPEngine() {
         </div>
 
         {/* ── Right Column: History Picker & Preview or Results ── */}
-        <div className="lg:sticky lg:top-24 lg:self-start">
+        <div>
           {/* History Picker Card */}
           <div className="rounded-2xl border border-primary-100/70 bg-gradient-to-br from-primary-50/50 to-accent-50/30 p-6 mb-4">
             <div className="flex flex-col items-center justify-center gap-3 text-center">
@@ -290,7 +290,7 @@ export default function ICPEngine() {
                 className="rounded-2xl border border-primary-200/70 bg-surface p-6 shadow-card"
                 data-testid="icp-results-card"
               >
-                <div className="flex items-center justify-between border-b border-border/80 pb-3">
+                <div className="flex items-center justify-between pb-3">
                   <div className="flex items-center gap-2 text-primary-500">
                     <Sparkles className="h-4 w-4" strokeWidth={1.5} />
                     <h2 className="font-display text-[15px] font-bold text-ink">Your Ideal Customer Profile</h2>
@@ -343,7 +343,7 @@ export default function ICPEngine() {
                 exit={{ opacity: 0 }}
                 className="rounded-2xl border border-primary-200/70 bg-surface p-6 shadow-card"
               >
-                <div className="flex items-center justify-between border-b border-border/80 pb-3">
+                <div className="flex items-center justify-between pb-3">
                   <div className="flex items-center gap-2 text-primary-500">
                     <Sparkles className="h-4 w-4" strokeWidth={1.5} />
                     <h2 className="font-display text-[15px] font-bold text-ink">Saved ICP</h2>
