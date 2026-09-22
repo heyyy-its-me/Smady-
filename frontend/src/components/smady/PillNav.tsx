@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Bell, ChevronDown, Menu, X, Calendar, FileText } from "lucide-react";
@@ -28,6 +28,7 @@ export function AppPillNav() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const upcomingMeetings = meetings.filter(m => new Date(m.meeting_date) > new Date());
   const pendingProposals = reviewQueue.filter(p => p.final_status === "Needs Review" || p.final_status === "needs_review");
@@ -38,8 +39,20 @@ export function AppPillNav() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setMailOpen(false);
+        setNotificationsOpen(false);
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
-    <div className="sticky top-4 z-40 mx-auto max-w-7xl px-4">
+    <div className="sticky top-4 z-40 mx-auto max-w-7xl px-4" ref={containerRef}>
       <motion.header
         className={cn(
           "flex items-center justify-between rounded-full backdrop-blur-2xl border px-5 transition-all",
@@ -97,7 +110,7 @@ export function AppPillNav() {
         </nav>
         <div className="flex items-center gap-2 pr-1">
           <div className="relative">
-            <button onClick={() => setMailOpen(!mailOpen)} className="relative rounded-full p-2 text-body hover:bg-white/10 transition-colors" data-testid="nav-mail-icon">
+            <button onClick={() => { setMailOpen(!mailOpen); setNotificationsOpen(false); }} className="relative rounded-full p-2 text-body hover:bg-white/10 transition-colors" data-testid="nav-mail-icon">
               <Mail className="h-5 w-5" strokeWidth={1.5} />
               {pendingProposals.length > 0 && (
                 <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary-500 text-[10px] font-semibold text-white">{pendingProposals.length}</span>
@@ -145,7 +158,7 @@ export function AppPillNav() {
             </AnimatePresence>
           </div>
           <div className="relative">
-            <button onClick={() => setNotificationsOpen(!notificationsOpen)} className="relative rounded-full p-2 text-body hover:bg-white/10 transition-colors" data-testid="nav-bell-icon">
+            <button onClick={() => { setNotificationsOpen(!notificationsOpen); setMailOpen(false); }} className="relative rounded-full p-2 text-body hover:bg-white/10 transition-colors" data-testid="nav-bell-icon">
               <Bell className="h-5 w-5" strokeWidth={1.5} />
               {upcomingMeetings.length > 0 && (
                 <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary-500" />

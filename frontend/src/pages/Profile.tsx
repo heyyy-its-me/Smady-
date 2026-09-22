@@ -113,7 +113,7 @@ export default function Profile() {
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-muted">Member Since</p>
-            <p className="mt-2 text-sm font-medium text-ink">2024</p>
+            <p className="mt-2 text-sm font-medium text-ink">{new Date(user.createdAt || new Date()).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
           </div>
         </div>
       </div>

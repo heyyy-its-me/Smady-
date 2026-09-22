@@ -72,7 +72,7 @@ export default function ICPEngine() {
     <div data-testid="icp-page">
       <PageHeader />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px] items-start">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px] items-start">
         {/* ── Left Column: Form ── */}
         <div>
             {/* Show form for creating new ICP */}
