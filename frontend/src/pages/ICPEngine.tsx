@@ -242,29 +242,22 @@ export default function ICPEngine() {
           )}
         </div>
 
-        {/* History Picker - moved below form */}
-        {!selectedIcpId && !icp && !generatingIcp && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
-            <div className="rounded-2xl border border-primary-100/70 bg-gradient-to-br from-primary-50/50 to-accent-50/30 p-8 lg:col-span-2">
-              <div className="flex flex-col items-center justify-center gap-4 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-primary-200/60 bg-primary-50">
-                  <Clock className="h-6 w-6 text-primary-600" strokeWidth={1.5} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-ink">View Past ICPs</h3>
-                  <p className="mt-1 text-sm text-body">Select from your recent ICP generations or create a new one</p>
-                </div>
-                <div className="mt-2">
-                  <IcpHistoryPicker selectedIcpId={selectedIcpId} onSelect={handleSelectIcp} />
-                </div>
+        {/* ── Right Column: History Picker & Preview or Results ── */}
+        <div className="lg:sticky lg:top-24 lg:self-start">
+          {/* History Picker Card */}
+          <div className="rounded-2xl border border-primary-100/70 bg-gradient-to-br from-primary-50/50 to-accent-50/30 p-6 mb-4">
+            <div className="flex flex-col items-center justify-center gap-3 text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-primary-200/60 bg-primary-50">
+                <Clock className="h-5 w-5 text-primary-600" strokeWidth={1.5} />
               </div>
+              <div>
+                <h3 className="text-sm font-bold text-ink">Recent ICPs</h3>
+                <p className="mt-0.5 text-xs text-body">Select from past generations</p>
+              </div>
+              <IcpHistoryPicker selectedIcpId={selectedIcpId} onSelect={handleSelectIcp} />
             </div>
-          </motion.div>
-        )}
-      </div>
+          </div>
 
-      {/* ── Right Column: Preview or Results ── */}
-      <div className="lg:sticky lg:top-24 lg:self-start">
           <AnimatePresence mode="wait">
             {!selectedIcpData && !icp && !generatingIcp && (
               <motion.div
@@ -378,6 +371,55 @@ export default function ICPEngine() {
                   </ButtonOutline>
                   <ButtonOutline fullWidth onClick={() => generateIcp(form)} data-testid="icp-regenerate-button">
                     Regenerate
+                  </ButtonOutline>
+                </div>
+              </motion.div>
+            )}
+
+            {selectedIcpData && !generatingIcp && (
+              <motion.div
+                key="selected-results"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="rounded-2xl border border-primary-200/70 bg-surface p-6 shadow-card"
+              >
+                <div className="flex items-center justify-between border-b border-border/80 pb-3">
+                  <div className="flex items-center gap-2 text-primary-500">
+                    <Sparkles className="h-4 w-4" strokeWidth={1.5} />
+                    <h2 className="font-display text-[15px] font-bold text-ink">Saved ICP</h2>
+                  </div>
+                </div>
+                {resultGroups.map(({ key, label }, i) => (
+                  <motion.div
+                    key={key}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.06 * i, duration: 0.3 }}
+                    className="mt-4 rounded-xl border border-primary-100/60 bg-primary-50/50 p-3.5"
+                  >
+                    <p className="text-[11px] font-extrabold uppercase tracking-wider text-primary-700">{label}</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {(selectedIcpData[key] as string[])?.map((it) => (
+                        <span key={it} className="rounded-lg border border-primary-200/80 bg-white px-3 py-1.5 text-sm font-medium text-ink shadow-soft transition-colors hover:bg-primary-50 hover:text-primary-600">
+                          {it}
+                        </span>
+                      ))}
+                    </div>
+                  </motion.div>
+                ))}
+                <div className="mt-6 flex flex-col gap-3">
+                  <ButtonPrimary
+                    fullWidth
+                    onClick={() => {
+                      toast.success("ICP saved");
+                      navigate("/leads");
+                    }}
+                  >
+                    Save &amp; Use in Lead Management
+                  </ButtonPrimary>
+                  <ButtonOutline fullWidth onClick={handleBackToNew}>
+                    Back to New
                   </ButtonOutline>
                 </div>
               </motion.div>
