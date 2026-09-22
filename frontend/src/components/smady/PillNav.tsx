@@ -123,13 +123,13 @@ export function AppPillNav() {
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  className="absolute right-0 top-12 w-80 max-h-96 rounded-2xl backdrop-blur-md border p-2 overflow-y-auto"
+                  className="absolute right-0 top-12 w-80 max-h-96 rounded-2xl backdrop-blur-sm border p-2 overflow-y-auto"
                   style={{
-                    background: `rgba(0, 0, 0, 0.4)`,
-                    backdropFilter: "blur(12px)",
-                    WebkitBackdropFilter: "blur(12px)",
-                    borderColor: "rgba(255, 255, 255, 0.15)",
-                    boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.3)",
+                    background: `rgba(255, 255, 255, 0.85)`,
+                    backdropFilter: "blur(8px)",
+                    WebkitBackdropFilter: "blur(8px)",
+                    borderColor: "rgba(249, 98, 44, 0.2)",
+                    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.08)",
                   }}
                   data-testid="nav-mail-dropdown"
                 >
@@ -167,13 +167,13 @@ export function AppPillNav() {
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  className="absolute right-0 top-12 w-80 max-h-96 rounded-2xl backdrop-blur-md border p-2 overflow-y-auto"
+                  className="absolute right-0 top-12 w-80 max-h-96 rounded-2xl backdrop-blur-sm border p-2 overflow-y-auto"
                   style={{
-                    background: `rgba(0, 0, 0, 0.4)`,
-                    backdropFilter: "blur(12px)",
-                    WebkitBackdropFilter: "blur(12px)",
-                    borderColor: "rgba(255, 255, 255, 0.15)",
-                    boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.3)",
+                    background: `rgba(255, 255, 255, 0.85)`,
+                    backdropFilter: "blur(8px)",
+                    WebkitBackdropFilter: "blur(8px)",
+                    borderColor: "rgba(249, 98, 44, 0.2)",
+                    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.08)",
                   }}
                   data-testid="nav-notifications-dropdown"
                 >
@@ -211,13 +211,13 @@ export function AppPillNav() {
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  className="absolute right-0 top-12 w-44 rounded-2xl backdrop-blur-md border p-2"
+                  className="absolute right-0 top-12 w-44 rounded-2xl backdrop-blur-sm border p-2"
                   style={{
-                    background: `rgba(0, 0, 0, 0.4)`,
-                    backdropFilter: "blur(12px)",
-                    WebkitBackdropFilter: "blur(12px)",
-                    borderColor: "rgba(255, 255, 255, 0.15)",
-                    boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.3)",
+                    background: `rgba(255, 255, 255, 0.85)`,
+                    backdropFilter: "blur(8px)",
+                    WebkitBackdropFilter: "blur(8px)",
+                    borderColor: "rgba(249, 98, 44, 0.2)",
+                    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.08)",
                   }}
                   data-testid="nav-profile-dropdown-menu"
                 >
@@ -240,13 +240,13 @@ export function AppPillNav() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="mt-2 overflow-hidden rounded-2xl backdrop-blur-md border p-3 lg:hidden"
+            className="mt-2 overflow-hidden rounded-2xl backdrop-blur-sm border p-3 lg:hidden"
             style={{
-              background: `rgba(0, 0, 0, 0.4)`,
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-              borderColor: "rgba(255, 255, 255, 0.15)",
-              boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.3)",
+              background: `rgba(255, 255, 255, 0.85)`,
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              borderColor: "rgba(249, 98, 44, 0.2)",
+              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.08)",
             }}
           >
             {appNavItems.map((item) => (

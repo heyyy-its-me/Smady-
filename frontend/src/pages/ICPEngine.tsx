@@ -71,10 +71,10 @@ export default function ICPEngine() {
   const completeness = Math.round((filledFields / totalFields) * 100);
 
   return (
-    <div data-testid="icp-page">
+    <div data-testid="icp-page" className="min-h-screen">
       <PageHeader />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px] items-stretch">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px] items-stretch w-full">
         {/* ── Left Column: Form ── */}
         <div>
             {/* Show form for creating new ICP */}
