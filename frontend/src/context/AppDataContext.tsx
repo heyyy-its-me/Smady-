@@ -170,6 +170,8 @@ interface AppDataContextType {
   refreshDashboard: () => Promise<void>;
   refreshOutreachStats: () => Promise<void>;
 
+  analyticsLoading: boolean;
+
   history: HistoryData | null;
   fetchHistory: () => Promise<void>;
   realHistory: RealHistoryItem[];
@@ -204,6 +206,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [generatingProposal, setGeneratingProposal] = useState(false);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats>(defaultDashboardStats);
   const [outreachStats, setOutreachStats] = useState<OutreachStats>(defaultOutreachStats);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [history, setHistory] = useState<HistoryData | null>(null);
   const [realHistory, setRealHistory] = useState<RealHistoryItem[]>([]);
 
@@ -627,6 +630,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         outreachStats,
         refreshDashboard,
         refreshOutreachStats,
+        analyticsLoading,
         history,
         fetchHistory,
         realHistory,

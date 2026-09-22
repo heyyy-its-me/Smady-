@@ -67,10 +67,11 @@ export default function Leads() {
   const [editLead, setEditLead] = useState<Lead | null>(null);
   const [page, setPage] = useState(1);
 
-  // Normalize the initial app-wide fetch to this page's PAGE_SIZE, unless viewing a specific run
+  // CHANGED: Don't load leads on mount. Wait for user to select an execution.
+  // Only load if viewing a specific run via URL parameter.
   useEffect(() => {
     if (requestIdParam) return;
-    refreshLeads(undefined, 0, PAGE_SIZE);
+    // Page loads without leads - user must select an execution first
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -263,25 +264,43 @@ export default function Leads() {
         actions={
           <>
             <IcpPickerButton onApply={applyIcp} />
-            <RunHistoryPicker selectedRunId={leadsRunId} onSelect={onSelectRun} />
           </>
         }
       />
 
-      {/* Run context banner when navigated from history */}
-      {runInfo && (
+      {/* CHANGED: Show execution history first as main view, not RunHistoryPicker in header */}
+      {!leadsRunId && !requestIdParam && leads.length === 0 && !generatingLeads && (
+        <div className="mb-6 rounded-2xl bg-surface p-6 shadow-card" data-testid="leads-execution-history-card">
+          <div className="flex items-center gap-3 mb-4">
+            <Clock className="h-5 w-5 text-primary-600" strokeWidth={1.5} />
+            <div>
+              <h2 className="text-[15px] font-semibold text-ink">Recent Lead Generations</h2>
+              <p className="text-xs text-muted mt-0.5">Select an execution to view its leads, or generate new ones below</p>
+            </div>
+          </div>
+          <RunHistoryPicker selectedRunId={leadsRunId} onSelect={onSelectRun} />
+        </div>
+      )}
+
+      {/* Run context banner when a run is selected */}
+      {(leadsRunId || runInfo) && (
         <div className="mb-5 flex items-center gap-3 rounded-xl border border-primary-200/70 bg-primary-50/50 px-4 py-3">
           <Clock className="h-4 w-4 text-primary-600" strokeWidth={1.5} />
           <span className="text-sm text-primary-700">
             Showing leads from run ·{" "}
-            <strong>{new Date(runInfo.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}</strong>
-            {" "}· Status: <StatusBadge status={runInfo.status} />
+            <strong>{runInfo ? new Date(runInfo.created_at).toLocaleDateString(undefined, { dateStyle: "medium" }) : "selected run"}</strong>
+            {runInfo && <>{" "}· Status: <StatusBadge status={runInfo.status} /></>}
           </span>
           <button
             className="ml-auto text-xs text-primary-600 underline underline-offset-2"
-            onClick={() => { setRunInfo(null); refreshLeads(undefined, 0, PAGE_SIZE); }}
+            onClick={() => { 
+              setRunInfo(null); 
+              setLeads([]);
+              setLeadsRunId(null);
+              setSelected([]);
+            }}
           >
-            Show all leads
+            Back to executions
           </button>
         </div>
       )}

@@ -108,10 +108,17 @@ export function SendCampaignCard({
   const onSelectRun = async (id: string) => {
     setRunId(id);
     try {
-      const { data } = await api.get(`/leads?run_id=${id}&limit=1`);
-      setRunLeadCount(data.total);
+      // CHANGED: Ensure we get the correct total count for this specific run
+      const { data } = await api.get(`/leads?run_id=${id}&limit=1&offset=0`);
+      if (!data.total || data.total === 0) {
+        toast.warning("No leads found in this execution");
+        setRunLeadCount(0);
+      } else {
+        setRunLeadCount(data.total);
+      }
     } catch (_e) {
-      toast.error("Failed to load lead count");
+      toast.error("Failed to load lead count for this execution");
+      setRunLeadCount(null);
     }
   };
 

@@ -39,13 +39,18 @@ export default function Reports() {
 
   // Real analytics state — falls back to mock data if unavailable
   const [analytics, setAnalytics] = useState<Record<string, unknown> | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
   const fetchAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true);
     try {
       const { data } = await api.get("/dashboard/analytics");
       setAnalytics(data);
     } catch (_e) {
       // Falls back to mock data silently
+      setAnalytics(null);
+    } finally {
+      setAnalyticsLoading(false);
     }
   }, []);
 
@@ -328,87 +333,131 @@ export default function Reports() {
       )}
 
       {/* Analytics Grid - Structured Layout */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <DonutChartCard title="Leads by Industry" data={realByIndustry} testId="reports-industry-donut" />
-        <DonutChartCard title="Leads by Country" data={realByCountry} testId="reports-country-donut" />
-        <ComparisonCard
-          title="Meeting Conversion Rate"
-          percent={realMeetingConv.percent}
-          trend={realMeetingConv.trend}
-          thisWeek={realMeetingConv.thisWeek}
-          lastWeek={realMeetingConv.lastWeek}
-          totalPerWeek={realMeetingConv.totalPerWeek}
-        />
-      </div>
+      {analyticsLoading ? (
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+          {/* Loading skeletons */}
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-2xl bg-surface p-6 shadow-card">
+              <div className="space-y-4">
+                <div className="h-4 w-1/3 rounded-full bg-gray-200 animate-pulse" />
+                <div className="space-y-2">
+                  <div className="h-3 w-full rounded-full bg-gray-200 animate-pulse" />
+                  <div className="h-3 w-5/6 rounded-full bg-gray-200 animate-pulse" />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  {[1, 2, 3].map((j) => (
+                    <div key={j} className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <DonutChartCard title="Leads by Industry" data={realByIndustry} testId="reports-industry-donut" />
+          <DonutChartCard title="Leads by Country" data={realByCountry} testId="reports-country-donut" />
+          <ComparisonCard
+            title="Meeting Conversion Rate"
+            percent={realMeetingConv.percent}
+            trend={realMeetingConv.trend}
+            thisWeek={realMeetingConv.thisWeek}
+            lastWeek={realMeetingConv.lastWeek}
+            totalPerWeek={realMeetingConv.totalPerWeek}
+          />
+        </div>
+      )}
 
       {/* Proposals Lifecycle */}
-      <div className="mt-6">
-        <MultiLineChartCard
-          title="Proposals Lifecycle"
-          subtitle={analytics ? "This month" : "Sample data"}
-          data={proposalsTimeSeriesData}
-          testId="reports-proposals-lifecycle"
-        />
-      </div>
+      {analyticsLoading ? (
+        <div className="mt-6 rounded-2xl bg-surface p-6 shadow-card">
+          <div className="h-4 w-1/3 rounded-full bg-gray-200 animate-pulse mb-4" />
+          <div className="space-y-3">
+            <div className="h-40 rounded-lg bg-gray-100 animate-pulse" />
+          </div>
+        </div>
+      ) : (
+        <div className="mt-6">
+          <MultiLineChartCard
+            title="Proposals Lifecycle"
+            subtitle={analytics ? "This month" : "Sample data"}
+            data={proposalsTimeSeriesData}
+            testId="reports-proposals-lifecycle"
+          />
+        </div>
+      )}
 
       {/* Outreach Analytics - Side by Side with Enhanced Design */}
-      <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {/* Emails Sent Over Time */}
-        <div className="relative rounded-2xl overflow-hidden shadow-card">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary-50/80 to-primary-25/40" />
-          <div className="relative p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 rounded-lg bg-primary-100">
-                <TrendingUp className="h-5 w-5 text-primary-600" strokeWidth={2} />
-              </div>
-              <div>
-                <h3 className="text-[15px] font-semibold text-ink">Emails Sent Over Time</h3>
-                <p className="text-xs text-muted mt-0.5">Campaign email delivery trends</p>
+      {analyticsLoading ? (
+        <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
+          {[1, 2].map((i) => (
+            <div key={i} className="rounded-2xl bg-surface p-6 shadow-card">
+              <div className="space-y-4">
+                <div className="h-4 w-1/3 rounded-full bg-gray-200 animate-pulse" />
+                <div className="h-40 rounded-lg bg-gray-100 animate-pulse" />
               </div>
             </div>
-            <div className="bg-white/60 rounded-xl -mx-6 -mb-6 mx-6 mb-6">
-              <MultiLineChartCard 
-                title="" 
-                data={(analytics?.emailsOverTime as Array<{date: string; emails: number}>) ?? realOutreach.map((d: Record<string, unknown>) => ({
-                  label: String(d.label || ""),
-                  emails: typeof d.sent === 'number' ? d.sent : 0
-                }))} 
-                testId="reports-outreach-chart"
-                chartHeight={180}
-                className="!bg-transparent !shadow-none !p-0"
-              />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
+          {/* Emails Sent Over Time */}
+          <div className="relative rounded-2xl overflow-hidden shadow-card">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary-50/80 to-primary-25/40" />
+            <div className="relative p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2.5 rounded-lg bg-primary-100">
+                  <TrendingUp className="h-5 w-5 text-primary-600" strokeWidth={2} />
+                </div>
+                <div>
+                  <h3 className="text-[15px] font-semibold text-ink">Emails Sent Over Time</h3>
+                  <p className="text-xs text-muted mt-0.5">Campaign email delivery trends</p>
+                </div>
+              </div>
+              <div className="bg-white/60 rounded-xl -mx-6 -mb-6 mx-6 mb-6">
+                <MultiLineChartCard 
+                  title="" 
+                  data={(analytics?.emailsOverTime as Array<{date: string; emails: number}>) ?? realOutreach.map((d: Record<string, unknown>) => ({
+                    label: String(d.label || ""),
+                    emails: typeof d.sent === 'number' ? d.sent : 0
+                  }))} 
+                  testId="reports-outreach-chart"
+                  chartHeight={180}
+                  className="!bg-transparent !shadow-none !p-0"
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Campaign Performance */}
-        <div className="relative rounded-2xl overflow-hidden shadow-card">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/80 to-emerald-25/40" />
-          <div className="relative p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 rounded-lg bg-emerald-100">
-                <BarChart3 className="h-5 w-5 text-emerald-600" strokeWidth={2} />
+          {/* Campaign Performance */}
+          <div className="relative rounded-2xl overflow-hidden shadow-card">
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/80 to-emerald-25/40" />
+            <div className="relative p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2.5 rounded-lg bg-emerald-100">
+                  <BarChart3 className="h-5 w-5 text-emerald-600" strokeWidth={2} />
+                </div>
+                <div>
+                  <h3 className="text-[15px] font-semibold text-ink">Campaign Performance</h3>
+                  <p className="text-xs text-muted mt-0.5">Emails sent per campaign</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-[15px] font-semibold text-ink">Campaign Performance</h3>
-                <p className="text-xs text-muted mt-0.5">Emails sent per campaign</p>
+              <div className="bg-white/60 rounded-xl -mx-6 -mb-6 mx-6 mb-6">
+                <BarChartCard
+                  title=""
+                  data={((analytics?.campaign_performance as Array<{name: string; emails: number}>) ?? campaignPerformance).map(c => ({
+                    label: c.name,
+                    value: c.emails
+                  }))}
+                  testId="reports-campaign-performance"
+                  chartHeight={180}
+                  className="!bg-transparent !shadow-none !p-0"
+                />
               </div>
-            </div>
-            <div className="bg-white/60 rounded-xl -mx-6 -mb-6 mx-6 mb-6">
-              <BarChartCard
-                title=""
-                data={((analytics?.campaign_performance as Array<{name: string; emails: number}>) ?? campaignPerformance).map(c => ({
-                  label: c.name,
-                  value: c.emails
-                }))}
-                testId="reports-campaign-performance"
-                chartHeight={180}
-                className="!bg-transparent !shadow-none !p-0"
-              />
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="mt-6 rounded-2xl bg-surface p-6 shadow-card">
         <h2 className="text-[15px] font-semibold text-ink">Campaign Performance</h2>
