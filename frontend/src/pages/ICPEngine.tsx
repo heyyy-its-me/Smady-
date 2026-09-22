@@ -37,20 +37,24 @@ export default function ICPEngine() {
   const [businessStage, setBusinessStage] = useState(businessStages[2]);
   const [priority, setPriority] = useState(priorities[3]);
   const [showFullAnalysis, setShowFullAnalysis] = useState(false);
+  const [generatedInSession, setGeneratedInSession] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await generateIcp({ ...form, countries: selectedCountries, industries: selectedIndustries, businessStage, priority });
+    setGeneratedInSession(true);
   };
 
   const handleSelectIcp = (icpId: string, icpData: { result?: Record<string, unknown> }) => {
     setSelectedIcpId(icpId);
     setSelectedIcpData(icpData.result || null);
+    setGeneratedInSession(false);
   };
 
   const handleBackToNew = () => {
     setSelectedIcpId(null);
     setSelectedIcpData(null);
+    setGeneratedInSession(false);
   };
 
   const summarySentence = `${form.productName || "Your product"} helps ${form.companyName || "your company"} reach ${
@@ -69,52 +73,8 @@ export default function ICPEngine() {
       <PageHeader />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
-        {/* ── Left Column: Form or Results ── */}
+        {/* ── Left Column: Form ── */}
         <div>
-          {selectedIcpData && !generatingIcp ? (
-            /* Show past ICP results */
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-primary-200/70 bg-surface p-6 shadow-card">
-              <div className="flex items-center justify-between border-b border-border/80 pb-3">
-                <div className="flex items-center gap-2 text-primary-500">
-                  <Sparkles className="h-4 w-4" strokeWidth={1.5} />
-                  <h2 className="font-display text-[15px] font-bold text-ink">Saved Ideal Customer Profile</h2>
-                </div>
-              </div>
-              {resultGroups.map(({ key, label }, i) => (
-                <motion.div
-                  key={key}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.06 * i, duration: 0.3 }}
-                  className="mt-4 rounded-xl border border-primary-100/60 bg-primary-50/50 p-3.5"
-                >
-                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-primary-700">{label}</p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {(selectedIcpData[key] as string[])?.map((it) => (
-                      <span key={it} className="rounded-lg border border-primary-200/80 bg-white px-3 py-1.5 text-sm font-medium text-ink shadow-soft transition-colors hover:bg-primary-50 hover:text-primary-600">
-                        {it}
-                      </span>
-                    ))}
-                  </div>
-                </motion.div>
-              ))}
-              <div className="mt-6 flex flex-col gap-3">
-                <ButtonPrimary
-                  fullWidth
-                  onClick={() => {
-                    toast.success("ICP saved");
-                    navigate("/leads");
-                  }}
-                  data-testid="icp-save-and-use-button"
-                >
-                  Use in Lead Management
-                </ButtonPrimary>
-                <ButtonOutline fullWidth onClick={handleBackToNew} data-testid="icp-back-to-new-button">
-                  Back to New ICP
-                </ButtonOutline>
-              </div>
-            </motion.div>
-          ) : (
             /* Show form for creating new ICP */
             <div className="relative overflow-hidden rounded-2xl border border-primary-100/70 bg-surface p-6 shadow-card lg:p-8" data-testid="icp-form-card">
               <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-gradient-to-br from-primary-200/40 to-accent/10 blur-3xl" aria-hidden />
@@ -239,7 +199,6 @@ export default function ICPEngine() {
               </div>
             </form>
             </div>
-          )}
         </div>
 
         {/* ── Right Column: History Picker & Preview or Results ── */}
@@ -322,7 +281,7 @@ export default function ICPEngine() {
               </motion.div>
             )}
 
-            {icp && !generatingIcp && (
+            {generatedInSession && icp && !generatingIcp && (
               <motion.div
                 key="results"
                 initial={{ opacity: 0, y: 10 }}
