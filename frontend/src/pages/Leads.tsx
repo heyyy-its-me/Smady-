@@ -279,20 +279,6 @@ export default function Leads() {
         }
       />
 
-      {/* CHANGED: Show execution history first as main view, not RunHistoryPicker in header */}
-      {!leadsRunId && !requestIdParam && leads.length === 0 && !generatingLeads && showExecutionPicker && (
-        <div data-testid="leads-execution-history-card">
-          <div className="flex items-center gap-3 mb-4">
-            <Clock className="h-5 w-5 text-primary-600" strokeWidth={1.5} />
-            <div>
-              <h2 className="text-[15px] font-semibold text-ink">Recent Lead Generations</h2>
-              <p className="text-xs text-muted mt-0.5">Select an execution to view its leads, or generate new ones below</p>
-            </div>
-          </div>
-          <RunHistoryPicker selectedRunId={leadsRunId} onSelect={onSelectRun} />
-        </div>
-      )}
-
       {/* Run context banner - only show when viewing a specific run, not picker */}
       {!showExecutionPicker && (leadsRunId || runInfo) && (
         <div className="mb-5 flex items-center gap-3 rounded-xl border border-primary-200/70 bg-primary-50/50 px-4 py-3">
@@ -410,6 +396,22 @@ export default function Leads() {
         <StatCard label="Verified Emails" value={verified} icon={ShieldCheck} />
         <StatCard label="Ready for Outreach" value={readyForOutreach} icon={Send} />
       </div>
+
+      {/* Recent Lead Generations - moved below stats */}
+      {!leadsRunId && !requestIdParam && leads.length === 0 && !generatingLeads && showExecutionPicker && (
+        <div className="mt-6" data-testid="leads-execution-history-card">
+          <div className="rounded-2xl border border-primary-100/70 bg-surface p-6 shadow-card">
+            <div className="flex items-center gap-3 mb-4">
+              <Clock className="h-5 w-5 text-primary-600" strokeWidth={1.5} />
+              <div>
+                <h2 className="text-[15px] font-semibold text-ink">Recent Lead Generations</h2>
+                <p className="text-xs text-muted mt-0.5">Select an execution to view its leads, or generate new ones below</p>
+              </div>
+            </div>
+            <RunHistoryPicker selectedRunId={leadsRunId} onSelect={onSelectRun} />
+          </div>
+        </div>
+      )}
 
       <div className="mt-6">
         {/* Only show generate form and leads if not in execution picker mode */}

@@ -68,26 +68,6 @@ export default function ICPEngine() {
     <div data-testid="icp-page">
       <PageHeader />
 
-      {/* ── When no ICP selected: show history picker ── */}
-      {!selectedIcpId && !icp && !generatingIcp && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <div className="rounded-2xl border border-primary-100/70 bg-gradient-to-br from-primary-50/50 to-accent-50/30 p-8">
-            <div className="flex flex-col items-center justify-center gap-4 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-primary-200/60 bg-primary-50">
-                <Clock className="h-6 w-6 text-primary-600" strokeWidth={1.5} />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-ink">View Past ICPs</h3>
-                <p className="mt-1 text-sm text-body">Select from your recent ICP generations or create a new one</p>
-              </div>
-              <div className="mt-2">
-                <IcpHistoryPicker selectedIcpId={selectedIcpId} onSelect={handleSelectIcp} />
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
         {/* ── Left Column: Form or Results ── */}
         <div>
@@ -262,8 +242,29 @@ export default function ICPEngine() {
           )}
         </div>
 
-        {/* ── Right Column: Preview or History ── */}
-        <div className="lg:sticky lg:top-24 lg:self-start">
+        {/* History Picker - moved below form */}
+        {!selectedIcpId && !icp && !generatingIcp && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
+            <div className="rounded-2xl border border-primary-100/70 bg-gradient-to-br from-primary-50/50 to-accent-50/30 p-8 lg:col-span-2">
+              <div className="flex flex-col items-center justify-center gap-4 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-primary-200/60 bg-primary-50">
+                  <Clock className="h-6 w-6 text-primary-600" strokeWidth={1.5} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-ink">View Past ICPs</h3>
+                  <p className="mt-1 text-sm text-body">Select from your recent ICP generations or create a new one</p>
+                </div>
+                <div className="mt-2">
+                  <IcpHistoryPicker selectedIcpId={selectedIcpId} onSelect={handleSelectIcp} />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </div>
+
+      {/* ── Right Column: Preview or Results ── */}
+      <div className="lg:sticky lg:top-24 lg:self-start">
           <AnimatePresence mode="wait">
             {!selectedIcpData && !icp && !generatingIcp && (
               <motion.div

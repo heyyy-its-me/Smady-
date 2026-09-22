@@ -51,9 +51,7 @@ export function SendCampaignCard({
   const [productName, setProductName] = useState("Smady Outreach");
   const [productDescription, setProductDescription] = useState("");
   const [name, setName] = useState("");
-  const [subject, setSubject] = useState("");
   const [body, setBody] = useState("Hi {first_name}, ...");
-  const [scheduled, setScheduled] = useState(false);
   const [sending, setSending] = useState(false);
 
   // Fetch ICPs when dialog opens
@@ -72,9 +70,7 @@ export function SendCampaignCard({
       setProductName("Smady Outreach");
       setProductDescription("");
       setName("");
-      setSubject("");
       setBody("Hi {first_name}, ...");
-      setScheduled(false);
       setRunId(null);
       setRunLeadCount(null);
     }
@@ -127,10 +123,6 @@ export function SendCampaignCard({
       toast.error("Campaign name is required");
       return;
     }
-    if (!subject.trim()) {
-      toast.error("Subject line is required");
-      return;
-    }
     if (!companyName.trim()) {
       toast.error("Company name is required");
       return;
@@ -144,7 +136,6 @@ export function SendCampaignCard({
     try {
       await addCampaign({
         name: name || "Untitled Campaign",
-        subject,
         body,
         companyName,
         productName,
@@ -166,7 +157,6 @@ export function SendCampaignCard({
 
   const isValid =
     name.trim() &&
-    subject.trim() &&
     companyName.trim() &&
     productName.trim() &&
     (recipientSource === "all" || recipientSource === "selected" || runId);
@@ -313,19 +303,6 @@ export function SendCampaignCard({
             />
           </div>
 
-          {/* Subject Line */}
-          <div>
-            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">
-              Subject Line
-            </label>
-            <Input
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="Quick question about {company}"
-              data-testid="campaign-subject-input"
-            />
-          </div>
-
           {/* Body */}
           <div>
             <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">
@@ -336,18 +313,6 @@ export function SendCampaignCard({
               onChange={(e) => setBody(e.target.value)}
               rows={2}
               data-testid="campaign-body-textarea"
-            />
-          </div>
-
-          {/* Schedule Toggle */}
-          <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
-            <span className="text-sm text-body">
-              {scheduled ? "Schedule for later" : "Send Now"}
-            </span>
-            <Switch
-              checked={scheduled}
-              onCheckedChange={setScheduled}
-              data-testid="campaign-schedule-toggle"
             />
           </div>
         </div>
