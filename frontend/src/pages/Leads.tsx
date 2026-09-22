@@ -501,6 +501,7 @@ export default function Leads() {
         )}
           </>
         )}
+      </div>
 
       <AnimatePresence>
         {selected.length > 0 && (
