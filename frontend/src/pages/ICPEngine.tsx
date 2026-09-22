@@ -426,6 +426,7 @@ export default function ICPEngine() {
             )}
           </AnimatePresence>
         </div>
+      </div>
       <IcpDetailModal icp={icp} open={showFullAnalysis} onOpenChange={setShowFullAnalysis} />
     </div>
   );
