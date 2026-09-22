@@ -183,7 +183,12 @@ async def list_runs(
         return []
     request_ids = [str(r.request_id) for r in runs]
     counts_result = await db.execute(select(lead_results).where(lead_results.c.request_id.in_(request_ids)))
-    counts = {r.request_id: (r.total_count or 0, r.status) for r in counts_result.fetchall()}
+    counts = {}
+    for r in counts_result.fetchall():
+        # CHANGED: Calculate total count from actual leads array, not stored total_count
+        # This ensures we always get accurate counts even if stored value is stale
+        actual_count = len(r.leads) if r.leads else 0
+        counts[r.request_id] = (actual_count, r.status)
     out = []
     for r in runs:
         total_count, live_status = counts.get(str(r.request_id), (0, r.status))

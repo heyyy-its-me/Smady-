@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Package, FileText, Building2, Info, Globe2, Factory, Target, Radar, Rocket, Gauge } from "lucide-react";
+import { Sparkles, Package, FileText, Building2, Info, Globe2, Factory, Target, Radar, Rocket, Gauge, Clock } from "lucide-react";
 import { PageHeader } from "@/layouts/PageHeader";
 import { FormSection } from "@/components/smady/FormSection";
 import { FieldInput, FieldTextarea } from "@/components/smady/FieldInput";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAppData } from "@/context/AppDataContext";
 import { toast } from "@/components/ui/sonner";
 import { IcpDetailModal } from "@/components/smady/IcpDetailModal";
+import { IcpHistoryPicker } from "@/components/smady/IcpHistoryPicker";
 
 const countries = ["United States", "United Kingdom", "Canada", "Germany", "India"];
 const industries = ["B2B SaaS", "Fintech", "Healthtech", "E-commerce", "Manufacturing"];
@@ -28,6 +29,8 @@ const resultGroups: { key: "industry" | "targetRoles" | "companySize" | "geograp
 export default function ICPEngine() {
   const { icp, generatingIcp, generateIcp } = useAppData();
   const navigate = useNavigate();
+  const [selectedIcpId, setSelectedIcpId] = useState<string | null>(null);
+  const [selectedIcpData, setSelectedIcpData] = useState<Record<string, unknown> | null>(null);
   const [form, setForm] = useState({ productName: "", productDescription: "", companyName: "", companyDetails: "" });
   const [selectedCountries, setSelectedCountries] = useState<string[]>(["United States"]);
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>(["B2B SaaS"]);
@@ -38,6 +41,16 @@ export default function ICPEngine() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await generateIcp({ ...form, countries: selectedCountries, industries: selectedIndustries, businessStage, priority });
+  };
+
+  const handleSelectIcp = (icpId: string, icpData: { result?: Record<string, unknown> }) => {
+    setSelectedIcpId(icpId);
+    setSelectedIcpData(icpData.result || null);
+  };
+
+  const handleBackToNew = () => {
+    setSelectedIcpId(null);
+    setSelectedIcpData(null);
   };
 
   const summarySentence = `${form.productName || "Your product"} helps ${form.companyName || "your company"} reach ${
@@ -54,20 +67,88 @@ export default function ICPEngine() {
   return (
     <div data-testid="icp-page">
       <PageHeader />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
-        <div className="relative overflow-hidden rounded-2xl border border-primary-100/70 bg-surface p-6 shadow-card lg:p-8" data-testid="icp-form-card">
-          <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-gradient-to-br from-primary-200/40 to-accent/10 blur-3xl" aria-hidden />
-          <div className="relative mb-6 flex items-center justify-between border-b border-border/80 pb-6">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-primary-200/60 bg-primary-50 px-3 py-1 text-xs font-bold text-primary-600 shadow-sm">
-                <Sparkles className="h-3 w-3" strokeWidth={2} />
-                AI ICP Engine
-              </span>
-              <h2 className="mt-3 font-display text-xl font-extrabold text-ink">Build Your Ideal Customer Profile</h2>
-              <p className="mt-1 text-sm text-body">Tell us about your product and audience — our engine will do the rest.</p>
+
+      {/* ── When no ICP selected: show history picker ── */}
+      {!selectedIcpId && !icp && !generatingIcp && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+          <div className="rounded-2xl border border-primary-100/70 bg-gradient-to-br from-primary-50/50 to-accent-50/30 p-8">
+            <div className="flex flex-col items-center justify-center gap-4 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-primary-200/60 bg-primary-50">
+                <Clock className="h-6 w-6 text-primary-600" strokeWidth={1.5} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-ink">View Past ICPs</h3>
+                <p className="mt-1 text-sm text-body">Select from your recent ICP generations or create a new one</p>
+              </div>
+              <div className="mt-2">
+                <IcpHistoryPicker selectedIcpId={selectedIcpId} onSelect={handleSelectIcp} />
+              </div>
             </div>
           </div>
-          <form onSubmit={onSubmit} className="relative space-y-5" data-testid="icp-form">
+        </motion.div>
+      )}
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
+        {/* ── Left Column: Form or Results ── */}
+        <div>
+          {selectedIcpData && !generatingIcp ? (
+            /* Show past ICP results */
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-primary-200/70 bg-surface p-6 shadow-card">
+              <div className="flex items-center justify-between border-b border-border/80 pb-3">
+                <div className="flex items-center gap-2 text-primary-500">
+                  <Sparkles className="h-4 w-4" strokeWidth={1.5} />
+                  <h2 className="font-display text-[15px] font-bold text-ink">Saved Ideal Customer Profile</h2>
+                </div>
+              </div>
+              {resultGroups.map(({ key, label }, i) => (
+                <motion.div
+                  key={key}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.06 * i, duration: 0.3 }}
+                  className="mt-4 rounded-xl border border-primary-100/60 bg-primary-50/50 p-3.5"
+                >
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-primary-700">{label}</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {(selectedIcpData[key] as string[])?.map((it) => (
+                      <span key={it} className="rounded-lg border border-primary-200/80 bg-white px-3 py-1.5 text-sm font-medium text-ink shadow-soft transition-colors hover:bg-primary-50 hover:text-primary-600">
+                        {it}
+                      </span>
+                    ))}
+                  </div>
+                </motion.div>
+              ))}
+              <div className="mt-6 flex flex-col gap-3">
+                <ButtonPrimary
+                  fullWidth
+                  onClick={() => {
+                    toast.success("ICP saved");
+                    navigate("/leads");
+                  }}
+                  data-testid="icp-save-and-use-button"
+                >
+                  Use in Lead Management
+                </ButtonPrimary>
+                <ButtonOutline fullWidth onClick={handleBackToNew} data-testid="icp-back-to-new-button">
+                  Back to New ICP
+                </ButtonOutline>
+              </div>
+            </motion.div>
+          ) : (
+            /* Show form for creating new ICP */
+            <div className="relative overflow-hidden rounded-2xl border border-primary-100/70 bg-surface p-6 shadow-card lg:p-8" data-testid="icp-form-card">
+              <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-gradient-to-br from-primary-200/40 to-accent/10 blur-3xl" aria-hidden />
+              <div className="relative mb-6 flex items-center justify-between border-b border-border/80 pb-6">
+                <div>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-primary-200/60 bg-primary-50 px-3 py-1 text-xs font-bold text-primary-600 shadow-sm">
+                    <Sparkles className="h-3 w-3" strokeWidth={2} />
+                    AI ICP Engine
+                  </span>
+                  <h2 className="mt-3 font-display text-xl font-extrabold text-ink">Build Your Ideal Customer Profile</h2>
+                  <p className="mt-1 text-sm text-body">Tell us about your product and audience — our engine will do the rest.</p>
+                </div>
+              </div>
+              <form onSubmit={onSubmit} className="relative space-y-5" data-testid="icp-form">
             <FormSection label="Product Identity" step="01" icon={Package} tint>
               <FieldInput
                 icon={Package}
@@ -175,13 +256,16 @@ export default function ICPEngine() {
               >
                 {generatingIcp ? "Analyzing your inputs…" : "Generate ICP"}
               </ButtonPrimary>
+              </div>
+            </form>
             </div>
-          </form>
+          )}
         </div>
 
+        {/* ── Right Column: Preview or History ── */}
         <div className="lg:sticky lg:top-24 lg:self-start">
           <AnimatePresence mode="wait">
-            {!icp && !generatingIcp && (
+            {!selectedIcpData && !icp && !generatingIcp && (
               <motion.div
                 key="preview"
                 initial={{ opacity: 0, y: 10 }}

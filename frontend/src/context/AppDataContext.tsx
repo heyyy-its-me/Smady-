@@ -279,14 +279,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (authLoading || !isAuthenticated) return;
-    refreshLeads().catch(() => {});
+    // CHANGED: Do NOT auto-load leads on auth. Users must select an execution first from Leads page
+    // This ensures Leads page shows execution history, not last execution leads
+    // refreshLeads().catch(() => {});
     refreshCampaigns().catch(() => {});
     refreshDashboard().catch(() => {});
     refreshOutreachStats().catch(() => {});
     fetchLatestIcp().catch(() => {});
     refreshMeetings().catch(() => {});
     refreshProposals().catch(() => {});
-  }, [authLoading, isAuthenticated, refreshLeads, refreshCampaigns, refreshDashboard, refreshOutreachStats, fetchLatestIcp, refreshMeetings, refreshProposals]);
+  }, [authLoading, isAuthenticated, refreshCampaigns, refreshDashboard, refreshOutreachStats, fetchLatestIcp, refreshMeetings, refreshProposals]);
 
   // Re-fetch dashboard + meetings when tab regains focus (calendar / live updates)
   useEffect(() => {

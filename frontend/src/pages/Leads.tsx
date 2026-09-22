@@ -66,6 +66,7 @@ export default function Leads() {
   const [viewLead, setViewLead] = useState<Lead | null>(null);
   const [editLead, setEditLead] = useState<Lead | null>(null);
   const [page, setPage] = useState(1);
+  const [showExecutionPicker, setShowExecutionPicker] = useState(true);
 
   // CHANGED: Don't load leads on mount. Wait for user to select an execution.
   // Only load if viewing a specific run via URL parameter.
@@ -86,8 +87,18 @@ export default function Leads() {
   };
 
   const onSelectRun = (runId: string) => {
+    setShowExecutionPicker(false);
     setPage(1);
+    setRunInfo(null);
     refreshLeads(runId, 0, PAGE_SIZE);
+  };
+
+  // Reset to execution history view (back button)
+  const onBackToExecutions = () => {
+    setShowExecutionPicker(true);
+    setRunInfo(null);
+    setPage(1);
+    setSelected([]);
   };
 
   // When navigating here with ?request_id, verify ownership and filter leads
@@ -270,7 +281,7 @@ export default function Leads() {
 
       {/* CHANGED: Show execution history first as main view, not RunHistoryPicker in header */}
       {!leadsRunId && !requestIdParam && leads.length === 0 && !generatingLeads && (
-        <div className="mb-6 rounded-2xl bg-surface p-6 shadow-card" data-testid="leads-execution-history-card">
+       showExecutionPicker && !requestIdParamd="leads-execution-history-card">
           <div className="flex items-center gap-3 mb-4">
             <Clock className="h-5 w-5 text-primary-600" strokeWidth={1.5} />
             <div>
@@ -282,8 +293,8 @@ export default function Leads() {
         </div>
       )}
 
-      {/* Run context banner when a run is selected */}
-      {(leadsRunId || runInfo) && (
+      {/* Run context banner - only show when viewing a specific run, not picker */}
+      {!showExecutionPicker && (leadsRunId || runInfo) && (
         <div className="mb-5 flex items-center gap-3 rounded-xl border border-primary-200/70 bg-primary-50/50 px-4 py-3">
           <Clock className="h-4 w-4 text-primary-600" strokeWidth={1.5} />
           <span className="text-sm text-primary-700">
@@ -293,12 +304,7 @@ export default function Leads() {
           </span>
           <button
             className="ml-auto text-xs text-primary-600 underline underline-offset-2"
-            onClick={() => { 
-              setRunInfo(null); 
-              setLeads([]);
-              setLeadsRunId(null);
-              setSelected([]);
-            }}
+            onClick={onBackToExecutions}
           >
             Back to executions
           </button>
@@ -406,8 +412,11 @@ export default function Leads() {
       </div>
 
       <div className="mt-6">
-        {/* Generating state — show coffee message + skeleton */}
-        {generatingLeads && (
+        {/* Only show generate form and leads if not in execution picker mode */}
+        {!showExecutionPicker && (
+          <>
+            {/* Generating state — show coffee message + skeleton */}
+            {generatingLeads && (
           <div className="space-y-4 rounded-2xl border border-primary-200/70 bg-surface p-6 shadow-card" data-testid="leads-loading-skeleton">
             <div className="flex items-center gap-3">
               <Coffee className="h-5 w-5 shrink-0 text-primary-500" strokeWidth={1.5} />
@@ -490,7 +499,8 @@ export default function Leads() {
             )}
           </div>
         )}
-      </div>
+          </>
+        )}
 
       <AnimatePresence>
         {selected.length > 0 && (
