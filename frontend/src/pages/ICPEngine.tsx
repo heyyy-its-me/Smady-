@@ -219,7 +219,7 @@ export default function ICPEngine() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto max-h-screen">
             <AnimatePresence mode="wait">
               {!selectedIcpData && !icp && !generatingIcp && (
               <motion.div
@@ -296,7 +296,7 @@ export default function ICPEngine() {
                 <div className="flex items-center justify-between pb-3">
                   <div className="flex items-center gap-2 text-primary-500">
                     <Sparkles className="h-4 w-4" strokeWidth={1.5} />
-                    <h2 className="font-display text-[15px] font-bold text-ink">Your Ideal Customer Profile</h2>
+                    <h2 className="font-display text-[15px] font-bold text-ink">Your Ideal Customer Profile - DETAILED VIEW</h2>
                   </div>
                 </div>
                 {resultGroups.filter(({ key }) => key === "geography" || key === "painPoints").map(({ key, label }, i) => (
