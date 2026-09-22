@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, Bell, ChevronDown, Menu, X } from "lucide-react";
+import { Mail, Bell, ChevronDown, Menu, X, Calendar, FileText } from "lucide-react";
 import { cn, slug } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { useAppData } from "@/context/AppDataContext";
 import { Logo } from "./Logo";
 import { AvatarInitial } from "./AvatarStack";
 
@@ -19,10 +20,17 @@ const appNavItems = [
 
 export function AppPillNav() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { meetings = [], proposals = [], reviewQueue = [] } = useAppData();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [mailOpen, setMailOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  const upcomingMeetings = meetings.filter(m => new Date(m.meeting_date) > new Date());
+  const pendingProposals = reviewQueue.filter(p => p.final_status === "Needs Review" || p.final_status === "needs_review");
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -88,14 +96,102 @@ export function AppPillNav() {
           })}
         </nav>
         <div className="flex items-center gap-2 pr-1">
-          <button className="relative rounded-full p-2 text-body hover:bg-white/10 transition-colors" data-testid="nav-mail-icon">
-            <Mail className="h-5 w-5" strokeWidth={1.5} />
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary-500 text-[10px] font-semibold text-white">3</span>
-          </button>
-          <button className="relative rounded-full p-2 text-body hover:bg-white/10 transition-colors" data-testid="nav-bell-icon">
-            <Bell className="h-5 w-5" strokeWidth={1.5} />
-            <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary-500" />
-          </button>
+          <div className="relative">
+            <button onClick={() => setMailOpen(!mailOpen)} className="relative rounded-full p-2 text-body hover:bg-white/10 transition-colors" data-testid="nav-mail-icon">
+              <Mail className="h-5 w-5" strokeWidth={1.5} />
+              {pendingProposals.length > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary-500 text-[10px] font-semibold text-white">{pendingProposals.length}</span>
+              )}
+            </button>
+            <AnimatePresence>
+              {mailOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="absolute right-0 top-12 w-80 max-h-96 rounded-2xl backdrop-blur-2xl border p-2 overflow-y-auto"
+                  style={{
+                    background: `linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.1) 100%)`,
+                    backdropFilter: "blur(24px) saturate(180%)",
+                    WebkitBackdropFilter: "blur(24px) saturate(180%)",
+                    borderColor: "rgba(255, 255, 255, 0.4)",
+                    boxShadow:
+                      "0 8px 32px 0 rgba(0, 0, 0, 0.18)," +
+                      "inset 0 1px 0 0 rgba(255, 255, 255, 0.6)," +
+                      "inset 0 -1px 0 0 rgba(0, 0, 0, 0.1)," +
+                      "0 0 0 1px rgba(255, 255, 255, 0.12)",
+                  }}
+                  data-testid="nav-mail-dropdown"
+                >
+                  <div className="px-3 py-2 text-xs font-semibold text-muted uppercase tracking-wider">Pending Proposals ({pendingProposals.length})</div>
+                  {pendingProposals.length > 0 ? (
+                    pendingProposals.map(p => (
+                      <div key={p.id} className="flex items-start gap-2 rounded-lg px-3 py-2 hover:bg-white/10 transition-colors text-sm">
+                        <FileText className="h-4 w-4 text-primary-500 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-ink truncate">{p.lead_name || "Proposal"}</p>
+                          <p className="text-xs text-muted truncate">{p.lead_email}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-3 py-4 text-center text-sm text-muted">No pending proposals</div>
+                  )}
+                  <Link to="/proposals" onClick={() => setMailOpen(false)} className="block w-full rounded-lg px-3 py-2 text-left text-sm text-primary-500 hover:bg-white/20 transition-colors font-medium mt-2 border-t border-white/10">
+                    View All Proposals
+                  </Link>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          <div className="relative">
+            <button onClick={() => setNotificationsOpen(!notificationsOpen)} className="relative rounded-full p-2 text-body hover:bg-white/10 transition-colors" data-testid="nav-bell-icon">
+              <Bell className="h-5 w-5" strokeWidth={1.5} />
+              {upcomingMeetings.length > 0 && (
+                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary-500" />
+              )}
+            </button>
+            <AnimatePresence>
+              {notificationsOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="absolute right-0 top-12 w-80 max-h-96 rounded-2xl backdrop-blur-2xl border p-2 overflow-y-auto"
+                  style={{
+                    background: `linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.1) 100%)`,
+                    backdropFilter: "blur(24px) saturate(180%)",
+                    WebkitBackdropFilter: "blur(24px) saturate(180%)",
+                    borderColor: "rgba(255, 255, 255, 0.4)",
+                    boxShadow:
+                      "0 8px 32px 0 rgba(0, 0, 0, 0.18)," +
+                      "inset 0 1px 0 0 rgba(255, 255, 255, 0.6)," +
+                      "inset 0 -1px 0 0 rgba(0, 0, 0, 0.1)," +
+                      "0 0 0 1px rgba(255, 255, 255, 0.12)",
+                  }}
+                  data-testid="nav-notifications-dropdown"
+                >
+                  <div className="px-3 py-2 text-xs font-semibold text-muted uppercase tracking-wider">Upcoming Meetings ({upcomingMeetings.length})</div>
+                  {upcomingMeetings.length > 0 ? (
+                    upcomingMeetings.map(m => (
+                      <div key={m.id} className="flex items-start gap-2 rounded-lg px-3 py-2 hover:bg-white/10 transition-colors text-sm">
+                        <Calendar className="h-4 w-4 text-primary-500 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-ink truncate">{m.lead_name}</p>
+                          <p className="text-xs text-muted truncate">{new Date(m.meeting_date).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-3 py-4 text-center text-sm text-muted">No upcoming meetings</div>
+                  )}
+                  <Link to="/meetings" onClick={() => setNotificationsOpen(false)} className="block w-full rounded-lg px-3 py-2 text-left text-sm text-primary-500 hover:bg-white/20 transition-colors font-medium mt-2 border-t border-white/10">
+                    View All Meetings
+                  </Link>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
           <div className="hidden h-6 w-px bg-border/30 sm:block" />
           <div className="relative">
             <button onClick={() => setProfileOpen((o) => !o)} data-testid="nav-profile-dropdown-toggle" className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 hover:bg-white/10 transition-colors">
@@ -123,8 +219,7 @@ export function AppPillNav() {
                   }}
                   data-testid="nav-profile-dropdown-menu"
                 >
-                  <button className="block w-full rounded-lg px-3 py-2 text-left text-sm text-ink hover:bg-white/20 transition-colors" data-testid="nav-profile-link">Profile</button>
-                  <button className="block w-full rounded-lg px-3 py-2 text-left text-sm text-ink hover:bg-white/20 transition-colors" data-testid="nav-settings-link">Settings</button>
+                  <Link to="/profile" onClick={() => setProfileOpen(false)} className="block w-full rounded-lg px-3 py-2 text-left text-sm text-ink hover:bg-white/20 transition-colors" data-testid="nav-profile-link">Profile</Link>
                   <button onClick={logout} data-testid="nav-logout-button" className="block w-full rounded-lg px-3 py-2 text-left text-sm text-danger hover:bg-white/20 transition-colors">
                     Logout
                   </button>
@@ -160,7 +255,7 @@ export function AppPillNav() {
               <Link
                 key={item.path}
                 to={item.path}
-                onClick={() => setMobileOpen(false)}
+                onClick={() => { setMobileOpen(false); setMailOpen(false); setNotificationsOpen(false); }}
                 data-testid={`mobile-nav-link-${slug(item.label)}`}
                 className={cn(
                   "block rounded-lg px-3 py-2 text-sm font-medium transition-all duration-300",

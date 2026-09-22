@@ -17,6 +17,7 @@ import Outreach from "@/pages/Outreach";
 import Meetings from "@/pages/Meetings";
 import Proposals from "@/pages/Proposals";
 import Reports from "@/pages/Reports";
+import Profile from "@/pages/Profile";
 
 function PageTransition({ children }: { children: ReactNode }) {
   return (
@@ -44,6 +45,7 @@ function AnimatedRoutes() {
           <Route path="/meetings" element={<PageTransition><Meetings /></PageTransition>} />
           <Route path="/proposals" element={<PageTransition><Proposals /></PageTransition>} />
           <Route path="/reports" element={<PageTransition><Reports /></PageTransition>} />
+          <Route path="/profile" element={<PageTransition><Profile /></PageTransition>} />
         </Route>
       </Routes>
     </AnimatePresence>
