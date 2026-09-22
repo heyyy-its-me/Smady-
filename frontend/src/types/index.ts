@@ -126,6 +126,7 @@ export interface User {
   email: string;
   company: string;
   plan: string;
+  created_at?: string;
 }
 
 export interface StatDatum {

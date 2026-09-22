@@ -89,6 +89,7 @@ def user_public(row, company: str | None = None) -> dict:
         "company": company,
         "plan": "Pro Plan",
         "customer_id": str(row.customer_id) if row.customer_id else None,
+        "created_at": row.created_at.isoformat() if row.created_at else None,
     }
 
 
