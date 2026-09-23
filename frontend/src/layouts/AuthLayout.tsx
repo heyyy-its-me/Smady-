@@ -576,11 +576,22 @@ export function AuthLayout({
         <div style={{ position: "absolute", top: 0, left: 0, width: 380, height: 260, background: "radial-gradient(ellipse at 15% 0%, rgba(249,115,22,0.07) 0%, transparent 65%)", pointerEvents: "none" }} />
         {/* Logo — left only */}
         <Link to="/" className="relative z-10 mb-10 flex items-center gap-2.5 w-fit group">
-          <img 
-            src="https://res.cloudinary.com/kwyrhjzo/image/upload/v1790159384/smady_logo.png" 
-            alt="Smady" 
-            className="h-9 w-9 rounded-full object-cover transition-all group-hover:scale-105 shadow-lg"
-          />
+          <svg 
+            className="h-9 w-9 rounded-full transition-all group-hover:scale-105" 
+            viewBox="0 0 200 200" 
+            xmlns="http://www.w3.org/2000/svg"
+            preserveAspectRatio="xMidYMid meet"
+          >
+            <defs>
+              <linearGradient id="smaLogoDark" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style={{ stopColor: "#F9622C", stopOpacity: 1 }} />
+                <stop offset="100%" style={{ stopColor: "#FF8C42", stopOpacity: 1 }} />
+              </linearGradient>
+            </defs>
+            <circle cx="100" cy="100" r="100" fill="url(#smaLogoDark)" />
+            <circle cx="100" cy="100" r="85" fill="white" opacity="0.95" />
+            <text x="100" y="125" textAnchor="middle" fontSize="72" fontWeight="700" fill="#F9622C" fontFamily="Clash Display, sans-serif">S</text>
+          </svg>
           <span className="text-[16px] font-bold tracking-tight text-white">Smady</span>
         </Link>
         <motion.div
