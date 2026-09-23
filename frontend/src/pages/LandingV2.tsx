@@ -267,9 +267,6 @@ function HeroSection() {
       <p className="mx-auto mt-6 max-w-2xl text-[16px] leading-relaxed text-neutral-400 md:text-[18px]">
         Tell Smady what you&apos;re building, and let AI help you figure out who to sell to, how to reach them, and what to do next.
       </p>
-      <p className="mx-auto mt-4 max-w-2xl text-[14px] leading-relaxed text-neutral-500 md:text-[16px]">
-        Product <span className="text-orange-400">→</span> ICP <span className="text-orange-400">→</span> Leads <span className="text-orange-400">→</span> Outreach <span className="text-orange-400">→</span> Meetings <span className="text-orange-400">→</span> Proposals <span className="text-orange-400">→</span> Pipeline
-      </p>
       {/* CTAs */}
       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
         <Link
