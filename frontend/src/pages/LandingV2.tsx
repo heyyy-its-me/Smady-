@@ -152,7 +152,11 @@ const CSS = `
   }
 
   /* Sticky story sequence: vertical scroll drives a horizontal product journey. */
-  .lv2-story-section { min-height: 270vh; }
+  .lv2-story-section {
+    min-height: 270vh;
+    /* A transformed ancestor can prevent sticky positioning from tracking the viewport. */
+    transform: none !important;
+  }
   .lv2-story-sticky {
     position: sticky;
     top: 68px;
@@ -1301,10 +1305,15 @@ export default function LandingV2() {
       if (window.innerWidth >= 768 && storySection && storySticky && storyTrack && storyViewport && storyStatus && journeyCards.length) {
         const sectionRect = storySection.getBoundingClientRect();
         const stickyTop = 68;
-        const startSectionTop = stickyTop - storySticky.offsetTop;
-        const endSectionTop = stickyTop + storySticky.offsetHeight - storySection.offsetHeight;
-        const scrollRange = Math.max(1, startSectionTop - endSectionTop);
-        const storyProgress = Math.min(1, Math.max(0, (startSectionTop - sectionRect.top) / scrollRange));
+        const sectionStyles = window.getComputedStyle(storySection);
+        const paddingTop = Number.parseFloat(sectionStyles.paddingTop) || 0;
+        const paddingBottom = Number.parseFloat(sectionStyles.paddingBottom) || 0;
+        const sectionDocumentTop = sectionRect.top + window.scrollY;
+        const stickyHeight = storySticky.getBoundingClientRect().height;
+        const storyStart = sectionDocumentTop + paddingTop - stickyTop;
+        const storyEnd = sectionDocumentTop + storySection.offsetHeight - paddingBottom - stickyHeight;
+        const scrollRange = Math.max(1, storyEnd - storyStart);
+        const storyProgress = Math.min(1, Math.max(0, (window.scrollY - storyStart) / scrollRange));
         const viewportWidth = storyViewport.clientWidth;
         const cardWidth = journeyCards[0]?.offsetWidth ?? 0;
         const trackWidth = storyTrack.scrollWidth;
