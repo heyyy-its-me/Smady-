@@ -576,9 +576,11 @@ export function AuthLayout({
         <div style={{ position: "absolute", top: 0, left: 0, width: 380, height: 260, background: "radial-gradient(ellipse at 15% 0%, rgba(249,115,22,0.07) 0%, transparent 65%)", pointerEvents: "none" }} />
         {/* Logo — left only */}
         <Link to="/" className="relative z-10 mb-10 flex items-center gap-2.5 w-fit group">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl transition-all group-hover:scale-105" style={{ background: "linear-gradient(135deg,#f97316,#ea580c)", boxShadow: "0 4px 16px rgba(249,115,22,0.3)" }}>
-            <span style={{ fontSize: 17 }}>🔥</span>
-          </div>
+          <img 
+            src="https://res.cloudinary.com/kwyrhjzo/image/upload/v1790159384/smady_logo.png" 
+            alt="Smady" 
+            className="h-9 w-9 rounded-full object-cover transition-all group-hover:scale-105 shadow-lg"
+          />
           <span className="text-[16px] font-bold tracking-tight text-white">Smady</span>
         </Link>
         <motion.div
