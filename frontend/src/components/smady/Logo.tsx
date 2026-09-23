@@ -7,6 +7,7 @@ export function Logo({ dark = false, iconOnly = false }: { dark?: boolean; iconO
         src="https://res.cloudinary.com/kwyrhjzo/image/upload/v1790159384/smady_logo.png" 
         alt="Smady" 
         className="h-8 w-8 rounded-full object-cover"
+        onError={(e) => console.error("Logo image failed to load:", e)}
       />
       {!iconOnly && (
         <span className={cn("font-display text-lg font-800 tracking-tight", dark ? "text-white" : "text-ink")}>
