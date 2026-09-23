@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Logo } from "@/components/smady/Logo";
 
@@ -10,9 +10,25 @@ const CSS = `
     font-family: 'Inter', sans-serif;
     background: #080808;
     color: #fff;
+    overflow-x: clip;
     -webkit-font-smoothing: antialiased;
     --lv2-scroll-progress: 0;
+    scrollbar-width: none;
   }
+  .lv2-page {
+    scrollbar-width: none;
+  }
+  .lv2-page::-webkit-scrollbar,
+  .lv2-page-body::-webkit-scrollbar,
+  .lv2-root::-webkit-scrollbar,
+  html.lv2-page::-webkit-scrollbar,
+  body.lv2-page-body::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+  html.lv2-page,
+  body.lv2-page-body { scrollbar-width: none; }
 
   /* Thin progress rail keeps long-form scrolling feeling intentional. */
   .lv2-scroll-progress {
@@ -47,6 +63,7 @@ const CSS = `
       linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
     background-size: 64px 64px;
+    background-position: 0 var(--lv2-grid-y, 0px), 0 var(--lv2-grid-y, 0px);
   }
 
   /* Orange radial glow blob (reusable) */
@@ -134,6 +151,46 @@ const CSS = `
     will-change: transform;
   }
 
+  /* Sticky story sequence: vertical scroll drives a horizontal product journey. */
+  .lv2-story-section { min-height: 270vh; }
+  .lv2-story-sticky {
+    position: sticky;
+    top: 68px;
+    min-height: calc(100svh - 68px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .lv2-story-track-viewport {
+    position: relative;
+    width: 100%;
+    overflow: visible;
+    padding: 24px 0 44px;
+  }
+  .lv2-story-track {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(252px, 30vw);
+    gap: 18px;
+    width: max-content;
+    transform: translate3d(var(--lv2-story-x, 0px), 0, 0);
+    will-change: transform;
+  }
+  .lv2-story-card-shell { display: flex; min-height: 230px; }
+  .lv2-story-caption {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 440px;
+    margin: 22px auto 0;
+    color: rgba(255,255,255,0.38);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .lv2-story-caption strong { color: #fb923c; font-weight: 700; }
+
   /* Soft lift for journey cards gives the story a sense of progression. */
   .lv2-journey-shell { position: relative; }
   .lv2-journey-shell::before {
@@ -147,9 +204,12 @@ const CSS = `
     pointer-events: none;
   }
   .lv2-journey-card {
-    transition: transform 0.45s cubic-bezier(.22,1,.36,1), border-color 0.45s ease, background 0.45s ease;
+    opacity: var(--lv2-card-opacity, 1);
+    transform: perspective(1100px) translate3d(0, var(--lv2-card-lift, 0px), 0) rotateY(var(--lv2-card-tilt, 0deg)) scale(var(--lv2-card-scale, 1));
+    transition: border-color 0.45s ease, background 0.45s ease;
+    will-change: transform, opacity;
   }
-  .lv2-journey-card:hover { transform: translate3d(0, -7px, 0); }
+  .lv2-journey-card:hover { background: rgba(249,115,22,0.08) !important; }
 
   /* Orbit pulse rings */
   @keyframes orbit-pulse {
@@ -212,11 +272,6 @@ const CSS = `
     border-bottom: 1px solid rgba(255,255,255,0.06);
   }
 
-  /* Scrollbar */
-  .lv2-root ::-webkit-scrollbar { width: 4px; }
-  .lv2-root ::-webkit-scrollbar-track { background: #111; }
-  .lv2-root ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
-
   /* ─────────── MOBILE RESPONSIVE ─────────── */
   @media (max-width: 767px) {
 
@@ -227,7 +282,12 @@ const CSS = `
     .lv2-hero-h1 { font-size: 40px !important; line-height: 1.05 !important; }
 
     .lv2-journey-shell::before { display: none; }
-    .lv2-journey-card:hover { transform: none; }
+    .lv2-story-section { min-height: auto; }
+    .lv2-story-sticky { position: static; min-height: auto; overflow: visible; }
+    .lv2-story-track-viewport { overflow: visible; padding: 0; }
+    .lv2-story-track { display: grid; grid-template-columns: 1fr; grid-auto-columns: auto; width: auto; transform: none !important; }
+    .lv2-story-caption { margin-top: 18px; }
+    .lv2-journey-card { transform: none !important; opacity: 1 !important; box-shadow: none; }
 
     /* BENTO GRID: break the fixed 12-col layout into a single column */
     .lv2-bento-grid {
@@ -280,6 +340,10 @@ const CSS = `
     }
     .lv2-scroll-progress { display: none; }
     .lv2-section-reveal, .lv2-animate { opacity: 1 !important; transform: none !important; }
+    .lv2-story-section { min-height: auto; }
+    .lv2-story-sticky { position: static; min-height: auto; }
+    .lv2-story-track { transform: none !important; }
+    .lv2-journey-card { transform: none !important; opacity: 1 !important; box-shadow: none; }
   }
 `;
 
@@ -621,32 +685,40 @@ function ProductJourney() {
   ];
 
   return (
-    <section className="lv2-section-reveal relative z-10 mx-auto max-w-screen-xl px-6 py-16">
-      <div className="mb-10 text-center">
-        <span className="rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-1.5 text-[12px] font-medium text-orange-400">
-          The complete journey
-        </span>
-        <h2 className="mt-5 text-[40px] font-[800] leading-tight tracking-[-0.03em] text-white md:text-[52px]">
-          From Product to Pipeline —<br /><span className="lv2-orange-text">With AI Along the Way.</span>
-        </h2>
-        <p className="mx-auto mt-4 max-w-xl text-[16px] leading-relaxed text-neutral-400">
-          One connected journey. Powered by specialized AI agents.
-        </p>
-      </div>
-      <div className="lv2-journey-shell grid grid-cols-1 gap-3 md:grid-cols-7">
-        {journey.map((step, i) => (
-          <div key={step.label} className="relative flex items-stretch">
-            <div className="lv2-card lv2-hover-card lv2-journey-card flex w-full flex-col rounded-2xl p-4" style={{ background: "#0f0f10" }}>
-              <div className="mb-4 flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: step.color }}>0{i + 1}</span>
-                <span className="h-2 w-2 rounded-full" style={{ background: step.color, boxShadow: `0 0 12px ${step.color}` }} />
+    <section className="lv2-section-reveal lv2-story-section relative z-10 mx-auto max-w-screen-xl px-6 py-16" data-lv2-story="true">
+      <div className="lv2-story-sticky">
+        <div className="mb-10 text-center">
+          <span className="rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-1.5 text-[12px] font-medium text-orange-400">
+            The complete journey
+          </span>
+          <h2 className="mt-5 text-[40px] font-[800] leading-tight tracking-[-0.03em] text-white md:text-[52px]">
+            From Product to Pipeline —<br /><span className="lv2-orange-text">With AI Along the Way.</span>
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-[16px] leading-relaxed text-neutral-400">
+            One connected journey. Powered by specialized AI agents.
+          </p>
+        </div>
+        <div className="lv2-story-track-viewport">
+          <div className="lv2-journey-shell lv2-story-track" data-lv2-story-track="true">
+            {journey.map((step, i) => (
+              <div key={step.label} className="lv2-story-card-shell relative">
+                <div className="lv2-card lv2-hover-card lv2-journey-card flex w-full flex-col rounded-2xl p-5" style={{ background: "#0f0f10" }}>
+                  <div className="mb-5 flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: step.color }}>0{i + 1}</span>
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: step.color, boxShadow: `0 0 18px ${step.color}` }} />
+                  </div>
+                  <h3 className="text-[16px] font-bold text-white">{step.label}</h3>
+                  <p className="mt-3 text-[13px] leading-relaxed text-neutral-500">{step.question}</p>
+                </div>
+                {i < journey.length - 1 && <span className="absolute -right-4 top-1/2 z-10 text-orange-500">→</span>}
               </div>
-              <h3 className="text-[14px] font-bold text-white">{step.label}</h3>
-              <p className="mt-2 text-[12px] leading-relaxed text-neutral-500">{step.question}</p>
-            </div>
-            {i < journey.length - 1 && <span className="absolute -bottom-3 left-1/2 z-10 -translate-x-1/2 text-orange-500 md:-right-3 md:bottom-auto md:left-auto md:top-1/2 md:translate-x-0 md:-translate-y-1/2">→</span>}
+            ))}
           </div>
-        ))}
+        </div>
+        <div className="lv2-story-caption">
+          <span>Scroll to explore the journey</span>
+          <strong data-lv2-story-status="true">01 / 07</strong>
+        </div>
       </div>
     </section>
   );
@@ -1138,8 +1210,18 @@ function Footer() {
 export default function LandingV2() {
   const rootRef = useRef<HTMLDivElement>(null);
 
+  /* Keep native scrollbar styling isolated to the landing route. */
+  useLayoutEffect(() => {
+    document.documentElement.classList.add("lv2-page");
+    document.body.classList.add("lv2-page-body");
+    return () => {
+      document.documentElement.classList.remove("lv2-page");
+      document.body.classList.remove("lv2-page-body");
+    };
+  }, []);
+
   /* Inject style */
-  useEffect(() => {
+  useLayoutEffect(() => {
     const existing = document.getElementById("lv2-css");
     if (existing) return;
     const el = document.createElement("style");
@@ -1184,6 +1266,14 @@ export default function LandingV2() {
     const parallaxNodes: HTMLElement[] = Array.from(
       root.querySelectorAll("[data-lv2-parallax]")
     ) as HTMLElement[];
+    const journeyCards: HTMLElement[] = Array.from(
+      root.querySelectorAll(".lv2-journey-card")
+    ) as HTMLElement[];
+    const storySection = root.querySelector<HTMLElement>("[data-lv2-story]");
+    const storySticky = storySection?.querySelector<HTMLElement>(".lv2-story-sticky");
+    const storyTrack = root.querySelector<HTMLElement>("[data-lv2-story-track]");
+    const storyViewport = root.querySelector<HTMLElement>(".lv2-story-track-viewport");
+    const storyStatus = root.querySelector<HTMLElement>("[data-lv2-story-status]");
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let frame = 0;
 
@@ -1194,15 +1284,62 @@ export default function LandingV2() {
         ? Math.min(1, Math.max(0, window.scrollY / documentHeight))
         : 0;
 
-      progressBar?.style.setProperty("transform", `scaleX(${progress})`);
       if (reduceMotion) return;
 
       const viewportCenter = window.innerHeight / 2;
-      parallaxNodes.forEach(node => {
+      const parallaxValues = parallaxNodes.map(node => {
         const rect = node.getBoundingClientRect();
         const distanceFromCenter = (rect.top + rect.height / 2 - viewportCenter) / window.innerHeight;
         const speed = Number(node.dataset.lv2Parallax ?? 0.08);
-        node.style.setProperty("--lv2-parallax-y", `${distanceFromCenter * speed * -80}px`);
+        return { node, value: `${distanceFromCenter * speed * -180}px` };
+      });
+
+      let storyX: string | null = null;
+      let storyStatusText: string | null = null;
+      const cardFocusValues: Array<{ card: HTMLElement; focus: number; tilt: number }> = [];
+
+      if (window.innerWidth >= 768 && storySection && storySticky && storyTrack && storyViewport && storyStatus && journeyCards.length) {
+        const sectionRect = storySection.getBoundingClientRect();
+        const stickyTop = 68;
+        const startSectionTop = stickyTop - storySticky.offsetTop;
+        const endSectionTop = stickyTop + storySticky.offsetHeight - storySection.offsetHeight;
+        const scrollRange = Math.max(1, startSectionTop - endSectionTop);
+        const storyProgress = Math.min(1, Math.max(0, (startSectionTop - sectionRect.top) / scrollRange));
+        const viewportWidth = storyViewport.clientWidth;
+        const cardWidth = journeyCards[0]?.offsetWidth ?? 0;
+        const trackWidth = storyTrack.scrollWidth;
+        const startOffset = Math.max(0, (viewportWidth - cardWidth) / 2);
+        const travel = Math.max(0, trackWidth - cardWidth);
+        storyX = `${startOffset - travel * storyProgress}px`;
+        storyStatusText = `${String(Math.min(journeyCards.length, Math.floor(storyProgress * journeyCards.length) + 1)).padStart(2, "0")} / ${String(journeyCards.length).padStart(2, "0")}`;
+      }
+
+      if (window.innerWidth >= 768) {
+        journeyCards.forEach(card => {
+          const rect = card.getBoundingClientRect();
+          const horizontalDistance = Math.abs(rect.left + rect.width / 2 - window.innerWidth / 2) / (window.innerWidth * 0.65);
+          const verticalDistance = Math.abs(rect.top + rect.height / 2 - viewportCenter) / (window.innerHeight * 0.8);
+          const focus = Math.max(0, 1 - Math.min(1, Math.max(horizontalDistance, verticalDistance * 0.35)));
+          cardFocusValues.push({
+            card,
+            focus,
+            tilt: (rect.left + rect.width / 2 < window.innerWidth / 2 ? 1 : -1) * (1 - focus) * 2.5,
+          });
+        });
+      }
+
+      progressBar?.style.setProperty("transform", `scaleX(${progress})`);
+      root.style.setProperty("--lv2-grid-y", `${window.scrollY * 0.08}px`);
+      parallaxValues.forEach(({ node, value }) => node.style.setProperty("--lv2-parallax-y", value));
+      if (storyX !== null && storyTrack && storyStatus && storyStatusText) {
+        storyTrack.style.setProperty("--lv2-story-x", storyX);
+        storyStatus.textContent = storyStatusText;
+      }
+      cardFocusValues.forEach(({ card, focus, tilt }) => {
+        card.style.setProperty("--lv2-card-scale", `${0.93 + focus * 0.07}`);
+        card.style.setProperty("--lv2-card-opacity", `${0.42 + focus * 0.58}`);
+        card.style.setProperty("--lv2-card-lift", `${(1 - focus) * 18}px`);
+        card.style.setProperty("--lv2-card-tilt", `${tilt}deg`);
       });
     };
 
@@ -1222,7 +1359,7 @@ export default function LandingV2() {
   }, []);
 
   return (
-    <div className="lv2-root relative overflow-x-hidden" ref={rootRef}>
+    <div className="lv2-root relative" ref={rootRef}>
       <ScrollProgress />
       <NavBar />
       <HeroSection />
