@@ -154,7 +154,7 @@ const CSS = `
     .lv2-nav { padding-left: 16px !important; padding-right: 16px !important; }
 
     /* HERO: smaller headline */
-    .lv2-hero-h1 { font-size: 46px !important; line-height: 1.05 !important; }
+    .lv2-hero-h1 { font-size: 40px !important; line-height: 1.05 !important; }
 
     /* BENTO GRID: break the fixed 12-col layout into a single column */
     .lv2-bento-grid {
@@ -221,7 +221,7 @@ function NavBar() {
     <nav className="lv2-nav sticky top-0 z-50 flex items-center justify-between px-6 py-4 max-w-screen-xl mx-auto" style={{ position: "sticky", top: 0, zIndex: 50 }}>
       {/* Logo */}
       <div style={{ filter: "brightness(1.1)" }}>
-        <Logo />
+        <Logo dark />
       </div>
       {/* Links */}
       <div className="hidden md:flex items-center gap-7">
@@ -259,7 +259,7 @@ function HeroSection() {
         <span className="lv2-orange-text text-[14px]">✦</span>
       </div>
       {/* Headline */}
-      <h1 className="lv2-hero-h1 mx-auto max-w-4xl text-[50px] font-[900] leading-[1.02] tracking-[-0.04em] text-white md:text-[66px] lg:text-[74px]">
+      <h1 className="lv2-hero-h1 mx-auto max-w-4xl text-[44px] font-[900] leading-[1.02] tracking-[-0.04em] text-white md:text-[60px] lg:text-[68px]">
           Your AI Sales Team,<br />
           <span className="lv2-orange-text">From ICP to Proposal.</span>
       </h1>
