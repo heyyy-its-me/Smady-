@@ -113,13 +113,47 @@ const CSS = `
     mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
   }
 
-  /* Fade-slide-in on scroll */
-  @keyframes fadeSlideIn {
-    from { opacity: 0; filter: blur(8px); transform: translateY(30px); }
-    to   { opacity: 1; filter: blur(0);   transform: translateY(0); }
+  /* Reversible fade-slide reveal: leaving the viewport removes .visible so the entrance can replay. */
+  .lv2-animate {
+    opacity: 0;
+    filter: blur(7px);
+    transform: translate3d(0, 28px, 0) scale(0.985);
+    transition:
+      opacity 0.7s cubic-bezier(.22,1,.36,1),
+      transform 0.7s cubic-bezier(.22,1,.36,1),
+      filter 0.7s cubic-bezier(.22,1,.36,1);
+    transition-delay: var(--lv2-reveal-delay, 0ms);
+    will-change: opacity, transform, filter;
   }
-  .lv2-animate { opacity: 0; }
-  .lv2-animate.visible { animation: fadeSlideIn 0.7s cubic-bezier(.22,1,.36,1) forwards; }
+  .lv2-animate.visible {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  .lv2-animate.visible.lv2-hover-card:hover {
+    transform: translate3d(0, -8px, 0) scale(1.012);
+  }
+
+  /* Every landing card can softly diffuse in and replay when revisited. */
+  .lv2-diffuse-card {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translate3d(0, 34px, 0) scale(0.975);
+    transition:
+      opacity 0.95s cubic-bezier(.22,1,.36,1),
+      transform 0.95s cubic-bezier(.22,1,.36,1),
+      filter 0.95s cubic-bezier(.22,1,.36,1);
+    transition-delay: var(--lv2-reveal-delay, 0ms);
+    will-change: opacity, transform, filter;
+  }
+  .lv2-diffuse-card.visible {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  .lv2-diffuse-card.visible.lv2-hover-card:hover {
+    transform: translate3d(0, -8px, 0) scale(1.012);
+  }
 
   /* Section-level reveal: transform/opacity only, so scrolling stays on the compositor. */
   .lv2-section-reveal {
@@ -132,18 +166,25 @@ const CSS = `
     transform: translate3d(0, 0, 0);
   }
 
-  @keyframes lv2-hero-rise {
-    from { opacity: 0; transform: translate3d(0, 18px, 0); }
-    to { opacity: 1; transform: translate3d(0, 0, 0); }
-  }
+  /* The hero uses the same reversible state model as the rest of the page. */
   .lv2-hero-stage > :not(.lv2-glow-orange) {
     opacity: 0;
-    animation: lv2-hero-rise 0.8s cubic-bezier(.22,1,.36,1) forwards;
+    filter: blur(7px);
+    transform: translate3d(0, 18px, 0);
+    transition:
+      opacity 0.8s cubic-bezier(.22,1,.36,1),
+      transform 0.8s cubic-bezier(.22,1,.36,1),
+      filter 0.8s cubic-bezier(.22,1,.36,1);
   }
-  .lv2-hero-stage > :nth-child(2) { animation-delay: 0.08s; }
-  .lv2-hero-stage > :nth-child(3) { animation-delay: 0.18s; }
-  .lv2-hero-stage > :nth-child(4) { animation-delay: 0.3s; }
-  .lv2-hero-stage > :nth-child(5) { animation-delay: 0.42s; }
+  .lv2-hero-stage.hero-visible > :not(.lv2-glow-orange) {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate3d(0, 0, 0);
+  }
+  .lv2-hero-stage.hero-visible > :nth-child(2) { transition-delay: 0.08s; }
+  .lv2-hero-stage.hero-visible > :nth-child(3) { transition-delay: 0.18s; }
+  .lv2-hero-stage.hero-visible > :nth-child(4) { transition-delay: 0.3s; }
+  .lv2-hero-stage.hero-visible > :nth-child(5) { transition-delay: 0.42s; }
 
   /* Only a few ambient lights use parallax; content never moves while reading. */
   .lv2-parallax {
@@ -343,7 +384,8 @@ const CSS = `
       transition-duration: 0.01ms !important;
     }
     .lv2-scroll-progress { display: none; }
-    .lv2-section-reveal, .lv2-animate { opacity: 1 !important; transform: none !important; }
+    .lv2-section-reveal, .lv2-animate, .lv2-diffuse-card,
+    .lv2-hero-stage > :not(.lv2-glow-orange) { opacity: 1 !important; filter: none !important; transform: none !important; }
     .lv2-story-section { min-height: auto; }
     .lv2-story-sticky { position: static; min-height: auto; }
     .lv2-story-track { transform: none !important; }
@@ -425,7 +467,7 @@ function HeroSection() {
       </h1>
       {/* Sub */}
       <p className="mx-auto mt-6 max-w-2xl text-[16px] leading-relaxed text-neutral-400 md:text-[18px]">
-        Tell Smady what you&apos;re building, and let AI help you figure out who to sell to, how to reach them, and what to do next.
+        Tell <span className="font-brand text-white">Smady</span> what you&apos;re building, and let AI help you figure out who to sell to, how to reach them, and what to do next.
       </p>
       {/* CTAs */}
       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
@@ -748,7 +790,7 @@ function ProblemSection() {
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
 
         {/* ── Card 1: Problem ── */}
-        <div className="lv2-card group relative flex flex-col overflow-hidden rounded-2xl" style={{ background: "linear-gradient(160deg, #13080d 0%, #0f0a0a 100%)" }}>
+        <div className="lv2-card lv2-hover-card lv2-animate group relative flex flex-col overflow-hidden rounded-2xl" data-delay="0" style={{ background: "linear-gradient(160deg, #13080d 0%, #0f0a0a 100%)" }}>
           {/* Subtle red glow */}
           <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 30% 20%, rgba(239,68,68,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
           {/* Label pill */}
@@ -794,7 +836,7 @@ function ProblemSection() {
         </div>
 
         {/* ── Card 2: Challenge ── */}
-        <div className="lv2-card group relative flex flex-col overflow-hidden rounded-2xl" style={{ background: "linear-gradient(160deg, #0f0f0a 0%, #0a0a0d 100%)" }}>
+        <div className="lv2-card lv2-hover-card lv2-animate group relative flex flex-col overflow-hidden rounded-2xl" data-delay="0.12" style={{ background: "linear-gradient(160deg, #0f0f0a 0%, #0a0a0d 100%)" }}>
           <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 60% 30%, rgba(249,115,22,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
           <div className="relative z-10 p-6 pb-0">
             <span className="inline-flex items-center rounded-full border border-orange-500/20 bg-orange-500/8 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-orange-400">
@@ -837,11 +879,11 @@ function ProblemSection() {
         </div>
 
         {/* ── Card 3: Solution ── */}
-        <div className="lv2-card group relative flex flex-col overflow-hidden rounded-2xl" style={{ background: "linear-gradient(160deg, #0a0f0a 0%, #080d0a 100%)" }}>
+        <div className="lv2-card lv2-hover-card lv2-animate group relative flex flex-col overflow-hidden rounded-2xl" data-delay="0.24" style={{ background: "linear-gradient(160deg, #0a0f0a 0%, #080d0a 100%)" }}>
           <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 40% 30%, rgba(34,197,94,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
           <div className="relative z-10 p-6 pb-0">
             <span className="inline-flex items-center rounded-full border border-orange-500/25 bg-orange-500/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-orange-400">
-              Smady Solution
+              <span className="font-brand">Smady</span>&nbsp;Solution
             </span>
           </div>
           {/* Visual: rising dashboard */}
@@ -880,7 +922,7 @@ function ProblemSection() {
           {/* Text */}
           <div className="relative z-10 p-6 pt-5 flex-1">
             <h3 className="text-[22px] font-[800] leading-tight tracking-tight text-white mb-3">
-              Smady connects the entire journey
+              <span className="font-brand">Smady</span> connects the entire journey
             </h3>
             <p className="text-[13px] leading-relaxed text-neutral-500">
               Your ICP informs your leads. Your leads inform your outreach. Your outreach creates conversations. Meetings inform proposals. Proposals move the pipeline.
@@ -905,7 +947,7 @@ function PricingSection() {
           The right plan for<br /><span className="lv2-orange-text">your sales journey.</span>
         </h2>
         <p className="mt-4 text-[16px] text-neutral-400 max-w-xl mx-auto">
-          We&apos;re shaping pricing around how teams actually sell. While the details are being finalized, here&apos;s what Smady is built to help you do.
+          We&apos;re shaping pricing around how teams actually sell. While the details are being finalized, here&apos;s what <span className="font-brand text-white">Smady</span> is built to help you do.
         </p>
       </div>
       {/* Coming-soon panel */}
@@ -923,7 +965,7 @@ function PricingSection() {
             to="/signup"
             className="lv2-btn-primary mt-7 flex items-center gap-2 rounded-full px-7 py-3 text-[14px] font-semibold text-white"
           >
-            Explore Smady
+            Explore <span className="font-brand">Smady</span>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </Link>
         </div>
@@ -952,13 +994,13 @@ function ComparisonSection() {
       {/* Heading */}
       <div className="text-center mb-14 lv2-animate" data-delay="0">
         <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[12px] font-medium text-neutral-400 mb-5 inline-block">
-          The Smady Difference
+          The <span className="font-brand">Smady</span> Difference
         </span>
         <h2 className="text-[40px] font-[800] leading-tight tracking-[-0.03em] text-white md:text-[52px]">
           Less Guesswork.<br /><span className="lv2-orange-text">More Selling.</span>
         </h2>
         <p className="mt-4 text-[16px] text-neutral-400 max-w-xl mx-auto">
-          Most tools help you do one thing. Smady connects what happens before, during, and after the sale.
+          Most tools help you do one thing. <span className="font-brand text-white">Smady</span> connects what happens before, during, and after the sale.
         </p>
       </div>
       {/* 3-col comparison */}
@@ -988,7 +1030,7 @@ function ComparisonSection() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 mb-5">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
           </div>
-          <h3 className="text-[17px] font-[700] text-white mb-3">The Smady difference</h3>
+          <h3 className="text-[17px] font-[700] text-white mb-3">The <span className="font-brand">Smady</span> difference</h3>
           <div className="grid grid-cols-2 gap-3">
             {[["🎯","Know your customer","Build a clear ICP first"],["🔍","Find better-fit leads","Match prospects to your target"],["✉️","Reach them personally","Relevant outreach at scale"],["📅","Book conversations","Move interest toward meetings"],["📋","Create proposals faster","Turn needs into offers"],["📈","Keep everything connected","Carry context to the pipeline"]].map(([icon,label,sub],i) => (
               <div key={i} className="flex items-start gap-2 rounded-xl bg-white/3 p-3">
@@ -1131,7 +1173,7 @@ function CTASection() {
       <div className="lv2-glow-orange absolute inset-0 mx-auto" style={{ width: 600, height: 400, top: "50%", left: "50%", transform: "translate(-50%,-50%)", opacity: 0.15 }} />
       <div className="relative">
         <h2 className="text-[48px] font-[900] leading-tight tracking-[-0.04em] text-white md:text-[64px]">
-          You Bring the Product.<br /><span className="lv2-orange-text">Smady Brings the Sales Journey.</span>
+          You Bring the Product.<br /><span className="lv2-orange-text"><span className="font-brand">Smady</span> Brings the Sales Journey.</span>
         </h2>
         <p className="mt-5 text-[17px] text-neutral-400 max-w-lg mx-auto">
           From finding the right customer to moving the right deal forward — let AI handle the busywork while your team focuses on selling.
@@ -1176,7 +1218,7 @@ function Footer() {
               <Logo dark />
             </div>
             <p className="text-[13px] text-neutral-500 leading-relaxed mb-5">
-              Tell Smady what you&apos;re building. Let AI help you figure out who to sell to, how to reach them, and what to do next.
+              Tell <span className="font-brand text-white">Smady</span> what you&apos;re building. Let AI help you figure out who to sell to, how to reach them, and what to do next.
             </p>
             <div className="flex gap-3">
               {["twitter","github","linkedin"].map(s => (
@@ -1201,7 +1243,7 @@ function Footer() {
           ))}
         </div>
         <div className="mt-14 flex flex-col md:flex-row items-center justify-between gap-3 border-t border-white/5 pt-8">
-          <p className="text-[12px] text-neutral-700">© 2026 Smady AI Ltd. All rights reserved.</p>
+          <p className="text-[12px] text-neutral-700">© 2026 <span className="font-brand">Smady</span> AI Ltd. All rights reserved.</p>
           <p className="text-[12px] text-neutral-700">Built for the teams who close.</p>
         </div>
       </div>
@@ -1240,15 +1282,46 @@ export default function LandingV2() {
     const root = rootRef.current;
     if (!root) return;
 
-    const els = root.querySelectorAll(".lv2-animate, .lv2-section-reveal");
-    const timers: number[] = [];
+    const diffuseCards = Array.from(
+      root.querySelectorAll(".lv2-card:not(.lv2-journey-card):not(.lv2-animate)")
+    ) as HTMLElement[];
+    diffuseCards.forEach((card, index) => {
+      card.classList.add("lv2-diffuse-card");
+      if (!card.dataset.delay) {
+        card.dataset.delay = String((index % 4) * 0.08);
+      }
+    });
+
+    const heroStage = root.querySelector<HTMLElement>(".lv2-hero-stage");
+    const els = Array.from(root.querySelectorAll(".lv2-animate, .lv2-section-reveal, .lv2-diffuse-card")) as HTMLElement[];
+    if (heroStage) els.push(heroStage);
+    const timers = new Map<Element, number>();
     const obs = new IntersectionObserver(
       entries => {
         entries.forEach(e => {
+          const target = e.target as HTMLElement;
+          const pendingTimer = timers.get(target);
+          if (pendingTimer) {
+            window.clearTimeout(pendingTimer);
+            timers.delete(target);
+          }
+
           if (e.isIntersecting) {
-            const delay = Number((e.target as HTMLElement).dataset.delay ?? 0) * 1000;
-            timers.push(window.setTimeout(() => e.target.classList.add("visible"), delay));
-            obs.unobserve(e.target);
+            const delay = Number(target.dataset.delay ?? 0) * 1000;
+            if (delay > 0) {
+              const timer = window.setTimeout(() => {
+                if (target === heroStage) target.classList.add("hero-visible");
+                else target.classList.add("visible");
+                timers.delete(target);
+              }, delay);
+              timers.set(target, timer);
+            } else {
+              if (target === heroStage) target.classList.add("hero-visible");
+              else target.classList.add("visible");
+            }
+          } else {
+            target.classList.remove("visible");
+            target.classList.remove("hero-visible");
           }
         });
       },
@@ -1257,7 +1330,8 @@ export default function LandingV2() {
     els.forEach(el => obs.observe(el));
     return () => {
       obs.disconnect();
-      timers.forEach(window.clearTimeout);
+      timers.forEach(timer => window.clearTimeout(timer));
+      timers.clear();
     };
   }, []);
 

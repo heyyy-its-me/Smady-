@@ -10,6 +10,11 @@ body {
   scroll-behavior: smooth;
 }
 
+/* Smady brand type: Groote is preferred when bundled or installed, with a stable display fallback. */
+.font-brand {
+  font-family: "Groote", "Clash Display", "Inter", sans-serif;
+}
+
 /* Kinetic ticker ribbon marquee */
 @keyframes marquee {
   from { transform: translateX(0); }

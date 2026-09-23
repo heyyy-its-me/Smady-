@@ -7,6 +7,7 @@ module.exports = {
       fontFamily: {
         sans: ["Inter", "sans-serif"],
         display: ["Clash Display", "Inter", "sans-serif"],
+        brand: ["Groote", "Clash Display", "Inter", "sans-serif"],
       },
       borderRadius: {
         lg: "var(--radius)",

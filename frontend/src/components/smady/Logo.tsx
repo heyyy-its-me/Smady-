@@ -9,7 +9,7 @@ export function Logo({ dark = false, iconOnly = false }: { dark?: boolean; iconO
         className="h-8 w-8 rounded-full object-cover"
       />
       {!iconOnly && (
-        <span className={cn("font-display text-lg font-800 tracking-tight", dark ? "text-white" : "text-ink")}>
+        <span className={cn("font-brand text-lg font-800 tracking-tight", dark ? "text-white" : "text-ink")}>
           Smady
         </span>
       )}
