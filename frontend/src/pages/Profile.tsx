@@ -26,6 +26,12 @@ export default function Profile() {
 
   const profileFields = [
     {
+      label: "User ID",
+      value: user.id,
+      icon: User,
+      testId: "profile-id",
+    },
+    {
       label: "Full Name",
       value: user.name,
       icon: User,
