@@ -11,6 +11,29 @@ const CSS = `
     background: #080808;
     color: #fff;
     -webkit-font-smoothing: antialiased;
+    --lv2-scroll-progress: 0;
+  }
+
+  /* Thin progress rail keeps long-form scrolling feeling intentional. */
+  .lv2-scroll-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    height: 2px;
+    pointer-events: none;
+    background: rgba(255,255,255,0.06);
+  }
+  .lv2-scroll-progress span {
+    display: block;
+    width: 100%;
+    height: 100%;
+    transform: scaleX(0);
+    transform-origin: left center;
+    background: linear-gradient(90deg, #f97316, #fb923c, #fde68a);
+    box-shadow: 0 0 14px rgba(249,115,22,0.7);
+    will-change: transform;
   }
 
   /* Fixed 64×64 dot-grid background */
@@ -80,6 +103,53 @@ const CSS = `
   }
   .lv2-animate { opacity: 0; }
   .lv2-animate.visible { animation: fadeSlideIn 0.7s cubic-bezier(.22,1,.36,1) forwards; }
+
+  /* Section-level reveal: transform/opacity only, so scrolling stays on the compositor. */
+  .lv2-section-reveal {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0);
+    transition: opacity 0.85s cubic-bezier(.22,1,.36,1), transform 0.85s cubic-bezier(.22,1,.36,1);
+  }
+  .lv2-section-reveal.visible {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  @keyframes lv2-hero-rise {
+    from { opacity: 0; transform: translate3d(0, 18px, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+  .lv2-hero-stage > :not(.lv2-glow-orange) {
+    opacity: 0;
+    animation: lv2-hero-rise 0.8s cubic-bezier(.22,1,.36,1) forwards;
+  }
+  .lv2-hero-stage > :nth-child(2) { animation-delay: 0.08s; }
+  .lv2-hero-stage > :nth-child(3) { animation-delay: 0.18s; }
+  .lv2-hero-stage > :nth-child(4) { animation-delay: 0.3s; }
+  .lv2-hero-stage > :nth-child(5) { animation-delay: 0.42s; }
+
+  /* Only a few ambient lights use parallax; content never moves while reading. */
+  .lv2-parallax {
+    transform: translate3d(0, var(--lv2-parallax-y, 0px), 0);
+    will-change: transform;
+  }
+
+  /* Soft lift for journey cards gives the story a sense of progression. */
+  .lv2-journey-shell { position: relative; }
+  .lv2-journey-shell::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 4%;
+    right: 4%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(249,115,22,0.32), rgba(96,165,250,0.32), transparent);
+    pointer-events: none;
+  }
+  .lv2-journey-card {
+    transition: transform 0.45s cubic-bezier(.22,1,.36,1), border-color 0.45s ease, background 0.45s ease;
+  }
+  .lv2-journey-card:hover { transform: translate3d(0, -7px, 0); }
 
   /* Orbit pulse rings */
   @keyframes orbit-pulse {
@@ -156,6 +226,9 @@ const CSS = `
     /* HERO: smaller headline */
     .lv2-hero-h1 { font-size: 40px !important; line-height: 1.05 !important; }
 
+    .lv2-journey-shell::before { display: none; }
+    .lv2-journey-card:hover { transform: none; }
+
     /* BENTO GRID: break the fixed 12-col layout into a single column */
     .lv2-bento-grid {
       display: flex !important;
@@ -197,6 +270,17 @@ const CSS = `
     }
     .lv2-footer-brand { grid-column: span 2 !important; }
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lv2-root *, .lv2-root *::before, .lv2-root *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
+    .lv2-scroll-progress { display: none; }
+    .lv2-section-reveal, .lv2-animate { opacity: 1 !important; transform: none !important; }
+  }
 `;
 
 
@@ -215,6 +299,14 @@ const BARS = [88, 92, 95, 97, 96, 98, 97];
 const BAR_DAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
 /* ─── Sub-components ─────────────────────────────────────── */
+
+function ScrollProgress() {
+  return (
+    <div className="lv2-scroll-progress" aria-hidden="true">
+      <span data-lv2-progress-bar="true" />
+    </div>
+  );
+}
 
 function NavBar() {
   return (
@@ -249,7 +341,7 @@ function NavBar() {
 
 function HeroSection() {
   return (
-    <section className="relative z-10 px-6 pt-20 pb-8 text-center max-w-screen-xl mx-auto">
+    <section className="lv2-hero-stage relative z-10 px-6 pt-20 pb-8 text-center max-w-screen-xl mx-auto">
       {/* Glow */}
       <div className="lv2-glow-orange" style={{ width: 600, height: 600, top: -200, left: "50%", transform: "translateX(-50%)" }} />
       {/* Pill */}
@@ -290,7 +382,7 @@ function HeroSection() {
 
 function BentoGrid() {
   return (
-    <section className="relative z-10 mx-auto max-w-screen-xl px-6 pb-6">
+    <section className="lv2-section-reveal relative z-10 mx-auto max-w-screen-xl px-6 pb-6">
       <div
         className="lv2-bento-mask lv2-bento-grid grid gap-3 overflow-hidden rounded-3xl"
         style={{
@@ -310,7 +402,7 @@ function BentoGrid() {
           }}
         >
           {/* Subtle orange glow bottom-left */}
-          <div className="lv2-glow-orange" style={{ width: 500, height: 500, bottom: -180, left: -100, opacity: 0.3 }} />
+          <div className="lv2-glow-orange lv2-parallax" data-lv2-parallax="0.08" style={{ width: 500, height: 500, bottom: -180, left: -100, opacity: 0.3 }} />
 
           {/* Top bar — app chrome */}
           <div className="relative z-10 flex items-center justify-between border-b border-white/[0.06] px-5 py-3.5">
@@ -529,7 +621,7 @@ function ProductJourney() {
   ];
 
   return (
-    <section className="relative z-10 mx-auto max-w-screen-xl px-6 py-16">
+    <section className="lv2-section-reveal relative z-10 mx-auto max-w-screen-xl px-6 py-16">
       <div className="mb-10 text-center">
         <span className="rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-1.5 text-[12px] font-medium text-orange-400">
           The complete journey
@@ -541,10 +633,10 @@ function ProductJourney() {
           One connected journey. Powered by specialized AI agents.
         </p>
       </div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-7">
+      <div className="lv2-journey-shell grid grid-cols-1 gap-3 md:grid-cols-7">
         {journey.map((step, i) => (
           <div key={step.label} className="relative flex items-stretch">
-            <div className="lv2-card lv2-hover-card flex w-full flex-col rounded-2xl p-4" style={{ background: "#0f0f10" }}>
+            <div className="lv2-card lv2-hover-card lv2-journey-card flex w-full flex-col rounded-2xl p-4" style={{ background: "#0f0f10" }}>
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: step.color }}>0{i + 1}</span>
                 <span className="h-2 w-2 rounded-full" style={{ background: step.color, boxShadow: `0 0 12px ${step.color}` }} />
@@ -562,7 +654,7 @@ function ProductJourney() {
 
 function ProblemSection() {
   return (
-    <section className="relative z-10 mx-auto max-w-screen-xl px-6 py-20">
+    <section className="lv2-section-reveal relative z-10 mx-auto max-w-screen-xl px-6 py-20">
       {/* Header row — "The problem." + vertical line + subtitle */}
       <div className="mb-12 flex flex-col gap-4 border-b border-white/[0.06] pb-10 md:flex-row md:items-start md:gap-0">
         <h2 className="flex-1 text-[64px] font-[900] leading-none tracking-[-0.04em] text-white md:text-[80px]">
@@ -727,7 +819,7 @@ function ProblemSection() {
 
 function PricingSection() {
   return (
-    <section className="relative z-10 mx-auto max-w-screen-xl px-6 py-20">
+    <section className="lv2-section-reveal relative z-10 mx-auto max-w-screen-xl px-6 py-20">
       {/* Section header */}
       <div className="text-center mb-14">
         <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[12px] font-medium text-neutral-400 mb-5 inline-block">
@@ -742,7 +834,7 @@ function PricingSection() {
       </div>
       {/* Coming-soon panel */}
       <div className="lv2-card relative overflow-hidden rounded-3xl p-8 md:p-10" style={{ background: "linear-gradient(135deg, #17100a 0%, #0f0f10 55%, #0a0a0b 100%)", border: "1px solid rgba(249,115,22,0.2)" }}>
-        <div className="lv2-glow-orange absolute -right-24 -top-32" style={{ width: 320, height: 320, opacity: 0.18 }} />
+        <div className="lv2-glow-orange lv2-parallax absolute -right-24 -top-32" data-lv2-parallax="0.06" style={{ width: 320, height: 320, opacity: 0.18 }} />
         <div className="relative z-10 flex flex-col items-center text-center">
           <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-orange-500/25 bg-orange-500/10">
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="1.8"><path d="M12 8v4l2.5 2.5"/><circle cx="12" cy="12" r="8.5"/><path d="M4.8 4.8 3 3m16.2 1.8L21 3"/></svg>
@@ -780,7 +872,7 @@ function PricingSection() {
 
 function ComparisonSection() {
   return (
-    <section className="relative z-10 mx-auto max-w-screen-xl px-6 py-20">
+    <section className="lv2-section-reveal relative z-10 mx-auto max-w-screen-xl px-6 py-20">
       {/* Heading */}
       <div className="text-center mb-14 lv2-animate" data-delay="0">
         <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[12px] font-medium text-neutral-400 mb-5 inline-block">
@@ -860,7 +952,7 @@ function ComparisonSection() {
 
 function HowItWorks() {
   return (
-    <section id="how-it-works" className="relative z-10 mx-auto max-w-screen-xl px-6 py-20">
+    <section id="how-it-works" className="lv2-section-reveal relative z-10 mx-auto max-w-screen-xl px-6 py-20">
       <div className="text-center mb-14">
         <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[12px] font-medium text-neutral-400 mb-5 inline-block">
           One Platform. Specialized AI Agents.
@@ -939,10 +1031,10 @@ function MetricsSection() {
     { val: "06", label: "Keep everything connected", sub: "Carry context through the pipeline" },
   ];
   return (
-    <section className="relative z-10 mx-auto max-w-screen-xl px-6 py-16">
+    <section className="lv2-section-reveal relative z-10 mx-auto max-w-screen-xl px-6 py-16">
       <div className="lv2-card rounded-3xl overflow-hidden" style={{ background: "linear-gradient(135deg,#0f0f10 0%,#0a0a0b 100%)" }}>
         {/* Orange glow top-left */}
-        <div className="lv2-glow-orange absolute -top-20 -left-20" style={{ width: 300, height: 300, opacity: 0.2 }} />
+        <div className="lv2-glow-orange lv2-parallax absolute -top-20 -left-20" data-lv2-parallax="0.05" style={{ width: 300, height: 300, opacity: 0.2 }} />
         <div className="grid grid-cols-2 divide-x divide-white/5 md:grid-cols-3 lg:grid-cols-6">
           {metrics.map((m, i) => (
             <div key={i} className="lv2-animate p-8 text-center" data-delay={i * 0.1}>
@@ -959,7 +1051,7 @@ function MetricsSection() {
 
 function CTASection() {
   return (
-    <section className="relative z-10 mx-auto max-w-screen-xl px-6 py-24 text-center">
+    <section className="lv2-section-reveal relative z-10 mx-auto max-w-screen-xl px-6 py-24 text-center">
       <div className="lv2-glow-orange absolute inset-0 mx-auto" style={{ width: 600, height: 400, top: "50%", left: "50%", transform: "translate(-50%,-50%)", opacity: 0.15 }} />
       <div className="relative">
         <h2 className="text-[48px] font-[900] leading-tight tracking-[-0.04em] text-white md:text-[64px]">
@@ -999,7 +1091,7 @@ function Footer() {
     { title: "Support", links: ["Documentation","API Reference","Status","Contact","Privacy","Terms"] },
   ];
   return (
-    <footer className="relative z-10 border-t border-white/5" style={{ background: "#060606" }}>
+    <footer className="lv2-section-reveal relative z-10 border-t border-white/5" style={{ background: "#060606" }}>
       <div className="mx-auto max-w-screen-xl px-6 py-16">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-10">
           {/* Brand */}
@@ -1057,27 +1149,81 @@ export default function LandingV2() {
     return () => { document.getElementById("lv2-css")?.remove(); };
   }, []);
 
-  /* Scroll reveal with staggered delays */
+  /* Scroll reveal with staggered delays, scoped to this landing page. */
   useEffect(() => {
-    const els = document.querySelectorAll(".lv2-animate");
+    const root = rootRef.current;
+    if (!root) return;
+
+    const els = root.querySelectorAll(".lv2-animate, .lv2-section-reveal");
+    const timers: number[] = [];
     const obs = new IntersectionObserver(
       entries => {
         entries.forEach(e => {
           if (e.isIntersecting) {
             const delay = Number((e.target as HTMLElement).dataset.delay ?? 0) * 1000;
-            setTimeout(() => e.target.classList.add("visible"), delay);
+            timers.push(window.setTimeout(() => e.target.classList.add("visible"), delay));
             obs.unobserve(e.target);
           }
         });
       },
-      { threshold: 0.15 }
+      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
     );
     els.forEach(el => obs.observe(el));
-    return () => obs.disconnect();
+    return () => {
+      obs.disconnect();
+      timers.forEach(window.clearTimeout);
+    };
+  }, []);
+
+  /* Scroll-linked ambient depth. Direct style writes avoid React renders while scrolling. */
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    const progressBar = root.querySelector<HTMLElement>("[data-lv2-progress-bar]");
+    const parallaxNodes: HTMLElement[] = Array.from(
+      root.querySelectorAll("[data-lv2-parallax]")
+    ) as HTMLElement[];
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let frame = 0;
+
+    const updateScrollVisuals = () => {
+      frame = 0;
+      const documentHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = documentHeight > 0
+        ? Math.min(1, Math.max(0, window.scrollY / documentHeight))
+        : 0;
+
+      progressBar?.style.setProperty("transform", `scaleX(${progress})`);
+      if (reduceMotion) return;
+
+      const viewportCenter = window.innerHeight / 2;
+      parallaxNodes.forEach(node => {
+        const rect = node.getBoundingClientRect();
+        const distanceFromCenter = (rect.top + rect.height / 2 - viewportCenter) / window.innerHeight;
+        const speed = Number(node.dataset.lv2Parallax ?? 0.08);
+        node.style.setProperty("--lv2-parallax-y", `${distanceFromCenter * speed * -80}px`);
+      });
+    };
+
+    const requestScrollUpdate = () => {
+      if (!frame) frame = window.requestAnimationFrame(updateScrollVisuals);
+    };
+
+    updateScrollVisuals();
+    window.addEventListener("scroll", requestScrollUpdate, { passive: true });
+    window.addEventListener("resize", requestScrollUpdate, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", requestScrollUpdate);
+      window.removeEventListener("resize", requestScrollUpdate);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
   }, []);
 
   return (
     <div className="lv2-root relative overflow-x-hidden" ref={rootRef}>
+      <ScrollProgress />
       <NavBar />
       <HeroSection />
       <BentoGrid />
