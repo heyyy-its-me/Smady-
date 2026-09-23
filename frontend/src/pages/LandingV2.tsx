@@ -729,155 +729,54 @@ function ProblemSection() {
 }
 
 function PricingSection() {
-  const tiers = [
-    {
-      name: "Starter",
-      tagline: "For solo founders and early-stage teams",
-      price: "$500–$800",
-      period: "/ month",
-      highlight: false,
-      badge: null,
-      validDays: 14,
-      features: [
-        "Up to 200 leads / week",
-        "ICP Engine included",
-        "Email outreach sequences",
-        "Meeting scheduling agent",
-        "Basic proposal templates",
-        "Email support",
-      ],
-      cta: "Start with Starter",
-    },
-    {
-      name: "Growth",
-      tagline: "For scaling sales teams ready to dominate",
-      price: "$1,200–$2,000",
-      period: "/ month",
-      highlight: true,
-      badge: "Most Popular",
-      validDays: 21,
-      features: [
-        "Up to 500 leads / week",
-        "Full ICP Engine + scoring",
-        "AI-personalised outreach",
-        "Auto meeting + calendar sync",
-        "Full proposal agent with guardrails",
-        "Priority support + onboarding",
-        "Run history & analytics",
-      ],
-      cta: "Start Growing",
-    },
-    {
-      name: "Enterprise",
-      tagline: "Custom pipelines for high-volume teams",
-      price: "$3,999–$7,999",
-      period: "/ month",
-      highlight: false,
-      badge: null,
-      validDays: 21,
-      features: [
-        "Unlimited leads",
-        "Custom ICP + lead scoring models",
-        "Multi-sequence outreach",
-        "Dedicated meeting agent",
-        "Custom proposal catalog",
-        "SLA guarantee",
-        "Dedicated engineer + CSM",
-        "White-label available",
-      ],
-      cta: "Contact Us",
-    },
-  ];
-
   return (
     <section className="relative z-10 mx-auto max-w-screen-xl px-6 py-20">
       {/* Section header */}
       <div className="text-center mb-14">
         <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[12px] font-medium text-neutral-400 mb-5 inline-block">
-          Transparent Pricing
+          Pricing is coming soon
         </span>
         <h2 className="text-[40px] font-[800] leading-tight tracking-[-0.03em] text-white md:text-[52px]">
-          Pick your pipeline.<br /><span className="lv2-orange-text">Start closing today.</span>
+          The right plan for<br /><span className="lv2-orange-text">your sales journey.</span>
         </h2>
         <p className="mt-4 text-[16px] text-neutral-400 max-w-xl mx-auto">
-          All plans include every Smady agent. Price reflects the scale of your outbound motion.
+          We&apos;re shaping pricing around how teams actually sell. While the details are being finalized, here&apos;s what Smady is built to help you do.
         </p>
       </div>
-      {/* Tier cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {tiers.map((tier) => (
-          <div
-            key={tier.name}
-            className="lv2-card relative flex flex-col overflow-hidden rounded-2xl"
-            style={{
-              background: tier.highlight
-                ? "linear-gradient(160deg, #1a0d05 0%, #130a04 100%)"
-                : "#0f0f10",
-              ...(tier.highlight ? { border: "1px solid rgba(249,115,22,0.25)" } : {}),
-            }}
-          >
-            {/* Orange top accent for highlight */}
-            {tier.highlight && (
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg, #f97316, #fb923c, transparent)" }} />
-            )}
-            {/* Badge */}
-            {tier.badge && (
-              <div className="absolute top-5 right-5">
-                <span className="rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: "rgba(249,115,22,0.15)", color: "#f97316", border: "1px solid rgba(249,115,22,0.25)" }}>
-                  {tier.badge}
-                </span>
-              </div>
-            )}
-            <div className="p-6 flex-1">
-              {/* Name + tagline */}
-              <p className="text-[13px] font-bold uppercase tracking-wider mb-1" style={{ color: tier.highlight ? "#f97316" : "#6b7280" }}>
-                {tier.name}
-              </p>
-              <p className="text-[12px] text-neutral-600 mb-5">{tier.tagline}</p>
-              {/* Price */}
-              <div className="mb-6">
-                <span className="text-[36px] font-[900] leading-none tracking-tight text-white">{tier.price}</span>
-                <span className="text-[13px] text-neutral-500 ml-1">{tier.period}</span>
-                <p className="mt-1 text-[11px] text-neutral-600">{tier.validDays}-day proposal validity included</p>
-              </div>
-              {/* Divider */}
-              <div className="mb-5 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
-              {/* Features */}
-              <ul className="space-y-2.5">
-                {tier.features.map(f => (
-                  <li key={f} className="flex items-start gap-2.5 text-[13px] text-neutral-400">
-                    <svg className="mt-0.5 flex-shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={tier.highlight ? "#f97316" : "#6b7280"} strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            {/* CTA */}
-            <div className="p-6 pt-0">
-              <Link
-                to="/signup"
-                className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[14px] font-semibold transition-all hover:-translate-y-0.5"
-                style={tier.highlight ? {
-                  background: "linear-gradient(135deg, #f97316, #ea580c)",
-                  color: "#fff",
-                  boxShadow: "0 6px 20px rgba(249,115,22,0.3)"
-                } : {
-                  background: "rgba(255,255,255,0.05)",
-                  color: "#d4d4d4",
-                  border: "1px solid rgba(255,255,255,0.08)"
-                }}
-              >
-                {tier.cta}
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              </Link>
-            </div>
+      {/* Coming-soon panel */}
+      <div className="lv2-card relative overflow-hidden rounded-3xl p-8 md:p-10" style={{ background: "linear-gradient(135deg, #17100a 0%, #0f0f10 55%, #0a0a0b 100%)", border: "1px solid rgba(249,115,22,0.2)" }}>
+        <div className="lv2-glow-orange absolute -right-24 -top-32" style={{ width: 320, height: 320, opacity: 0.18 }} />
+        <div className="relative z-10 flex flex-col items-center text-center">
+          <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-orange-500/25 bg-orange-500/10">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="1.8"><path d="M12 8v4l2.5 2.5"/><circle cx="12" cy="12" r="8.5"/><path d="M4.8 4.8 3 3m16.2 1.8L21 3"/></svg>
           </div>
-        ))}
+          <p className="text-[24px] font-[800] tracking-tight text-white">Pricing plans are on the way.</p>
+          <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-neutral-400">
+            We&apos;re making sure every plan reflects real sales workflows—not arbitrary limits. The pricing details will be announced when they&apos;re ready.
+          </p>
+          <Link
+            to="/signup"
+            className="lv2-btn-primary mt-7 flex items-center gap-2 rounded-full px-7 py-3 text-[14px] font-semibold text-white"
+          >
+            Explore Smady
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </Link>
+        </div>
+
+        <div className="relative z-10 mt-10 grid grid-cols-1 gap-3 border-t border-white/10 pt-8 md:grid-cols-3">
+          {[
+            { title: "Find the right customers", desc: "Define your ICP and discover leads that fit your product." },
+            { title: "Reach them with context", desc: "Create relevant outreach and move interest toward meetings." },
+            { title: "Move the deal forward", desc: "Turn conversations into proposals and know what to do next." },
+          ].map((benefit, i) => (
+            <div key={benefit.title} className="rounded-2xl bg-white/[0.03] p-5">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-orange-400">0{i + 1}</span>
+              <h3 className="mt-3 text-[15px] font-bold text-white">{benefit.title}</h3>
+              <p className="mt-2 text-[12px] leading-relaxed text-neutral-500">{benefit.desc}</p>
+            </div>
+          ))}
+        </div>
       </div>
-      {/* Bottom note */}
-      <p className="mt-8 text-center text-[12px] text-neutral-600">
-        All plans billed monthly · Cancel any time · Setup takes under 10 minutes
-      </p>
     </section>
   );
 }
