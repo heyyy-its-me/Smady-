@@ -29,7 +29,7 @@ export default function Reports() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailContent, setDetailContent] = useState<Record<string, unknown> | null>(null);
-  const [detailType, setDetailType] = useState<"icp" | "leads" | null>(null);
+  const [detailType, setDetailType] = useState<"icp" | "leads" | "proposal" | null>(null);
 
   // Pagination state
   const [executionHistoryPage, setExecutionHistoryPage] = useState(0);
@@ -142,16 +142,16 @@ export default function Reports() {
       navigate("/meetings");
       return;
     }
-    if (row.type === "proposal") {
-      navigate("/proposals");
-      return;
-    }
     setDetailOpen(true);
     setDetailLoading(true);
     setDetailContent(null);
     setDetailType(row.type);
     try {
-      const endpoint = row.type === "icp" ? `/company-profiles/${row.id}` : `/lead-results/${row.id}`;
+      const endpoint = row.type === "icp"
+        ? `/company-profiles/${row.id}`
+        : row.type === "proposal"
+          ? `/proposals/${row.id}`
+          : `/lead-results/${row.id}`;
       const { data } = await api.get(endpoint);
       setDetailContent(data);
     } catch (e) {
@@ -490,9 +490,11 @@ export default function Reports() {
       </div>
 
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-3xl" data-testid="real-history-detail-modal">
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-4xl" data-testid="real-history-detail-modal">
           <DialogHeader>
-            <DialogTitle>{detailType === "icp" ? "Company Profile" : "Lead Run Results"}</DialogTitle>
+            <DialogTitle>
+              {detailType === "icp" ? "Company Profile" : detailType === "proposal" ? "Proposal Details" : "Lead Run Results"}
+            </DialogTitle>
           </DialogHeader>
           {detailLoading ? (
             <div className="flex items-center justify-center py-10">
@@ -500,6 +502,8 @@ export default function Reports() {
             </div>
           ) : detailType === "leads" ? (
             <LeadsDetailView content={detailContent} />
+          ) : detailType === "proposal" ? (
+            <ProposalDetailView content={detailContent} />
           ) : (
             <CompanyProfileDetailView content={detailContent} />
           )}
@@ -524,8 +528,8 @@ function LeadsDetailView({ content }: { content: Record<string, unknown> | null 
         </span>
         <StatusBadge status={String(content.status || "")} />
       </div>
-      <div className="max-h-[55vh] overflow-y-auto rounded-xl border border-border" data-testid="leads-detail-scroll-area">
-        <table className="w-full text-left text-sm">
+      <div className="max-h-[55vh] overflow-x-auto overflow-y-auto rounded-xl border border-border" data-testid="leads-detail-scroll-area">
+        <table className="min-w-[900px] w-full text-left text-sm">
           <thead className="sticky top-0 bg-bg text-[11px] font-semibold uppercase tracking-wide text-muted">
             <tr>
               <th className="px-4 py-3">Contact</th>
@@ -560,6 +564,42 @@ function LeadsDetailView({ content }: { content: Record<string, unknown> | null 
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function ProposalDetailView({ content }: { content: Record<string, unknown> | null }) {
+  if (!content) return null;
+  const proposal = (content.proposal_json && typeof content.proposal_json === "object"
+    ? content.proposal_json
+    : content) as Record<string, unknown>;
+  const fields: [string, unknown][] = [
+    ["Lead", content.lead_name ?? proposal.lead_name],
+    ["Email", content.lead_email ?? proposal.lead_email],
+    ["Package", content.package_selected ?? proposal.package_selected],
+    ["Quoted Price", content.quoted_price ?? proposal.quoted_price],
+    ["Valid Until", content.valid_until ?? proposal.valid_until],
+    ["Status", content.final_status],
+  ].filter(([, value]) => value !== undefined && value !== null && value !== "");
+  const body = content.body_html ?? proposal.body_html ?? proposal.body ?? proposal.proposal_body;
+
+  return (
+    <div className="max-h-[55vh] space-y-4 overflow-y-auto pr-1" data-testid="proposal-detail-view">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {fields.map(([label, value]) => (
+          <div key={label} className="rounded-xl border border-border p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</p>
+            <p className="mt-1 break-words text-sm leading-relaxed text-ink">{String(value)}</p>
+          </div>
+        ))}
+      </div>
+      {body ? (
+        <div className="rounded-xl border border-border p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Proposal</p>
+          <div className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-ink">{String(body)}</div>
+        </div>
+      ) : null}
+      {fields.length === 0 && !body && <p className="text-sm text-muted">No proposal details are available for this record.</p>}
     </div>
   );
 }

@@ -62,6 +62,13 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
         )
     )
     proposals_sent = proposals_sent_r.scalar() or 0
+    app_proposals_sent_r = await db.execute(
+        select(func.count()).select_from(proposal_results).where(
+            proposal_results.c.user_id == user["id"],
+            proposal_results.c.final_status.in_(["sent", "Sent", "Approved", "sent_after_revision"]),
+        )
+    )
+    proposals_sent += app_proposals_sent_r.scalar() or 0
 
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     growth_map = {}
@@ -70,8 +77,12 @@ async def dashboard_stats(user: dict = Depends(get_current_user), db: AsyncSessi
         growth_map[m] = growth_map.get(m, 0) + count
     leads_growth = [{"label": m, "value": growth_map.get(m, 0)} for m in months]
 
-    funnel_stages = [("New", "New Leads"), ("Contacted", "Contacted"), ("Interested", "Interested"), ("Meeting Booked", "Meeting Booked")]
-    pipeline_funnel = [{"stage": label, "value": sum(1 for l in all_leads if l["status"] == sv)} for sv, label in funnel_stages]
+    pipeline_funnel = [
+        {"stage": "New Leads", "value": sum(1 for l in all_leads if l["status"] == "New")},
+        {"stage": "Contacted", "value": emails_sent},
+        {"stage": "Proposals Sent", "value": proposals_sent},
+        {"stage": "Meetings Booked", "value": meetings_booked},
+    ]
 
     source_counts: dict = {}
     for l in all_leads:

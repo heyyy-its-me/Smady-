@@ -66,15 +66,15 @@ export default function Leads() {
   const [viewLead, setViewLead] = useState<Lead | null>(null);
   const [editLead, setEditLead] = useState<Lead | null>(null);
   const [page, setPage] = useState(1);
-  const [showExecutionPicker, setShowExecutionPicker] = useState(true);
+  const [showExecutionPicker, setShowExecutionPicker] = useState(() => !leadsRunId && !requestIdParam);
 
-  // CHANGED: Don't load leads on mount. Wait for user to select an execution.
-  // Only load if viewing a specific run via URL parameter.
+  // Restore the selected execution when returning from another page. The provider
+  // keeps the selected run id, but the page-local view mode is recreated on mount.
   useEffect(() => {
-    if (requestIdParam) return;
-    // Page loads without leads - user must select an execution first
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (requestIdParam || !leadsRunId) return;
+    setShowExecutionPicker(false);
+    refreshLeads(leadsRunId, 0, PAGE_SIZE).catch(() => {});
+  }, [requestIdParam, leadsRunId, refreshLeads]);
 
   // Reset to page 1 whenever the displayed run changes (new generate, or a different run picked)
   useEffect(() => {
@@ -398,7 +398,7 @@ export default function Leads() {
       </div>
 
       {/* Recent Lead Generations - moved below stats */}
-      {!leadsRunId && !requestIdParam && leads.length === 0 && !generatingLeads && showExecutionPicker && (
+      {!requestIdParam && !generatingLeads && (showExecutionPicker || !!leadsRunId) && (
         <div className="mt-6" data-testid="leads-execution-history-card">
           <div className="rounded-2xl border border-primary-100/70 bg-surface p-6 shadow-card">
             <div className="flex items-center gap-3 mb-4">
