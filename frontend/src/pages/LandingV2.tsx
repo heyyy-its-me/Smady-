@@ -73,18 +73,6 @@ const CSS = `
     mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
   }
 
-  /* Marquee animations */
-  @keyframes marquee-ltr {
-    from { transform: translateX(-50%); }
-    to   { transform: translateX(0%); }
-  }
-  @keyframes marquee-rtl {
-    from { transform: translateX(0%); }
-    to   { transform: translateX(-50%); }
-  }
-  .lv2-marquee-ltr { animation: marquee-ltr 32s linear infinite; }
-  .lv2-marquee-rtl { animation: marquee-rtl 28s linear infinite; }
-
   /* Fade-slide-in on scroll */
   @keyframes fadeSlideIn {
     from { opacity: 0; filter: blur(8px); transform: translateY(30px); }
@@ -195,9 +183,6 @@ const CSS = `
     /* Global reach */
     .lv2-bento-global { min-height: 220px !important; }
 
-    /* MARQUEE: narrower cards so they don't overflow 390px */
-    .lv2-testi-card { width: 300px !important; min-width: 300px !important; }
-
     /* PROBLEM SECTION: smaller big heading */
     .lv2-problem-h2 { font-size: 44px !important; }
 
@@ -217,30 +202,13 @@ const CSS = `
 
 /* ─── Data ────────────────────────────────────────────────── */
 
-const TESTIMONIALS = [
-  { name: "Arun S.", role: "VP Sales, SaaS company", text: "Smady sources 200+ qualified leads every week without us lifting a finger. Our pipeline has never been this full.", avatar: "AS" },
-  { name: "Priya M.", role: "Founder, B2B Startup", text: "The AI writes emails that feel genuinely personalised. Reply rates jumped from 2% to 14% in the first month.", avatar: "PM" },
-  { name: "Jake L.", role: "Head of Growth, Fintech", text: "We cut our SDR overhead by 60%. Smady handles prospecting, outreach, and meeting booking autonomously.", avatar: "JL" },
-  { name: "Nadia R.", role: "RevOps Lead", text: "The proposal agent is incredible. It reviews against guardrails, sends clean proposals, and never goes off-catalog.", avatar: "NR" },
-  { name: "Carlos V.", role: "CEO, Agency", text: "Meetings booked by the AI agent are better prepared — Fireflies transcripts feed directly into the proposal draft.", avatar: "CV" },
-  { name: "Sofia K.", role: "Sales Manager", text: "I spend my day closing, not prospecting. Smady fills my calendar with qualified discovery calls every single week.", avatar: "SK" },
-];
-
-const T2 = [
-  { name: "Hamid T.", role: "Demand Gen, E-commerce", text: "We launched our first outreach campaign in under 10 minutes. 340 leads, 22 replies, 6 meetings — same week.", avatar: "HT" },
-  { name: "Emily C.", role: "GTM Lead, SaaS", text: "The ICP engine nailed our buyer persona better than our own research. It defined segments we'd never even considered.", avatar: "EC" },
-  { name: "Rohan D.", role: "Co-founder, B2B Platform", text: "No more copy-pasting lead data across 5 tools. Smady is the single source of truth for our entire outbound motion.", avatar: "RD" },
-  { name: "Amara N.", role: "Business Dev, Consulting", text: "Smady's meeting agent auto-books qualified calls from email replies. I wake up to a full calendar every morning.", avatar: "AN" },
-  { name: "Leo P.", role: "Enterprise AE", text: "The proposal guard-rails caught 3 pricing errors before sending. That alone saved a deal worth $18K.", avatar: "LP" },
-  { name: "Zara W.", role: "Growth Hacker", text: "Smady feels like hiring 4 SDRs at a fraction of the cost. Seriously — ICP, leads, outreach, meetings, proposals. Done.", avatar: "ZW" },
-];
-
 const STEPS = [
-  { icon: "🎯", label: "Define ICP", desc: "AI builds your ideal customer profile from your product description — industries, roles, pain points, company size." },
-  { icon: "🔍", label: "Source Leads", desc: "Smady sources 200+ verified, scored leads per week that match your ICP across 40+ data signals." },
-  { icon: "✉️", label: "Run Outreach", desc: "AI writes and sends hyper-personalised email sequences. Reply classification routes hot leads instantly." },
-  { icon: "📅", label: "Book Meetings", desc: "The scheduling agent reads replies, proposes slots, and books meetings into your calendar automatically." },
-  { icon: "📋", label: "Send Proposals", desc: "AI drafts proposals constrained to your pricing catalog, reviewed by guardrails and a risk-checker before sending." },
+  { icon: "🎯", label: "ICP Agent", desc: "Identify the companies, industries, markets, locations, and decision-makers that fit your ideal customer profile." },
+  { icon: "🔍", label: "Lead Agent", desc: "Discover and enrich prospects that match your ICP, so you spend less time digging through lists." },
+  { icon: "✉️", label: "Outreach Agent", desc: "Create personalized messages based on your product, ICP, and each prospect — without starting from a blank screen." },
+  { icon: "📅", label: "Meeting Agent", desc: "Move interested prospects toward a real conversation while keeping the prospect and conversation context connected." },
+  { icon: "📋", label: "Proposal Agent", desc: "Transform customer requirements and meeting insights into relevant proposals, faster." },
+  { icon: "📈", label: "Sales Intelligence", desc: "Bring leads, conversations, meetings, proposals, and deals together so you know what happens next." },
 ];
 
 const BARS = [88, 92, 95, 97, 96, 98, 97];
@@ -287,17 +255,20 @@ function HeroSection() {
       {/* Pill */}
       <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 mb-8 backdrop-blur-md">
         <span className="rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white" style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}>New</span>
-        <span className="text-[13px] font-medium text-neutral-300">Autonomous AI Outbound Platform</span>
+        <span className="text-[13px] font-medium text-neutral-300">Your AI sales team, from ICP to proposal</span>
         <span className="lv2-orange-text text-[14px]">✦</span>
       </div>
       {/* Headline */}
       <h1 className="lv2-hero-h1 mx-auto max-w-4xl text-[56px] font-[900] leading-[1.02] tracking-[-0.04em] text-white md:text-[72px] lg:text-[80px]">
-        Your Next Customer<br />
-        <span className="lv2-orange-text">Is One AI Call Away.</span>
+          Your AI Sales Team,<br />
+          <span className="lv2-orange-text">From ICP to Proposal.</span>
       </h1>
       {/* Sub */}
       <p className="mx-auto mt-6 max-w-2xl text-[16px] leading-relaxed text-neutral-400 md:text-[18px]">
-        Smady runs your entire outbound machine — ICP research, lead sourcing, personalised outreach, meeting scheduling, and proposal drafting — autonomously, 24/7.
+        Tell Smady what you&apos;re building, and let AI help you figure out who to sell to, how to reach them, and what to do next.
+      </p>
+      <p className="mx-auto mt-4 max-w-2xl text-[14px] leading-relaxed text-neutral-500 md:text-[16px]">
+        Product <span className="text-orange-400">→</span> ICP <span className="text-orange-400">→</span> Leads <span className="text-orange-400">→</span> Outreach <span className="text-orange-400">→</span> Meetings <span className="text-orange-400">→</span> Proposals <span className="text-orange-400">→</span> Pipeline
       </p>
       {/* CTAs */}
       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
@@ -351,7 +322,7 @@ function BentoGrid() {
               <span className="text-[12px] font-semibold tracking-tight text-neutral-300">Live Leads — Active Sourcing</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="rounded-full bg-orange-500/10 px-2.5 py-0.5 text-[11px] font-bold text-orange-400">247 this week</span>
+              <span className="rounded-full bg-orange-500/10 px-2.5 py-0.5 text-[11px] font-bold text-orange-400">Connected journey</span>
               <div className="flex gap-1.5">
                 <div className="h-2.5 w-2.5 rounded-full bg-white/10" />
                 <div className="h-2.5 w-2.5 rounded-full bg-white/10" />
@@ -409,7 +380,7 @@ function BentoGrid() {
           <div className="absolute bottom-0 left-0 right-0 z-10 border-t border-white/[0.05]" style={{ background: "rgba(13,13,15,0.95)" }}>
             <div className="flex items-center justify-between px-5 py-3.5">
               <div className="flex items-center gap-4">
-                {[["247","Sourced"],["23","Qualified"],["4","Meetings"]].map(([n,l]) => (
+                {[["ICP","Defined"],["Leads","Matched"],["Next","Step"]].map(([n,l]) => (
                   <div key={l} className="flex items-center gap-1.5">
                     <span className="text-[14px] font-[800] text-white">{n}</span>
                     <span className="text-[11px] text-neutral-600">{l}</span>
@@ -420,7 +391,7 @@ function BentoGrid() {
                 {["SP","MK","AT","RG"].map((a,i) => (
                   <div key={i} className="flex h-7 w-7 items-center justify-center rounded-full border border-black text-[10px] font-bold text-white" style={{ background: `hsl(${i*90+30},55%,35%)` }}>{a}</div>
                 ))}
-                <div className="flex h-7 w-7 items-center justify-center rounded-full border border-black bg-neutral-800 text-[9px] font-bold text-neutral-400">+14</div>
+                <div className="flex h-7 w-7 items-center justify-center rounded-full border border-black bg-neutral-800 text-[9px] font-bold text-neutral-400">→</div>
               </div>
             </div>
           </div>
@@ -437,14 +408,14 @@ function BentoGrid() {
         >
           {/* Top orange line accent — like the reference's strong visual signal */}
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg, #f97316, #fb923c, transparent)" }} />
-          <p className="text-[12px] font-semibold uppercase tracking-wider text-neutral-500 mb-2">Qualified Leads</p>
+          <p className="text-[12px] font-semibold uppercase tracking-wider text-neutral-500 mb-2">Sales Journey</p>
           <p style={{ fontSize: 58, fontWeight: 900, lineHeight: 1, letterSpacing: "-0.04em", color: "#fff" }}>
-            2,400<span style={{ color: "#f97316" }}>+</span>
+            ICP <span style={{ color: "#f97316" }}>→</span> Proposal
           </p>
-          <p className="mt-2 text-[13px] text-neutral-500">sourced this quarter</p>
+          <p className="mt-2 text-[13px] text-neutral-500">one connected sales journey</p>
           <div className="mt-4 flex items-center gap-1.5 rounded-full w-fit px-3 py-1.5" style={{ background: "rgba(249,115,22,0.12)", border: "1px solid rgba(249,115,22,0.2)" }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2.5"><path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></svg>
-            <span className="text-[11px] font-bold text-orange-400">Q4 pipeline up 43%</span>
+            <span className="text-[11px] font-bold text-orange-400">Context carried forward</span>
           </div>
         </div>
 
@@ -483,8 +454,8 @@ function BentoGrid() {
           className="lv2-card lv2-hover-card relative overflow-hidden rounded-2xl p-5"
           style={{ gridColumn: "7 / 10", gridRow: "2 / 3", background: "#111113" }}
         >
-          <p className="text-[13px] font-semibold text-white mb-0.5">Delivery Success</p>
-          <p className="text-[11px] text-neutral-500 mb-4">Last 30 days · 97.8% SLA</p>
+          <p className="text-[13px] font-semibold text-white mb-0.5">Sales Journey</p>
+          <p className="text-[11px] text-neutral-500 mb-4">From ICP to proposal</p>
           {/* Y-axis labels */}
           <div className="relative">
             <div className="absolute right-0 top-0 flex flex-col justify-between h-[80px] text-right">
@@ -511,9 +482,9 @@ function BentoGrid() {
           <div className="mt-3 flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <div className="h-2 w-2 rounded-full" style={{ background: "#f97316" }} />
-              <span className="text-[11px] text-neutral-500">Qualified Leads</span>
+              <span className="text-[11px] text-neutral-500">Connected stages</span>
             </div>
-            <span className="text-[12px] font-bold text-orange-400">↑ 97.8%</span>
+            <span className="text-[12px] font-bold text-orange-400">Connected</span>
           </div>
         </div>
 
@@ -524,15 +495,15 @@ function BentoGrid() {
         >
           {/* Orange glow top-right */}
           <div className="lv2-glow-orange absolute -top-8 -right-8" style={{ width: 150, height: 150, opacity: 0.25 }} />
-          <p className="text-[13px] font-semibold text-white mb-1">Global Reach</p>
-          <p className="text-[11px] text-neutral-500 mb-4">Leads across 30+ markets</p>
+          <p className="text-[13px] font-semibold text-white mb-1">One connected journey</p>
+          <p className="text-[11px] text-neutral-500 mb-4">Every step works from shared context</p>
           <div className="flex flex-col gap-2">
             {[
-              { flag: "🇺🇸", name: "United States", count: "840+" },
-              { flag: "🇬🇧", name: "United Kingdom", count: "320+" },
-              { flag: "🇮🇳", name: "India", count: "290+" },
-              { flag: "🇨🇦", name: "Canada", count: "180+" },
-              { flag: "🇩🇪", name: "Germany", count: "145+" },
+              { flag: "🎯", name: "Ideal customer profile", count: "01" },
+              { flag: "🔍", name: "Qualified leads", count: "02" },
+              { flag: "✉️", name: "Personalized outreach", count: "03" },
+              { flag: "📅", name: "Sales meetings", count: "04" },
+              { flag: "📋", name: "Relevant proposals", count: "05" },
             ].map(c => (
               <div key={c.name} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: "rgba(255,255,255,0.03)" }}>
                 <div className="flex items-center gap-2">
@@ -549,64 +520,46 @@ function BentoGrid() {
   );
 }
 
-function Marquee() {
-  const cards1 = [...TESTIMONIALS, ...TESTIMONIALS];
-  const cards2 = [...T2, ...T2];
+function ProductJourney() {
+  const journey = [
+    { label: "Product", question: "What are you building?", color: "#f97316" },
+    { label: "ICP Agent", question: "Who should I sell to?", color: "#fb923c" },
+    { label: "Lead Agent", question: "Who matches my ICP?", color: "#fbbf24" },
+    { label: "Outreach Agent", question: "How should I reach them?", color: "#a3e635" },
+    { label: "Meeting Agent", question: "How do I turn interest into a conversation?", color: "#4ade80" },
+    { label: "Proposal Agent", question: "How do I turn their needs into an offer?", color: "#2dd4bf" },
+    { label: "Pipeline", question: "What happens next?", color: "#60a5fa" },
+  ];
+
   return (
-    <section className="relative z-10 py-16 overflow-hidden">
-      {/* Section label */}
-      <div className="text-center mb-10">
-        <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[12px] font-medium text-neutral-400">
-          Trusted by growth teams worldwide
+    <section className="relative z-10 mx-auto max-w-screen-xl px-6 py-16">
+      <div className="mb-10 text-center">
+        <span className="rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-1.5 text-[12px] font-medium text-orange-400">
+          The complete journey
         </span>
+        <h2 className="mt-5 text-[40px] font-[800] leading-tight tracking-[-0.03em] text-white md:text-[52px]">
+          From Product to Pipeline —<br /><span className="lv2-orange-text">With AI Along the Way.</span>
+        </h2>
+        <p className="mx-auto mt-4 max-w-xl text-[16px] leading-relaxed text-neutral-400">
+          One connected journey. Powered by specialized AI agents.
+        </p>
       </div>
-      {/* Orange glow right */}
-      <div className="lv2-glow-orange absolute top-0 right-0" style={{ width: 400, height: 400, opacity: 0.3 }} />
-      {/* Row 1 — LTR */}
-      <div className="overflow-hidden">
-        <div className="lv2-marquee-ltr flex gap-4 w-max mb-4">
-          {cards1.map((c, i) => <TestiCard key={i} {...c} />)}
-        </div>
-      </div>
-      {/* Row 2 — RTL */}
-      <div className="overflow-hidden">
-        <div className="lv2-marquee-rtl flex gap-4 w-max">
-          {cards2.map((c, i) => <TestiCard key={i} {...c} />)}
-        </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-7">
+        {journey.map((step, i) => (
+          <div key={step.label} className="relative flex items-stretch">
+            <div className="lv2-card lv2-hover-card flex w-full flex-col rounded-2xl p-4" style={{ background: "#0f0f10" }}>
+              <div className="mb-4 flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: step.color }}>0{i + 1}</span>
+                <span className="h-2 w-2 rounded-full" style={{ background: step.color, boxShadow: `0 0 12px ${step.color}` }} />
+              </div>
+              <h3 className="text-[14px] font-bold text-white">{step.label}</h3>
+              <p className="mt-2 text-[12px] leading-relaxed text-neutral-500">{step.question}</p>
+            </div>
+            {i < journey.length - 1 && <span className="absolute -bottom-3 left-1/2 z-10 -translate-x-1/2 text-orange-500 md:-right-3 md:bottom-auto md:left-auto md:top-1/2 md:translate-x-0 md:-translate-y-1/2">→</span>}
+          </div>
+        ))}
       </div>
     </section>
-  );
-}
-
-function TestiCard({ name, role, text, avatar }: { name: string; role: string; text: string; avatar: string }) {
-  return (
-    <article
-      className="lv2-card lv2-hover-card flex-shrink-0 rounded-2xl p-5"
-      style={{ width: 380, background: "rgba(255,255,255,0.04)", border: "none" }}
-    >
-      <div className="flex items-start gap-3 mb-3">
-        <div
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-white"
-          style={{ background: `hsl(${avatar.charCodeAt(0) * 13 % 360},60%,35%)` }}
-        >
-          {avatar}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold text-white truncate">{name}</p>
-          <p className="text-[11px] text-neutral-500 truncate">{role}</p>
-        </div>
-        <div className="flex items-center gap-0.5">
-          {[1,2,3,4,5].map(i => (
-            <svg key={i} width="11" height="11" viewBox="0 0 24 24" fill="#f97316"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01z"/></svg>
-          ))}
-        </div>
-      </div>
-      <p className="text-[13px] leading-relaxed text-neutral-400">&ldquo;{text}&rdquo;</p>
-      <div className="mt-3 flex items-center gap-1.5">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="#22c55e"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>
-        <span className="text-[10px] text-neutral-600">Verified customer</span>
-      </div>
-    </article>
   );
 }
 
@@ -616,12 +569,12 @@ function ProblemSection() {
       {/* Header row — "The problem." + vertical line + subtitle */}
       <div className="mb-12 flex flex-col gap-4 border-b border-white/[0.06] pb-10 md:flex-row md:items-start md:gap-0">
         <h2 className="flex-1 text-[64px] font-[900] leading-none tracking-[-0.04em] text-white md:text-[80px]">
-          The problem.
+           Selling shouldn&apos;t mean juggling multiple tools.
         </h2>
         <div className="hidden md:block w-px self-stretch bg-white/10 mx-12" />
         <div className="flex-1 flex items-center">
           <p className="text-[16px] text-neutral-400 max-w-sm leading-relaxed">
-            How Smady solves what holds every sales team back — manually, every single day.
+            You have a product. Then selling becomes a full-time job: research, leads, outreach, meetings, proposals, and pipeline tracking.
           </p>
         </div>
       </div>
@@ -667,10 +620,10 @@ function ProblemSection() {
           {/* Text */}
           <div className="relative z-10 p-6 pt-5 flex-1">
             <h3 className="text-[22px] font-[800] leading-tight tracking-tight text-white mb-3">
-              Manual prospecting kills momentum
+                Manual prospecting slows down progress
             </h3>
             <p className="text-[13px] leading-relaxed text-neutral-500">
-              Your team spends 5+ hours a day copy-pasting leads, writing one-by-one emails, and chasing follow-ups. SDRs burn out while the pipeline runs dry.
+              Find your ideal customers, research the market, write personalized outreach, follow up, book meetings, and create proposals — all before the actual selling begins.
             </p>
           </div>
         </div>
@@ -710,10 +663,10 @@ function ProblemSection() {
           {/* Text */}
           <div className="relative z-10 p-6 pt-5 flex-1">
             <h3 className="text-[22px] font-[800] leading-tight tracking-tight text-white mb-3">
-              7 tools for one conversation
+                Multiple tools for one conversation
             </h3>
             <p className="text-[13px] leading-relaxed text-neutral-500">
-              Your team juggles LinkedIn, Clay, Apollo, Calendly, and Notion. Nothing connects. Context falls through the cracks with every hand-off.
+              Your team juggles research, lead databases, email tools, calendars, proposal documents, and CRM views. Context falls through the cracks with every hand-off.
             </p>
           </div>
         </div>
@@ -756,16 +709,16 @@ function ProblemSection() {
             {/* Result indicator */}
             <div className="mt-2 flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.15)" }}>
               <span className="h-2 w-2 rounded-full" style={{ background: "#22c55e" }} />
-              <span className="text-[11px] font-bold text-green-400">Pipeline up +340% this quarter</span>
+              <span className="text-[11px] font-bold text-green-400">Context carried into the next step</span>
             </div>
           </div>
           {/* Text */}
           <div className="relative z-10 p-6 pt-5 flex-1">
             <h3 className="text-[22px] font-[800] leading-tight tracking-tight text-white mb-3">
-              One pipeline. Five agents. Zero manual work.
+              Smady connects the entire journey
             </h3>
             <p className="text-[13px] leading-relaxed text-neutral-500">
-              Smady connects ICP research, lead sourcing, personalised outreach, meeting booking, and proposal drafting in one autonomous pipeline — running 24/7 while your team closes.
+              Your ICP informs your leads. Your leads inform your outreach. Your outreach creates conversations. Meetings inform proposals. Proposals move the pipeline.
             </p>
           </div>
         </div>
@@ -938,10 +891,10 @@ function ComparisonSection() {
           The Smady Difference
         </span>
         <h2 className="text-[40px] font-[800] leading-tight tracking-[-0.03em] text-white md:text-[52px]">
-          Stop Doing This<br /><span className="lv2-orange-text">Manually.</span>
+          Less Guesswork.<br /><span className="lv2-orange-text">More Selling.</span>
         </h2>
         <p className="mt-4 text-[16px] text-neutral-400 max-w-xl mx-auto">
-          Your team deserves to spend time closing — not prospecting. Smady handles the full funnel, end-to-end, autonomously.
+          Most tools help you do one thing. Smady connects what happens before, during, and after the sale.
         </p>
       </div>
       {/* 3-col comparison */}
@@ -951,18 +904,18 @@ function ComparisonSection() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 mb-5">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </div>
-          <h3 className="text-[17px] font-[700] text-white mb-3">The Old Way</h3>
+          <h3 className="text-[17px] font-[700] text-white mb-3">The disconnected way</h3>
           <ul className="space-y-2.5">
-            {["5+ hours/week on manual research","Copy-pasting leads across 8 tools","Generic email blasts with 1% reply rate","SDR team spends 70% on prospecting","Proposal errors cost you real deals"].map((t,i) => (
+            {["Find your audience from scratch","Research leads in separate tools","Write every message from a blank screen","Chase follow-ups and meeting times","Build proposals without conversation context"].map((t,i) => (
               <li key={i} className="flex items-start gap-2 text-[13px] text-neutral-500">
                 <span className="mt-0.5 text-red-500/60">✕</span>{t}
               </li>
             ))}
           </ul>
           <div className="mt-6 rounded-xl border border-red-500/10 bg-red-500/5 p-4">
-            <p className="text-[11px] font-semibold text-red-400 uppercase tracking-wide mb-1">Pipeline impact</p>
-            <p className="text-[28px] font-[900] text-red-400">−$42K</p>
-            <p className="text-[11px] text-neutral-600">avg annual opportunity loss per SDR</p>
+            <p className="text-[11px] font-semibold text-red-400 uppercase tracking-wide mb-1">What gets lost</p>
+            <p className="text-[20px] font-[900] text-red-400">Time and context</p>
+            <p className="text-[11px] text-neutral-600">at every hand-off in the sales journey</p>
           </div>
         </div>
 
@@ -971,16 +924,9 @@ function ComparisonSection() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 mb-5">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
           </div>
-          <h3 className="text-[17px] font-[700] text-white mb-3">The Challenge</h3>
+          <h3 className="text-[17px] font-[700] text-white mb-3">The Smady difference</h3>
           <div className="grid grid-cols-2 gap-3">
-            {[
-              ["🎯","ICP Research","Hours of manual work"],
-              ["📊","Lead Scoring","No consistent method"],
-              ["✉️","Personalisation","Generic templates"],
-              ["📅","Scheduling","Back-and-forth emails"],
-              ["📋","Proposals","Off-catalog pricing errors"],
-              ["📈","Pipeline Visibility","Siloed tools"],
-            ].map(([icon,label,sub],i) => (
+            {[["🎯","Know your customer","Build a clear ICP first"],["🔍","Find better-fit leads","Match prospects to your target"],["✉️","Reach them personally","Relevant outreach at scale"],["📅","Book conversations","Move interest toward meetings"],["📋","Create proposals faster","Turn needs into offers"],["📈","Keep everything connected","Carry context to the pipeline"]].map(([icon,label,sub],i) => (
               <div key={i} className="flex items-start gap-2 rounded-xl bg-white/3 p-3">
                 <span style={{ fontSize: 16 }}>{icon}</span>
                 <div>
@@ -997,18 +943,18 @@ function ComparisonSection() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 mb-5">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>
           </div>
-          <h3 className="text-[17px] font-[700] text-white mb-3">The Smady Way</h3>
+          <h3 className="text-[17px] font-[700] text-white mb-3">The connected way</h3>
           <ul className="space-y-2.5">
-            {["ICP engine generates a full buyer profile in seconds","200+ verified leads sourced weekly, scored automatically","AI writes hyper-personalised emails that get 14% replies","Meeting agent books calls from email replies autonomously","Proposal AI drafts, reviews, and sends — within pricing guardrails"].map((t,i) => (
+            {["Your ICP informs your leads","Your leads inform your outreach","Your outreach creates conversations","Your meetings inform proposals","Your proposals move the pipeline"].map((t,i) => (
               <li key={i} className="flex items-start gap-2 text-[13px] text-neutral-400">
                 <span className="mt-0.5 text-orange-400">✓</span>{t}
               </li>
             ))}
           </ul>
           <div className="mt-6 rounded-xl border border-orange-500/10 bg-orange-500/5 p-4">
-            <p className="text-[11px] font-semibold text-orange-400 uppercase tracking-wide mb-1">Pipeline impact</p>
-            <p className="text-[28px] font-[900]" style={{ color: "#f97316" }}>+340%</p>
-            <p className="text-[11px] text-neutral-600">avg quarterly pipeline growth</p>
+            <p className="text-[11px] font-semibold text-orange-400 uppercase tracking-wide mb-1">The result</p>
+            <p className="text-[20px] font-[900]" style={{ color: "#f97316" }}>One connected journey</p>
+            <p className="text-[11px] text-neutral-600">from finding the right customer to moving the deal forward</p>
           </div>
         </div>
       </div>
@@ -1021,18 +967,18 @@ function HowItWorks() {
     <section id="how-it-works" className="relative z-10 mx-auto max-w-screen-xl px-6 py-20">
       <div className="text-center mb-14">
         <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[12px] font-medium text-neutral-400 mb-5 inline-block">
-          Five Steps. Zero Manual Work.
+          One Platform. Specialized AI Agents.
         </span>
         <h2 className="text-[40px] font-[800] leading-tight tracking-[-0.03em] text-white md:text-[52px]">
-          Your Outbound Machine,<br /><span className="lv2-orange-text">On Autopilot.</span>
+          Every Step of the Sales Journey,<br /><span className="lv2-orange-text">Connected.</span>
         </h2>
         <p className="mt-4 text-[16px] text-neutral-400 max-w-xl mx-auto">
-          Smady connects five AI agents into a single pipeline. You define the target — Smady does everything else.
+          Each agent handles a critical part of your sales process while working as part of one connected journey.
         </p>
       </div>
 
       {/* Steps grid */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-6">
         {STEPS.map((s, i) => (
           <div
             key={i}
@@ -1089,17 +1035,19 @@ function OrbitCard() {
 
 function MetricsSection() {
   const metrics = [
-    { val: "2,400+", label: "Leads sourced", sub: "This quarter alone" },
-    { val: "14%", label: "Avg reply rate", sub: "Industry avg is 2–3%" },
-    { val: "97.8%", label: "Qualification accuracy", sub: "AI-scored + verified" },
-    { val: "6×", label: "Faster than manual", sub: "From ICP to proposal" },
+    { val: "01", label: "Know your customer", sub: "Build a clear ICP before prospecting" },
+    { val: "02", label: "Find better-fit leads", sub: "Discover prospects that match your target" },
+    { val: "03", label: "Reach them personally", sub: "Generate relevant outreach at scale" },
+    { val: "04", label: "Book more conversations", sub: "Move prospects from interest to meetings" },
+    { val: "05", label: "Create proposals faster", sub: "Turn customer needs into relevant offers" },
+    { val: "06", label: "Keep everything connected", sub: "Carry context through the pipeline" },
   ];
   return (
     <section className="relative z-10 mx-auto max-w-screen-xl px-6 py-16">
       <div className="lv2-card rounded-3xl overflow-hidden" style={{ background: "linear-gradient(135deg,#0f0f10 0%,#0a0a0b 100%)" }}>
         {/* Orange glow top-left */}
         <div className="lv2-glow-orange absolute -top-20 -left-20" style={{ width: 300, height: 300, opacity: 0.2 }} />
-        <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-white/5">
+        <div className="grid grid-cols-2 divide-x divide-white/5 md:grid-cols-3 lg:grid-cols-6">
           {metrics.map((m, i) => (
             <div key={i} className="lv2-animate p-8 text-center" data-delay={i * 0.1}>
               <p className="lv2-stat-num text-[44px] font-[900] tracking-tight leading-none mb-2">{m.val}</p>
@@ -1119,10 +1067,10 @@ function CTASection() {
       <div className="lv2-glow-orange absolute inset-0 mx-auto" style={{ width: 600, height: 400, top: "50%", left: "50%", transform: "translate(-50%,-50%)", opacity: 0.15 }} />
       <div className="relative">
         <h2 className="text-[48px] font-[900] leading-tight tracking-[-0.04em] text-white md:text-[64px]">
-          Ready to Close<br /><span className="lv2-orange-text">More, Faster?</span>
+          You Bring the Product.<br /><span className="lv2-orange-text">Smady Brings the Sales Journey.</span>
         </h2>
         <p className="mt-5 text-[17px] text-neutral-400 max-w-lg mx-auto">
-          Join teams who&apos;ve replaced manual outbound with a 5-agent AI pipeline that runs 24/7. No contracts. No setup fees.
+          From finding the right customer to moving the right deal forward — let AI handle the busywork while your team focuses on selling.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
           <Link
@@ -1164,7 +1112,7 @@ function Footer() {
               <Logo dark />
             </div>
             <p className="text-[13px] text-neutral-500 leading-relaxed mb-5">
-              Your next customer is one AI call away. Smady automates the entire outbound motion.
+              Tell Smady what you&apos;re building. Let AI help you figure out who to sell to, how to reach them, and what to do next.
             </p>
             <div className="flex gap-3">
               {["twitter","github","linkedin"].map(s => (
@@ -1237,7 +1185,7 @@ export default function LandingV2() {
       <NavBar />
       <HeroSection />
       <BentoGrid />
-      <Marquee />
+      <ProductJourney />
       <ProblemSection />
       <ComparisonSection />
       <HowItWorks />
