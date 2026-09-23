@@ -259,7 +259,7 @@ function HeroSection() {
         <span className="lv2-orange-text text-[14px]">✦</span>
       </div>
       {/* Headline */}
-      <h1 className="lv2-hero-h1 mx-auto max-w-4xl text-[56px] font-[900] leading-[1.02] tracking-[-0.04em] text-white md:text-[72px] lg:text-[80px]">
+      <h1 className="lv2-hero-h1 mx-auto max-w-4xl text-[50px] font-[900] leading-[1.02] tracking-[-0.04em] text-white md:text-[66px] lg:text-[74px]">
           Your AI Sales Team,<br />
           <span className="lv2-orange-text">From ICP to Proposal.</span>
       </h1>
