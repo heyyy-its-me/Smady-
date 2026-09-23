@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { Logo } from "@/components/smady/Logo";
 
 /* ─── Injected global styles (keyframes + custom classes) ─── */
 const CSS = `
@@ -251,11 +252,8 @@ function NavBar() {
   return (
     <nav className="lv2-nav sticky top-0 z-50 flex items-center justify-between px-6 py-4 max-w-screen-xl mx-auto" style={{ position: "sticky", top: 0, zIndex: 50 }}>
       {/* Logo */}
-      <div className="flex items-center gap-2.5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl" style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}>
-          <span style={{ fontSize: 16 }}>🔥</span>
-        </div>
-        <span className="text-[15px] font-bold tracking-tight text-white">Smady</span>
+      <div style={{ filter: "brightness(1.1)" }}>
+        <Logo />
       </div>
       {/* Links */}
       <div className="hidden md:flex items-center gap-7">
@@ -1082,8 +1080,8 @@ function OrbitCard() {
         />
       ))}
       {/* Center */}
-      <div className="relative z-10 flex h-14 w-14 items-center justify-center rounded-full text-2xl" style={{ background: "linear-gradient(135deg,#1a0f05,#2d1708)", border: "1px solid rgba(249,115,22,0.4)" }}>
-        🔥
+      <div className="relative z-10 flex h-14 w-14 items-center justify-center rounded-full" style={{ background: "linear-gradient(135deg,#1a0f05,#2d1708)", border: "1px solid rgba(249,115,22,0.4)" }}>
+        <Logo iconOnly />
       </div>
     </div>
   );
@@ -1163,10 +1161,7 @@ function Footer() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl" style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}>
-                <span style={{ fontSize: 16 }}>🔥</span>
-              </div>
-              <span className="text-[15px] font-bold text-white">Smady</span>
+              <Logo dark />
             </div>
             <p className="text-[13px] text-neutral-500 leading-relaxed mb-5">
               Your next customer is one AI call away. Smady automates the entire outbound motion.

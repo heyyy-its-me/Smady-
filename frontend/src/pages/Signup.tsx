@@ -59,7 +59,7 @@ export default function Signup() {
   const onSubmit = async (data: FormData) => {
     try {
       await signup(data.fullName, data.email, data.company, data.password);
-      toast.success("Account created — welcome to Smady! 🔥");
+      toast.success("Account created — welcome to Smady!");
       navigate("/dashboard");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Signup failed");
@@ -156,7 +156,7 @@ export default function Signup() {
           className="auth-btn-primary h-11 w-full rounded-xl text-[14px] font-semibold"
           data-testid="signup-submit-button"
         >
-          {isSubmitting ? "Creating account…" : "Create Free Account 🔥"}
+          {isSubmitting ? "Creating account…" : "Create Free Account"}
         </button>
       </form>
 

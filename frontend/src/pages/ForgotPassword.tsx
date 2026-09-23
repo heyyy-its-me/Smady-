@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { api, formatApiError } from "@/lib/api";
 import { toast } from "@/components/ui/sonner";
+import { Logo } from "@/components/smady/Logo";
 
 const schema = z.object({ email: z.string().email("Enter a valid email") });
 type FormData = z.infer<typeof schema>;
@@ -124,10 +125,7 @@ export default function ForgotPassword() {
         <div className="p-8">
           {/* Logo */}
           <Link to="/" className="mb-8 flex items-center gap-2 w-fit">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl" style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}>
-              <span style={{ fontSize: 15 }}>🔥</span>
-            </div>
-            <span className="text-[15px] font-bold text-white">Smady</span>
+            <Logo />
           </Link>
 
           {sent ? (
