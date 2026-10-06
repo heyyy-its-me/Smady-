@@ -60,6 +60,10 @@ export default function Leads() {
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
   const [companySize, setCompanySize] = useState(companySizes[1]);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadRows, setUploadRows] = useState<Record<string, unknown>[]>([]);
+  const [uploadFileName, setUploadFileName] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [campaignOpen, setCampaignOpen] = useState(false);
   const [runInfo, setRunInfo] = useState<{ status: string; run_id: string; created_at: string } | null>(null);
@@ -84,6 +88,65 @@ export default function Leads() {
   const goToPage = (p: number) => {
     setPage(p);
     refreshLeads(leadsRunId || undefined, (p - 1) * PAGE_SIZE, PAGE_SIZE);
+  };
+
+  const handleUploadFile = async (file?: File) => {
+    if (!file) return;
+    if (!/\.(csv|xlsx|xls)$/i.test(file.name)) {
+      toast.error("Choose a CSV or Excel file (.csv, .xlsx, .xls)");
+      return;
+    }
+    try {
+      const bytes = await file.arrayBuffer();
+      const workbook = XLSX.read(bytes, { type: "array", cellDates: false });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      if (!firstSheet) throw new Error("The selected file has no worksheet");
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, { defval: "", raw: false });
+      if (!rows.length) throw new Error("The selected file has no lead rows");
+      if (rows.length > 500) throw new Error("Upload up to 500 leads at a time");
+
+      const normalizedRows = rows.map((row) => {
+        const values = new Map(Object.entries(row).map(([key, value]) => [key.trim().toLowerCase().replace(/[^a-z0-9]/g, ""), value]));
+        const pick = (...keys: string[]) => keys.map((key) => values.get(key)).find((value) => value !== undefined && String(value).trim() !== "") ?? "";
+        const first = String(pick("firstname", "givenname")).trim();
+        const last = String(pick("lastname", "surname", "familyname")).trim();
+        return {
+          name: pick("name", "fullname", "leadname", "contactname") || [first, last].filter(Boolean).join(" "),
+          title: pick("title", "jobtitle", "position", "designation", "role"),
+          company: pick("company", "companyname", "organization", "organizationname", "account"),
+          domain: pick("domain", "website", "companydomain", "companywebsite"),
+          email: pick("email", "emailaddress", "workemail"),
+          phone: pick("phone", "phonenumber", "telephone", "mobile"),
+          linkedin: pick("linkedin", "linkedinurl", "linkedinprofile"),
+          industry: pick("industry", "sector"),
+          location: pick("location", "city", "address"),
+          country: pick("country", "countryname"),
+          status: pick("status", "qualificationstatus") || "New",
+        };
+      }).filter((row) => Object.values(row).some((value) => String(value).trim()));
+      if (!normalizedRows.length) throw new Error("No usable lead rows were found in this file");
+      setUploadRows(normalizedRows);
+      setUploadFileName(file.name);
+    } catch (error) {
+      setUploadRows([]);
+      setUploadFileName("");
+      toast.error(error instanceof Error ? error.message : "Could not read this file");
+    }
+  };
+
+  const submitLeadUpload = async () => {
+    if (!uploadRows.length || uploading) return;
+    setUploading(true);
+    try {
+      const success = await uploadLeads(uploadRows);
+      if (success) {
+        setUploadOpen(false);
+        setUploadRows([]);
+        setUploadFileName("");
+      }
+    } finally {
+      setUploading(false);
+    }
   };
 
   const onSelectRun = (runId: string) => {
@@ -541,26 +604,49 @@ export default function Leads() {
         )}
       </AnimatePresence>
 
-      <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+      <Dialog open={uploadOpen} onOpenChange={(open) => {
+        if (!open && !uploading) {
+          setUploadOpen(false);
+          setUploadRows([]);
+          setUploadFileName("");
+        }
+      }}>
         <DialogContent data-testid="leads-upload-modal">
           <DialogHeader>
             <DialogTitle>Upload Leads</DialogTitle>
           </DialogHeader>
-          <div className="group flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-primary-300 bg-primary-50/30 py-10 text-center transition-colors hover:bg-primary-50/60">
+          <input
+            ref={uploadInputRef}
+            type="file"
+            accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+            className="hidden"
+            onChange={(event) => handleUploadFile(event.target.files?.[0])}
+            data-testid="leads-upload-file-input"
+          />
+          <button
+            type="button"
+            onClick={() => uploadInputRef.current?.click()}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              handleUploadFile(event.dataTransfer.files?.[0]);
+            }}
+            className="group flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-primary-300 bg-primary-50/30 py-10 text-center transition-colors hover:bg-primary-50/60"
+          >
             <UploadCloud className="h-8 w-8 text-primary-500 transition-transform duration-200 group-hover:-translate-y-1" strokeWidth={1.5} />
-            <p className="mt-3 text-sm text-body">Drag & drop a CSV file, or click to browse</p>
-          </div>
+            <p className="mt-3 text-sm text-body">{uploadFileName || "Drag & drop a CSV or Excel file, or click to browse"}</p>
+            {uploadRows.length > 0 && <p className="mt-1 text-xs text-muted">{uploadRows.length} leads ready to import</p>}
+            <p className="mt-2 text-xs text-muted">Up to 500 rows · CSV, XLSX, or XLS</p>
+          </button>
           <ButtonPrimary
             fullWidth
             className="mt-2"
-            onClick={() => {
-              uploadLeads(5);
-              setUploadOpen(false);
-              toast.success("5 leads uploaded");
-            }}
+            loading={uploading}
+            disabled={!uploadRows.length}
+            onClick={submitLeadUpload}
             data-testid="leads-upload-confirm-button"
           >
-            Upload
+            {uploading ? "Uploading…" : uploadRows.length ? `Upload ${uploadRows.length} leads` : "Select a file to upload"}
           </ButtonPrimary>
         </DialogContent>
       </Dialog>

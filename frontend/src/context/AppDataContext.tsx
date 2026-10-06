@@ -140,7 +140,7 @@ interface AppDataContextType {
   pendingLeadsRequestId: string | null;
   generateLeads: (filters: Record<string, unknown>) => Promise<void>;
   checkLeadsAgain: () => Promise<void>;
-  uploadLeads: (count: number) => Promise<void>;
+  uploadLeads: (leads: Record<string, unknown>[]) => Promise<boolean>;
   sendToOutreach: (ids: string[]) => Promise<void>;
   sendRunToOutreach: (runId: string) => Promise<void>;
   updateLead: (id: string, patch: Partial<Lead>) => Promise<void>;
@@ -423,13 +423,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const uploadLeads = async (count: number) => {
+  const uploadLeads = async (leads: Record<string, unknown>[]): Promise<boolean> => {
     try {
-      await api.post("/leads/upload", { count });
+      await api.post("/leads/upload", { leads });
       await refreshLeads();
       await refreshDashboard();
+      toast.success(`${leads.length} leads uploaded`);
+      return true;
     } catch (e) {
       toast.error(formatApiError(e));
+      return false;
     }
   };
 

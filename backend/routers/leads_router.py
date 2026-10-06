@@ -40,7 +40,9 @@ class SendToOutreachRequest(BaseModel):
 
 
 class UploadLeadsRequest(BaseModel):
-    count: int = 5
+    leads: Optional[List[Dict[str, Any]]] = None
+    # Kept for older clients; the lead management page sends actual rows.
+    count: Optional[int] = None
 
 
 class LeadUpdateRequest(BaseModel):
@@ -118,8 +120,8 @@ def _normalize_lead(raw: Dict[str, Any], request_id: str, index: int) -> Dict[st
         "specialties": pick("Specialties"),
         "location": pick("Location"),
         "country": pick("Country", "country"),
-        "phone": pick("Phone"),
-        "industry": pick("Industry"),
+        "phone": pick("Phone", "phone", "phone_number"),
+        "industry": pick("Industry", "industry"),
         "companyDescription": pick("Company Description"),
         "personalizationHook": pick("personalization_hook", "AI Insight"),
         "painPointsMatched": pick("pain_points_matched"),
@@ -314,23 +316,43 @@ async def leads_callback(body: LeadsCallbackRequest, x_callback_secret: Optional
 
 @router.post("/upload")
 async def upload_leads(body: UploadLeadsRequest, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    count = max(1, min(body.count, 50))
+    if body.leads is not None:
+        if not body.leads:
+            raise HTTPException(status_code=400, detail="Select a file with at least one lead")
+        if len(body.leads) > 500:
+            raise HTTPException(status_code=400, detail="Upload up to 500 leads at a time")
+        demo_leads = []
+        for row in body.leads:
+            lead = {str(key).strip(): value for key, value in row.items() if str(key).strip() and value is not None}
+            if not any(str(lead.get(key, "")).strip() for key in ("name", "email", "company")):
+                continue
+            lead["name"] = str(lead.get("name") or "").strip()
+            lead["title"] = str(lead.get("title") or "").strip()
+            lead["company"] = str(lead.get("company") or "").strip()
+            lead["email"] = str(lead.get("email") or "").strip()
+            lead["source"] = "Uploaded"
+            lead["status"] = str(lead.get("status") or "New").strip()
+            demo_leads.append(lead)
+        if not demo_leads:
+            raise HTTPException(status_code=400, detail="Each lead needs a name, email, or company")
+    else:
+        count = max(1, min(body.count or 5, 50))
+        demo_leads = [
+            {
+                "name": f"Uploaded Contact {i + 1}",
+                "title": "Unknown",
+                "company": "Unknown Company",
+                "domain": "",
+                "email": "",
+                "linkedin": "",
+                "status": "New",
+                "source": "Uploaded",
+                "about": "Imported from CSV upload.",
+            }
+            for i in range(count)
+        ]
     request_id = uuid.uuid4()
     now_ms = int(time.time() * 1000)
-    demo_leads = [
-        {
-            "name": f"Uploaded Contact {i + 1}",
-            "title": "Unknown",
-            "company": "Unknown Company",
-            "domain": "",
-            "email": "",
-            "linkedin": "",
-            "status": "New",
-            "source": "Uploaded",
-            "about": "Imported from CSV upload.",
-        }
-        for i in range(count)
-    ]
     await db.execute(
         insert(lead_results).values(
             request_id=str(request_id),
