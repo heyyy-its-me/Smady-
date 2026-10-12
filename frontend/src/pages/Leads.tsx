@@ -24,8 +24,8 @@ import { EditLeadModal } from "@/components/smady/EditLeadModal";
 import { RunHistoryPicker } from "@/components/smady/RunHistoryPicker";
 import { IcpPickerButton } from "@/components/smady/IcpPickerButton";
 import { SendCampaignCard } from "@/components/smady/SendCampaignCard";
+import { TARGET_INDUSTRIES, industriesForTargets, normalizeSavedIndustries } from "@/lib/industryTaxonomy";
 
-const industries = ["B2B SaaS", "Fintech", "Healthtech", "E-commerce", "Manufacturing"];
 const roles = ["VP of Sales", "Head of Growth", "CRO", "Founder", "Director of Marketing"];
 const countries = ["United States", "United Kingdom", "Canada", "Germany", "India"];
 const cities = ["New York", "London", "Toronto", "Berlin", "Bengaluru"];
@@ -54,7 +54,9 @@ export default function Leads() {
   const requestIdParam = searchParams.get("request_id");
 
   const formRef = useRef<HTMLDivElement>(null);
-  const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
+  const [selectedTargetIndustries, setSelectedTargetIndustries] = useState<string[]>([]);
+  const [selectedSubIndustries, setSelectedSubIndustries] = useState<string[]>([]);
+  const availableSubIndustries = industriesForTargets(selectedTargetIndustries);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
@@ -110,6 +112,8 @@ export default function Leads() {
         const pick = (...keys: string[]) => keys.map((key) => values.get(key)).find((value) => value !== undefined && String(value).trim() !== "") ?? "";
         const first = String(pick("firstname", "givenname")).trim();
         const last = String(pick("lastname", "surname", "familyname")).trim();
+        const legacyIndustry = String(pick("industry", "sector")).trim();
+        const mappedIndustry = normalizeSavedIndustries({ industry: legacyIndustry ? [legacyIndustry] : [] });
         return {
           name: pick("name", "fullname", "leadname", "contactname") || [first, last].filter(Boolean).join(" "),
           title: pick("title", "jobtitle", "position", "designation", "role"),
@@ -118,7 +122,9 @@ export default function Leads() {
           email: pick("email", "emailaddress", "workemail"),
           phone: pick("phone", "phonenumber", "telephone", "mobile"),
           linkedin: pick("linkedin", "linkedinurl", "linkedinprofile"),
-          industry: pick("industry", "sector"),
+          industry: legacyIndustry,
+          targetIndustry: pick("targetindustry", "targetindustrycategory") || mappedIndustry.targetIndustries[0] || "",
+          subIndustry: pick("subindustry", "industry", "sector") || mappedIndustry.subIndustries[0] || "",
           location: pick("location", "city", "address"),
           country: pick("country", "countryname"),
           status: pick("status", "qualificationstatus") || "New",
@@ -178,10 +184,20 @@ export default function Leads() {
       });
   }, [requestIdParam, refreshLeads]);
 
-  // Reuse a saved ICP's Industry/Roles/Countries as a starting point for lead filters —
+  // Reuse a saved ICP's industry segments, Roles, and Countries as lead filters —
   // done explicitly via the "Apply Saved ICP" picker now, not silently forced on every load.
-  const applyIcp = (result: { industry: string[]; targetRoles: string[]; geography: string[] }) => {
-    setSelectedIndustries(result.industry || []);
+  const applyIcp = (result: {
+    targetIndustries?: string[];
+    subIndustries?: string[];
+    targetIndustry?: string[];
+    subIndustry?: string[];
+    industry?: string[];
+    targetRoles?: string[];
+    geography?: string[];
+  }) => {
+    const { targetIndustries, subIndustries } = normalizeSavedIndustries(result);
+    setSelectedTargetIndustries(targetIndustries);
+    setSelectedSubIndustries(subIndustries);
     setSelectedRoles(result.targetRoles || []);
     setSelectedCountries(result.geography || []);
     toast.success("ICP filters applied");
@@ -198,12 +214,21 @@ export default function Leads() {
     }
   };
 
-  const allSelectedFilters = [...selectedIndustries, ...selectedRoles, ...selectedCountries, ...selectedCities];
+  const allSelectedFilters = [...selectedTargetIndustries, ...selectedSubIndustries, ...selectedRoles, ...selectedCountries, ...selectedCities];
   const estimatedMatches = allSelectedFilters.length === 0 ? 0 : Math.min(500, allSelectedFilters.length * 35 + 40);
 
   const onGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    await generateLeads({ industries: selectedIndustries, roles: selectedRoles, countries: selectedCountries, cities: selectedCities, companySize });
+    await generateLeads({
+      targetIndustries: selectedTargetIndustries,
+      subIndustries: selectedSubIndustries,
+      // Keep sending the legacy field for existing webhook consumers.
+      industries: selectedSubIndustries.length ? selectedSubIndustries : selectedTargetIndustries,
+      roles: selectedRoles,
+      countries: selectedCountries,
+      cities: selectedCities,
+      companySize,
+    });
   };
 
   const columns: Column<Lead>[] = [
@@ -314,7 +339,10 @@ export default function Leads() {
       Priority: l.priority || "",
       "ICP Match": l.icpMatch || "",
       Seniority: l.seniority || "",
-      Industry: l.industry || "",
+      "Target Industry": l.targetIndustry || "",
+      "Sub-Industry": l.subIndustry || l.industry || "",
+      // Retain the old export column for spreadsheet workflows that still read it.
+      Industry: l.industry || l.subIndustry || "",
       Employees: l.employees || "",
       Location: l.location || "",
       "Funding Stage": l.fundingStage || "",
@@ -372,7 +400,28 @@ export default function Leads() {
         </div>
         <form onSubmit={onGenerate} className="relative mt-6 space-y-5" data-testid="leads-filter-form">
           <FormSection label="Industry & Roles" step="01" icon={Factory} tint>
-            <MultiSelectDropdown icon={Factory} label="Industry" placeholder="Type or select an industry..." options={industries} value={selectedIndustries} onChange={setSelectedIndustries} testId="leads-industry-select" />
+            <MultiSelectDropdown
+              icon={Factory}
+              label="Target Industry"
+              placeholder="Select broad industries..."
+              options={TARGET_INDUSTRIES}
+              value={selectedTargetIndustries}
+              onChange={(values) => {
+                setSelectedTargetIndustries(values);
+                const allowed = industriesForTargets(values);
+                setSelectedSubIndustries((current) => current.filter((industry) => allowed.includes(industry)));
+              }}
+              testId="leads-target-industry-select"
+            />
+            <MultiSelectDropdown
+              icon={Factory}
+              label="Sub-Industry"
+              placeholder={selectedTargetIndustries.length ? "Select specific segments..." : "Select a target industry first..."}
+              options={availableSubIndustries}
+              value={selectedSubIndustries}
+              onChange={setSelectedSubIndustries}
+              testId="leads-sub-industry-select"
+            />
             <MultiSelectDropdown icon={UserRound} label="Target Roles" placeholder="Type or select a role..." options={roles} value={selectedRoles} onChange={setSelectedRoles} testId="leads-roles-select" />
           </FormSection>
           <FormSection label="Location" step="02" icon={Globe2}>

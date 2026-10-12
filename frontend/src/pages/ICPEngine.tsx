@@ -12,14 +12,16 @@ import { useAppData } from "@/context/AppDataContext";
 import { toast } from "@/components/ui/sonner";
 import { IcpDetailModal } from "@/components/smady/IcpDetailModal";
 import { IcpHistoryPicker } from "@/components/smady/IcpHistoryPicker";
+import { normalizeSavedIndustries, TARGET_INDUSTRIES, industriesForTargets } from "@/lib/industryTaxonomy";
+import type { ICPResult } from "@/types";
 
 const countries = ["United States", "United Kingdom", "Canada", "Germany", "India"];
-const industries = ["B2B SaaS", "Fintech", "Healthtech", "E-commerce", "Manufacturing"];
 const businessStages = ["Pre-Seed / Idea", "Early Stage (MVP)", "Growth", "Scale-up", "Enterprise / Mature"];
 const priorities = ["Speed", "Quality", "Cost", "Balanced"];
 
-const resultGroups: { key: "industry" | "targetRoles" | "companySize" | "geography" | "painPoints"; label: string }[] = [
-  { key: "industry", label: "Industry" },
+const resultGroups: { key: "targetIndustries" | "subIndustries" | "targetRoles" | "companySize" | "geography" | "painPoints"; label: string }[] = [
+  { key: "targetIndustries", label: "Target Industry" },
+  { key: "subIndustries", label: "Sub-Industry" },
   { key: "targetRoles", label: "Target Roles" },
   { key: "companySize", label: "Company Size" },
   { key: "geography", label: "Geography" },
@@ -32,18 +34,33 @@ export default function ICPEngine() {
   const navigate = useNavigate();
   const [selectedIcpId, setSelectedIcpId] = useState<string | null>(null);
   const [selectedIcpData, setSelectedIcpData] = useState<Record<string, unknown> | null>(null);
+  const selectedIcpResult = selectedIcpData
+    ? { ...selectedIcpData, ...normalizeSavedIndustries(selectedIcpData as ICPResult) }
+    : null;
   const [form, setForm] = useState({ productName: "", productDescription: "", companyName: "", companyDetails: "" });
   const [selectedCountries, setSelectedCountries] = useState<string[]>(["United States"]);
-  const [selectedIndustries, setSelectedIndustries] = useState<string[]>(["B2B SaaS"]);
+  const [selectedTargetIndustries, setSelectedTargetIndustries] = useState<string[]>(["Technology & Software"]);
+  const [selectedSubIndustries, setSelectedSubIndustries] = useState<string[]>(["B2B SaaS"]);
+  const availableSubIndustries = industriesForTargets(selectedTargetIndustries);
   const [businessStage, setBusinessStage] = useState(businessStages[2]);
   const [priority, setPriority] = useState(priorities[3]);
   const [showFullAnalysis, setShowFullAnalysis] = useState(false);
   const [generatedInSession, setGeneratedInSession] = useState(false);
 
+  const buildIcpInput = () => ({
+      ...form,
+      countries: selectedCountries,
+      targetIndustries: selectedTargetIndustries,
+      subIndustries: selectedSubIndustries,
+      industries: selectedSubIndustries.length ? selectedSubIndustries : selectedTargetIndustries,
+      businessStage,
+      priority,
+    });
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Generating ICP with filters enabled");
-    await generateIcp({ ...form, countries: selectedCountries, industries: selectedIndustries, businessStage, priority });
+    await generateIcp(buildIcpInput());
     setGeneratedInSession(true);
   };
 
@@ -60,13 +77,14 @@ export default function ICPEngine() {
   };
 
   const summarySentence = `${form.productName || "Your product"} helps ${form.companyName || "your company"} reach ${
-    selectedIndustries.length ? selectedIndustries.join(", ") : "target industries"
+    selectedSubIndustries.length ? selectedSubIndustries.join(", ") : selectedTargetIndustries.join(", ") || "target industries"
   } companies across ${selectedCountries.length ? selectedCountries.join(", ") : "selected regions"}.`;
 
-  const totalFields = 6;
+  const totalFields = 7;
   const filledFields =
     [form.productName, form.productDescription, form.companyName, form.companyDetails].filter(Boolean).length +
-    (selectedIndustries.length > 0 ? 1 : 0) +
+    (selectedTargetIndustries.length > 0 ? 1 : 0) +
+    (selectedSubIndustries.length > 0 ? 1 : 0) +
     (selectedCountries.length > 0 ? 1 : 0);
   const completeness = Math.round((filledFields / totalFields) * 100);
 
@@ -178,11 +196,24 @@ export default function ICPEngine() {
               <MultiSelectDropdown
                 icon={Factory}
                 label="Target Industry"
-                placeholder="Type or select an industry..."
-                options={industries}
-                value={selectedIndustries}
-                onChange={setSelectedIndustries}
+                placeholder="Select broad industries..."
+                options={TARGET_INDUSTRIES}
+                value={selectedTargetIndustries}
+                onChange={(values) => {
+                  setSelectedTargetIndustries(values);
+                  const allowed = industriesForTargets(values);
+                  setSelectedSubIndustries((current) => current.filter((industry) => allowed.includes(industry)));
+                }}
                 testId="icp-target-industry-select"
+              />
+              <MultiSelectDropdown
+                icon={Factory}
+                label="Sub-Industry"
+                placeholder={selectedTargetIndustries.length ? "Select specific segments..." : "Select a target industry first..."}
+                options={availableSubIndustries}
+                value={selectedSubIndustries}
+                onChange={setSelectedSubIndustries}
+                testId="icp-sub-industry-select"
               />
             </FormSection>
             <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-5">
@@ -253,7 +284,7 @@ export default function ICPEngine() {
                   </div>
                 </div>
                 <div className="relative mt-5 flex flex-wrap gap-2">
-                  {[...selectedIndustries, ...selectedCountries].map((c) => (
+                  {[...selectedTargetIndustries, ...selectedSubIndustries, ...selectedCountries].map((c) => (
                     <span key={c} className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md transition-colors hover:bg-white/20">
                       {c}
                     </span>
@@ -299,7 +330,7 @@ export default function ICPEngine() {
                     <h2 className="font-display text-[15px] font-bold text-ink">Your Ideal Customer Profile - DETAILED VIEW</h2>
                   </div>
                 </div>
-                {resultGroups.filter(({ key }) => key === "geography" || key === "painPoints").map(({ key, label }, i) => (
+                {resultGroups.filter(({ key }) => key === "targetIndustries" || key === "subIndustries" || key === "geography" || key === "painPoints").map(({ key, label }, i) => (
                   <motion.div
                     key={key}
                     initial={{ opacity: 0, y: 12 }}
@@ -309,7 +340,7 @@ export default function ICPEngine() {
                   >
                     <p className="text-[11px] font-extrabold uppercase tracking-wider text-primary-700">{label}</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
-                      {icp[key].map((it) => (
+                      {(icp[key] || []).map((it) => (
                         <span key={it} className="rounded-lg border border-primary-200/80 bg-white px-3 py-1.5 text-sm font-medium text-ink shadow-soft transition-colors hover:bg-primary-50 hover:text-primary-600">
                           {it}
                         </span>
@@ -331,7 +362,7 @@ export default function ICPEngine() {
                   <ButtonOutline fullWidth onClick={() => setShowFullAnalysis(true)} data-testid="icp-view-full-analysis-button">
                     📊 Show Detailed ICP
                   </ButtonOutline>
-                  <ButtonOutline fullWidth onClick={() => generateIcp(form)} data-testid="icp-regenerate-button">
+                  <ButtonOutline fullWidth onClick={() => generateIcp(buildIcpInput())} data-testid="icp-regenerate-button">
                     Regenerate
                   </ButtonOutline>
                 </div>
@@ -353,7 +384,7 @@ export default function ICPEngine() {
                     <h2 className="font-display text-[15px] font-bold text-ink">Saved ICP - DETAILED VIEW</h2>
                   </div>
                 </div>
-                {resultGroups.filter(({ key }) => key === "geography" || key === "painPoints").map(({ key, label }, i) => (
+                {resultGroups.filter(({ key }) => key === "targetIndustries" || key === "subIndustries" || key === "geography" || key === "painPoints").map(({ key, label }, i) => (
                   <motion.div
                     key={key}
                     initial={{ opacity: 0, y: 12 }}
@@ -363,7 +394,7 @@ export default function ICPEngine() {
                   >
                     <p className="text-[11px] font-extrabold uppercase tracking-wider text-primary-700">{label}</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
-                      {(selectedIcpData[key] as string[])?.map((it) => (
+                      {(selectedIcpResult?.[key] as string[])?.map((it) => (
                         <span key={it} className="rounded-lg border border-primary-200/80 bg-white px-3 py-1.5 text-sm font-medium text-ink shadow-soft transition-colors hover:bg-primary-50 hover:text-primary-600">
                           {it}
                         </span>

@@ -8,7 +8,16 @@ interface SavedIcp {
   company_name: string;
   product_name: string;
   created_at: string;
-  result: { industry: string[]; targetRoles: string[]; geography: string[] };
+  result: {
+    targetIndustries?: string[];
+    subIndustries?: string[];
+    targetIndustry?: string[];
+    subIndustry?: string[];
+    /** Legacy saved profiles use this single list. */
+    industry?: string[];
+    targetRoles: string[];
+    geography: string[];
+  };
 }
 
 export function IcpPickerButton({ onApply }: { onApply: (icp: SavedIcp["result"]) => void }) {

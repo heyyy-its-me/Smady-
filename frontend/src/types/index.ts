@@ -27,6 +27,9 @@ export interface Lead {
   specialties?: string;
   location?: string;
   phone?: string;
+  targetIndustry?: string;
+  subIndustry?: string;
+  /** @deprecated Use targetIndustry and subIndustry. */
   industry?: string;
   companyDescription?: string;
   personalizationHook?: string;
@@ -106,7 +109,10 @@ export interface PricingPackage {
 }
 
 export interface ICPResult {
-  industry: string[];
+  targetIndustries?: string[];
+  subIndustries?: string[];
+  /** @deprecated Kept for profiles generated before target/sub-industry selection. */
+  industry?: string[];
   targetRoles: string[];
   companySize: string[];
   geography: string[];

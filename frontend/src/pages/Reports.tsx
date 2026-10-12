@@ -67,7 +67,9 @@ export default function Reports() {
     sent: typeof d.sent === 'number' ? d.sent : 0
   }));
   const realByCountry = analytics ? (analytics.leads_by_country as typeof leadsByCountry) : leadsByCountry;
-  const realByIndustry = analytics ? (analytics.leads_by_industry as typeof leadsByIndustry) : leadsByIndustry;
+  const realByIndustry = analytics
+    ? ((analytics.leads_by_target_industry || analytics.leads_by_industry) as typeof leadsByIndustry)
+    : leadsByIndustry;
   const realMeetingConv = analytics ? (analytics.meeting_conversion as typeof meetingConversion) : meetingConversion;
   const realCampaigns = analytics ? (analytics.campaign_performance as typeof campaignPerformance) : campaignPerformance;
   
@@ -355,7 +357,7 @@ export default function Reports() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-          <DonutChartCard title="Leads by Industry" data={realByIndustry} testId="reports-industry-donut" />
+          <DonutChartCard title="Leads by Target Industry" data={realByIndustry} testId="reports-industry-donut" />
           <DonutChartCard title="Leads by Country" data={realByCountry} testId="reports-country-donut" />
           <ComparisonCard
             title="Meeting Conversion Rate"

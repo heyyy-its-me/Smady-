@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 class LeadsGenerateRequest(BaseModel):
+    targetIndustries: List[str] = []
+    subIndustries: List[str] = []
+    # Legacy industry field stays in the callback payload for existing workflows.
     industries: List[str] = []
     roles: List[str] = []
     countries: List[str] = []
@@ -65,6 +68,19 @@ FIELD_TO_RAW_KEYS = {
     "priority": ["Priority"],
 }
 
+LEGACY_INDUSTRY_PARENTS = {
+    "b2b saas": "Technology & Software",
+    "saas": "Technology & Software",
+    "technology": "Technology & Software",
+    "software": "Technology & Software",
+    "fintech": "Financial Services",
+    "healthtech": "Healthcare & Life Sciences",
+    "digital health": "Healthcare & Life Sciences",
+    "e-commerce": "Retail & Commerce",
+    "ecommerce": "Retail & Commerce",
+    "manufacturing": "Manufacturing & Industrial",
+}
+
 
 def _parse_composite_id(composite_id: str):
     request_id, sep, idx = composite_id.rpartition("-")
@@ -91,6 +107,12 @@ def _normalize_lead(raw: Dict[str, Any], request_id: str, index: int) -> Dict[st
             if raw.get(k) not in (None, ""):
                 return raw.get(k)
         return default
+
+    legacy_industry = pick("Industry", "industry")
+    target_industry = pick("Target Industry", "targetIndustry", "target_industry")
+    if not target_industry and legacy_industry:
+        target_industry = LEGACY_INDUSTRY_PARENTS.get(str(legacy_industry).strip().lower(), "")
+    sub_industry = pick("Sub-Industry", "subIndustry", "sub_industry", "Industry", "industry")
 
     return {
         "id": f"{request_id}-{index}",
@@ -121,7 +143,10 @@ def _normalize_lead(raw: Dict[str, Any], request_id: str, index: int) -> Dict[st
         "location": pick("Location"),
         "country": pick("Country", "country"),
         "phone": pick("Phone", "phone", "phone_number"),
-        "industry": pick("Industry", "industry"),
+        "targetIndustry": target_industry,
+        "subIndustry": sub_industry,
+        # Compatibility field retained for older UI and report consumers.
+        "industry": sub_industry or legacy_industry or target_industry,
         "companyDescription": pick("Company Description"),
         "personalizationHook": pick("personalization_hook", "AI Insight"),
         "painPointsMatched": pick("pain_points_matched"),

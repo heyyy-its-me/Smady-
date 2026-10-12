@@ -14,7 +14,10 @@ interface RunSummary {
 
 function filterSummary(filters: Record<string, unknown>): string {
   const parts: string[] = [];
-  for (const key of ["industries", "roles", "countries", "cities"]) {
+  const industryKeys = Array.isArray(filters.targetIndustries) || Array.isArray(filters.subIndustries)
+    ? ["targetIndustries", "subIndustries"]
+    : ["industries"];
+  for (const key of [...industryKeys, "roles", "countries", "cities"]) {
     const v = filters[key];
     if (Array.isArray(v) && v.length) parts.push(v.slice(0, 2).join(", ") + (v.length > 2 ? ` +${v.length - 2}` : ""));
   }

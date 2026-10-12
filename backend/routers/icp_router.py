@@ -2,7 +2,7 @@ import os
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from sqlalchemy import select, insert, update
 from sqlalchemy.ext.asyncio import AsyncSession
 import httpx
@@ -22,6 +22,9 @@ class ICPGenerateRequest(BaseModel):
     companyName: str
     companyDetails: str
     countries: List[str] = []
+    targetIndustries: List[str] = []
+    subIndustries: List[str] = []
+    # Legacy alias for clients and saved ICPs created before industry segmentation.
     industries: List[str] = []
     businessStage: str
     priority: str
@@ -37,15 +40,31 @@ def serialize(row):
     }
 
 
-def _map_icp_result(analysis: dict) -> dict:
+def _map_icp_result(
+    analysis: dict,
+    requested_target_industries: Optional[List[str]] = None,
+    requested_sub_industries: Optional[List[str]] = None,
+) -> dict:
     """Maps the real ICP Engine API response to the ICPResult shape the frozen UI expects,
     plus the extra fields for the 'View Full Analysis' detail modal."""
     a = analysis.get("analysis") or {}
     persona = analysis.get("buyer_persona") or {}
     gtm = analysis.get("gtm_strategy") or {}
     secondary = analysis.get("secondary_icps") or []
+    target_industries = (
+        a.get("target_industries") or analysis.get("target_industries") or requested_target_industries or []
+    )
+    legacy_generated_industries = a.get("industries") or []
+    if requested_target_industries:
+        legacy_generated_industries = [item for item in legacy_generated_industries if item not in requested_target_industries]
+    sub_industries = (
+        a.get("sub_industries") or analysis.get("sub_industries") or requested_sub_industries or legacy_generated_industries
+    )
     return {
-        "industry": a.get("industries") or [],
+        "targetIndustries": target_industries,
+        "subIndustries": sub_industries,
+        # Keep the old shape readable by any existing clients.
+        "industry": a.get("industries") or sub_industries or target_industries,
         "targetRoles": persona.get("role") or [],
         "companySize": [],  # ICP Engine API has no company-size field (confirmed) - Leads page has its own filter
         "geography": gtm.get("target_countries") or [],
@@ -76,7 +95,11 @@ async def _upsert_company_profile(db: AsyncSession, user: dict, body: ICPGenerat
         buyer_pain=a.get("buyer_pain"),
         target_segment=primary_icp.get("icp"),
         confidence_score=analysis.get("confidence_score"),
-        icp_data=analysis,
+        icp_data={
+            **analysis,
+            "target_industries": body.targetIndustries,
+            "sub_industries": body.subIndustries or (body.industries if not body.targetIndustries else []),
+        },
         gtm_strategy=analysis.get("gtm_strategy"),
         buyer_persona=analysis.get("buyer_persona"),
     )
@@ -99,6 +122,10 @@ async def generate_icp(body: ICPGenerateRequest, user: dict = Depends(get_curren
         "priority": body.priority,
         "company_name": body.companyName,
         "product_name": body.productName,
+        "target_industries": body.targetIndustries,
+        "sub_industries": body.subIndustries or (body.industries if not body.targetIndustries else []),
+        # Older ICP service integrations may still read this field.
+        "industries": body.industries or body.subIndustries or body.targetIndustries,
     }
 
     result = None
@@ -107,7 +134,8 @@ async def generate_icp(body: ICPGenerateRequest, user: dict = Depends(get_curren
             resp = await client.post(api_url, json=payload)
             resp.raise_for_status()
             analysis = resp.json()
-        result = _map_icp_result(analysis)
+        requested_sub_industries = body.subIndustries or (body.industries if not body.targetIndustries else [])
+        result = _map_icp_result(analysis, body.targetIndustries, requested_sub_industries)
         await _upsert_company_profile(db, user, body, analysis)
         status = "completed"
     except Exception as e:

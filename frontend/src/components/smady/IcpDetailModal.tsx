@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sparkles, Lightbulb, TrendingUp, Gauge } from "lucide-react";
 import type { ICPResult } from "@/types";
+import { normalizeSavedIndustries } from "@/lib/industryTaxonomy";
 
 function Block({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
@@ -14,6 +15,7 @@ function Block({ label, value }: { label: string; value?: string }) {
 
 export function IcpDetailModal({ icp, open, onOpenChange }: { icp: ICPResult | null; open: boolean; onOpenChange: (v: boolean) => void }) {
   if (!icp) return null;
+  const { targetIndustries, subIndustries } = normalizeSavedIndustries(icp);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto" data-testid="icp-detail-modal">
@@ -37,15 +39,27 @@ export function IcpDetailModal({ icp, open, onOpenChange }: { icp: ICPResult | n
           <Block label="Buyer Pain" value={icp.buyerPain} />
         </div>
 
-        {(icp.industry?.length || icp.targetRoles?.length || icp.companySize?.length || icp.geography?.length || icp.painPoints?.length) && (
+        {(targetIndustries.length || subIndustries.length || icp.targetRoles?.length || icp.companySize?.length || icp.geography?.length || icp.painPoints?.length) && (
           <div className="space-y-4 border-b border-border py-4">
             <p className="text-[11px] font-extrabold uppercase tracking-wide text-primary-700">Core Profile</p>
-            {icp.industry?.length > 0 && (
-              <div data-testid="icp-detail-industry">
-                <p className="text-[10px] font-bold text-primary-600 mb-2">Industries</p>
+            {targetIndustries.length > 0 && (
+              <div data-testid="icp-detail-target-industry">
+                <p className="text-[10px] font-bold text-primary-600 mb-2">Target Industry</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {icp.industry.map((item) => (
+                  {targetIndustries.map((item) => (
                     <span key={item} className="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-600">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {subIndustries.length > 0 && (
+              <div data-testid="icp-detail-sub-industry">
+                <p className="text-[10px] font-bold text-primary-600 mb-2">Sub-Industry</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {subIndustries.map((item) => (
+                    <span key={item} className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-600">
                       {item}
                     </span>
                   ))}

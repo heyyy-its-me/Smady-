@@ -352,7 +352,8 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
         c = lead.get("country") or "Unknown"
         if c and c != "Unknown":
             country_counts[c] = country_counts.get(c, 0) + 1
-        ind = lead.get("industry") or "Unknown"
+        # Target industry is the broad category; legacy records only have industry.
+        ind = lead.get("targetIndustry") or lead.get("target_industry") or lead.get("industry") or "Unknown"
         if ind and ind != "Unknown":
             industry_counts[ind] = industry_counts.get(ind, 0) + 1
 
@@ -528,6 +529,7 @@ async def reports_analytics(user: dict = Depends(get_current_user), db: AsyncSes
         "outreach_over_time": outreach_over_time,
         "leads_by_country": leads_by_country,
         "leads_by_industry": leads_by_industry,
+        "leads_by_target_industry": leads_by_industry,
         "meeting_conversion": meeting_conversion,
         "campaign_performance": campaign_perf,
         "proposal_quality": proposal_quality,

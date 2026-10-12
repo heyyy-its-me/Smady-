@@ -66,7 +66,8 @@ export function LeadDetailModal({ lead, open, onOpenChange }: { lead: Lead | nul
           <div className="mt-2 grid grid-cols-2 gap-4">
             <DetailRow label="Company" value={lead.company} />
             <DetailRow label="Website" value={lead.domain} />
-            <DetailRow label="Industry" value={lead.industry} />
+            <DetailRow label="Target Industry" value={lead.targetIndustry} />
+            <DetailRow label="Sub-Industry" value={lead.subIndustry || lead.industry} />
             <DetailRow label="Employees" value={lead.employees} />
             <DetailRow label="Founded" value={lead.foundedYear} />
             <DetailRow label="Funding Stage" value={lead.fundingStage} />
