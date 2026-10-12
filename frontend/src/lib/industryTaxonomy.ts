@@ -3,6 +3,12 @@ export const INDUSTRY_TAXONOMY: Record<string, string[]> = {
     "B2B SaaS", "Enterprise Software", "Developer Tools", "AI & Machine Learning", "Cybersecurity",
     "Cloud Platforms & Infrastructure", "Data & Analytics", "IT Services & Consulting", "Hardware & Semiconductors",
   ],
+  "B2B SaaS": [
+    "Horizontal SaaS", "Vertical SaaS", "CRM & Sales Software", "Marketing Automation SaaS",
+    "ERP & Operations SaaS", "HR & People Operations SaaS", "Finance & Accounting SaaS",
+    "Customer Support & Success SaaS", "Productivity & Collaboration SaaS", "Security SaaS",
+    "Data & Analytics SaaS", "Developer Platform SaaS", "Workflow Automation SaaS",
+  ],
   "Financial Services": [
     "Banking & Credit Unions", "Lending & Mortgage", "Fintech", "Payments", "Insurance & Insurtech",
     "Investment & Wealth Management", "Capital Markets", "Accounting & Tax Services",
@@ -11,9 +17,14 @@ export const INDUSTRY_TAXONOMY: Record<string, string[]> = {
     "Hospitals & Clinics", "Digital Health & Healthtech", "Medical Devices", "Pharmaceuticals", "Biotechnology",
     "Diagnostics & Laboratories", "Health Insurance", "Clinical Research",
   ],
-  "Manufacturing & Industrial": [
-    "Industrial Manufacturing", "Automotive & Mobility", "Aerospace & Defense", "Electronics & Electrical Equipment",
-    "Chemicals & Materials", "Machinery & Equipment", "Industrial Automation & Robotics",
+  Manufacturing: [
+    "Automobile Manufacturing", "Medical Equipment Manufacturing", "Wheelchair Manufacturing",
+    "Electronics Manufacturing", "Industrial Machinery Manufacturing", "Aerospace & Defense Manufacturing",
+    "Electrical Equipment Manufacturing", "Chemical Manufacturing", "Plastics & Materials Manufacturing",
+    "Food & Beverage Manufacturing", "Textile & Apparel Manufacturing", "Furniture Manufacturing",
+    "Metal Fabrication", "Industrial Automation & Robotics", "Contract Manufacturing", "Industrial Manufacturing",
+    "Automotive & Mobility", "Aerospace & Defense", "Electronics & Electrical Equipment", "Chemicals & Materials",
+    "Machinery & Equipment",
   ],
   "Retail & Commerce": [
     "E-commerce & Marketplaces", "Retail Stores", "Wholesale & Distribution", "Consumer Electronics",
@@ -59,7 +70,10 @@ export const INDUSTRY_TAXONOMY: Record<string, string[]> = {
   "Other & Emerging Markets": ["Other / Emerging Business", "Environmental & Climate Services"],
 };
 
-export const TARGET_INDUSTRIES = Object.keys(INDUSTRY_TAXONOMY);
+// Historical values are normalized at read time so previously saved ICPs and runs remain usable.
+const legacyTargetAliases: Record<string, string> = {
+  "manufacturing & industrial": "Manufacturing",
+};
 
 const legacySubIndustryAliases: Record<string, string> = {
   "b2b saas": "B2B SaaS",
@@ -72,8 +86,13 @@ const legacySubIndustryAliases: Record<string, string> = {
   saas: "B2B SaaS",
 };
 
+export const TARGET_INDUSTRIES = Object.keys(INDUSTRY_TAXONOMY);
+
 export function industriesForTargets(targetIndustries: string[]): string[] {
-  return [...new Set(targetIndustries.flatMap((industry) => INDUSTRY_TAXONOMY[industry] || []))];
+  return [...new Set(targetIndustries.flatMap((industry) => {
+    const canonical = legacyTargetAliases[industry.trim().toLowerCase()] || industry;
+    return INDUSTRY_TAXONOMY[canonical] || [];
+  }))];
 }
 
 export function normalizeSavedIndustries(result: {
@@ -83,20 +102,27 @@ export function normalizeSavedIndustries(result: {
   subIndustry?: string[];
   industry?: string[];
 }): { targetIndustries: string[]; subIndustries: string[] } {
-  const targets = [...(result.targetIndustries || result.targetIndustry || [])];
-  const subIndustries = [...(result.subIndustries || result.subIndustry || [])];
+  const rawTargets = [...(result.targetIndustries || result.targetIndustry || [])];
+  const hasExplicitTargets = rawTargets.length > 0;
+  const targets = [...new Set(rawTargets.map((value) => legacyTargetAliases[value.trim().toLowerCase()] || value))];
+  const subIndustries: string[] = [];
   const hasNewFields = Boolean(result.targetIndustries?.length || result.subIndustries?.length || result.targetIndustry?.length || result.subIndustry?.length);
   const legacy = hasNewFields ? [] : result.industry || [];
-  for (const value of [...subIndustries, ...legacy]) {
-    if (INDUSTRY_TAXONOMY[value]) {
-      if (!targets.includes(value)) targets.push(value);
+  const candidates = [...(result.subIndustries || result.subIndustry || []), ...legacy];
+  for (const value of candidates) {
+    const normalizedTarget = legacyTargetAliases[value.trim().toLowerCase()] || value;
+    if (INDUSTRY_TAXONOMY[normalizedTarget]) {
+      if (!targets.includes(normalizedTarget)) targets.push(normalizedTarget);
       continue;
     }
     const normalized = legacySubIndustryAliases[value.trim().toLowerCase()] || value;
     const parent = Object.entries(INDUSTRY_TAXONOMY).find(([, children]) => children.includes(normalized))?.[0];
-    const resolvedParent = parent || "Other & Emerging Markets";
-    if (!targets.includes(resolvedParent)) targets.push(resolvedParent);
-    if (!subIndustries.includes(normalized)) subIndustries.push(normalized);
+    if (!parent) continue;
+    const canonicalParent = legacyTargetAliases[parent.trim().toLowerCase()] || parent;
+    // For old records with no target field, infer the parent. For records with explicit
+    // targets, retain only segments that belong to one of those selected targets.
+    if (!hasExplicitTargets && !targets.includes(canonicalParent)) targets.push(canonicalParent);
+    if (targets.includes(canonicalParent) && !subIndustries.includes(normalized)) subIndustries.push(normalized);
   }
-  return { targetIndustries: [...new Set(targets)], subIndustries: [...new Set(subIndustries)] };
+  return { targetIndustries: [...new Set(targets)], subIndustries };
 }
