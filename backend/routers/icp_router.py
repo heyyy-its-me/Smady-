@@ -51,15 +51,13 @@ def _map_icp_result(
     persona = analysis.get("buyer_persona") or {}
     gtm = analysis.get("gtm_strategy") or {}
     secondary = analysis.get("secondary_icps") or []
-    target_industries = (
-        a.get("target_industries") or analysis.get("target_industries") or requested_target_industries or []
-    )
+    generated_target_industries = a.get("target_industries") or analysis.get("target_industries") or []
+    target_industries = list(dict.fromkeys([*(requested_target_industries or []), *generated_target_industries]))
     legacy_generated_industries = a.get("industries") or []
     if requested_target_industries:
         legacy_generated_industries = [item for item in legacy_generated_industries if item not in requested_target_industries]
-    sub_industries = (
-        a.get("sub_industries") or analysis.get("sub_industries") or requested_sub_industries or legacy_generated_industries
-    )
+    generated_sub_industries = a.get("sub_industries") or analysis.get("sub_industries") or legacy_generated_industries
+    sub_industries = list(dict.fromkeys([*(requested_sub_industries or []), *generated_sub_industries]))
     return {
         "targetIndustries": target_industries,
         "subIndustries": sub_industries,

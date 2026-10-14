@@ -12,7 +12,7 @@ import { useAppData } from "@/context/AppDataContext";
 import { toast } from "@/components/ui/sonner";
 import { IcpDetailModal } from "@/components/smady/IcpDetailModal";
 import { IcpHistoryPicker } from "@/components/smady/IcpHistoryPicker";
-import { normalizeSavedIndustries, TARGET_INDUSTRIES, industriesForTargets } from "@/lib/industryTaxonomy";
+import { normalizeSavedIndustries, TARGET_INDUSTRIES, industriesForTargets, OTHER_INDUSTRY, resolveOtherSelection } from "@/lib/industryTaxonomy";
 import type { ICPResult } from "@/types";
 
 const countries = ["United States", "United Kingdom", "Canada", "Germany", "India"];
@@ -40,7 +40,9 @@ export default function ICPEngine() {
   const [form, setForm] = useState({ productName: "", productDescription: "", companyName: "", companyDetails: "" });
   const [selectedCountries, setSelectedCountries] = useState<string[]>(["United States"]);
   const [selectedTargetIndustries, setSelectedTargetIndustries] = useState<string[]>(["Technology & Software"]);
-  const [selectedSubIndustries, setSelectedSubIndustries] = useState<string[]>(["B2B SaaS"]);
+  const [selectedSubIndustries, setSelectedSubIndustries] = useState<string[]>(["Software Products"]);
+  const [customTargetIndustry, setCustomTargetIndustry] = useState("");
+  const [customSubIndustry, setCustomSubIndustry] = useState("");
   const availableSubIndustries = industriesForTargets(selectedTargetIndustries);
   const [businessStage, setBusinessStage] = useState(businessStages[2]);
   const [priority, setPriority] = useState(priorities[3]);
@@ -50,15 +52,25 @@ export default function ICPEngine() {
   const buildIcpInput = () => ({
       ...form,
       countries: selectedCountries,
-      targetIndustries: selectedTargetIndustries,
-      subIndustries: selectedSubIndustries,
-      industries: selectedSubIndustries.length ? selectedSubIndustries : selectedTargetIndustries,
+      targetIndustries: resolveOtherSelection(selectedTargetIndustries, customTargetIndustry),
+      subIndustries: resolveOtherSelection(selectedSubIndustries, customSubIndustry),
+      industries: selectedSubIndustries.length
+        ? resolveOtherSelection(selectedSubIndustries, customSubIndustry)
+        : resolveOtherSelection(selectedTargetIndustries, customTargetIndustry),
       businessStage,
       priority,
     });
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (selectedTargetIndustries.includes(OTHER_INDUSTRY) && !customTargetIndustry.trim()) {
+      toast.error("Please specify the other industry");
+      return;
+    }
+    if (selectedSubIndustries.includes(OTHER_INDUSTRY) && !customSubIndustry.trim()) {
+      toast.error("Please specify the other sub-industry");
+      return;
+    }
     console.log("Generating ICP with filters enabled");
     await generateIcp(buildIcpInput());
     setGeneratedInSession(true);
@@ -201,20 +213,45 @@ export default function ICPEngine() {
                 value={selectedTargetIndustries}
                 onChange={(values) => {
                   setSelectedTargetIndustries(values);
+                  if (!values.includes(OTHER_INDUSTRY)) setCustomTargetIndustry("");
                   const allowed = industriesForTargets(values);
                   setSelectedSubIndustries((current) => current.filter((industry) => allowed.includes(industry)));
+                  if (!allowed.includes(OTHER_INDUSTRY)) setCustomSubIndustry("");
                 }}
                 testId="icp-target-industry-select"
               />
+              {selectedTargetIndustries.includes(OTHER_INDUSTRY) && (
+                <FieldInput
+                  aria-label="Please specify your industry"
+                  placeholder="Please specify your industry"
+                  value={customTargetIndustry}
+                  onChange={(e) => setCustomTargetIndustry(e.target.value)}
+                  required
+                  data-testid="icp-custom-industry-input"
+                />
+              )}
               <MultiSelectDropdown
                 icon={Factory}
                 label="Sub-Industry"
                 placeholder={selectedTargetIndustries.length ? "Select specific segments..." : "Select a target industry first..."}
                 options={availableSubIndustries}
                 value={selectedSubIndustries}
-                onChange={setSelectedSubIndustries}
+                onChange={(values) => {
+                  setSelectedSubIndustries(values);
+                  if (!values.includes(OTHER_INDUSTRY)) setCustomSubIndustry("");
+                }}
                 testId="icp-sub-industry-select"
               />
+              {selectedSubIndustries.includes(OTHER_INDUSTRY) && (
+                <FieldInput
+                  aria-label="Please specify your sub-industry"
+                  placeholder="Please specify your sub-industry"
+                  value={customSubIndustry}
+                  onChange={(e) => setCustomSubIndustry(e.target.value)}
+                  required
+                  data-testid="icp-custom-sub-industry-input"
+                />
+              )}
             </FormSection>
             <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-5">
               <p className="text-xs text-muted">

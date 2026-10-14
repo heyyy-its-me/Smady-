@@ -5,6 +5,7 @@ import { Users, ShieldCheck, Send, Upload, Download, Linkedin, UploadCloud, Buil
 import { motion, AnimatePresence } from "framer-motion";
 import { PageHeader } from "@/layouts/PageHeader";
 import { FormSection } from "@/components/smady/FormSection";
+import { FieldInput } from "@/components/smady/FieldInput";
 import { MultiSelectDropdown } from "@/components/smady/MultiSelectDropdown";
 import { ButtonPrimary, ButtonOutline } from "@/components/smady/Button";
 import { StatCard } from "@/components/smady/StatCard";
@@ -24,7 +25,7 @@ import { EditLeadModal } from "@/components/smady/EditLeadModal";
 import { RunHistoryPicker } from "@/components/smady/RunHistoryPicker";
 import { IcpPickerButton } from "@/components/smady/IcpPickerButton";
 import { SendCampaignCard } from "@/components/smady/SendCampaignCard";
-import { TARGET_INDUSTRIES, industriesForTargets, normalizeSavedIndustries } from "@/lib/industryTaxonomy";
+import { TARGET_INDUSTRIES, industriesForTargets, normalizeSavedIndustries, OTHER_INDUSTRY, restoreOtherSelection, resolveOtherSelection } from "@/lib/industryTaxonomy";
 
 const roles = ["VP of Sales", "Head of Growth", "CRO", "Founder", "Director of Marketing"];
 const countries = ["United States", "United Kingdom", "Canada", "Germany", "India"];
@@ -56,6 +57,8 @@ export default function Leads() {
   const formRef = useRef<HTMLDivElement>(null);
   const [selectedTargetIndustries, setSelectedTargetIndustries] = useState<string[]>([]);
   const [selectedSubIndustries, setSelectedSubIndustries] = useState<string[]>([]);
+  const [customTargetIndustry, setCustomTargetIndustry] = useState("");
+  const [customSubIndustry, setCustomSubIndustry] = useState("");
   const availableSubIndustries = industriesForTargets(selectedTargetIndustries);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
@@ -195,9 +198,13 @@ export default function Leads() {
     targetRoles?: string[];
     geography?: string[];
   }) => {
-    const { targetIndustries, subIndustries } = normalizeSavedIndustries(result);
-    setSelectedTargetIndustries(targetIndustries);
-    setSelectedSubIndustries(subIndustries);
+    const normalized = normalizeSavedIndustries(result);
+    const targets = restoreOtherSelection(normalized.targetIndustries, TARGET_INDUSTRIES);
+    const subIndustries = restoreOtherSelection(normalized.subIndustries, industriesForTargets(targets.selected));
+    setSelectedTargetIndustries(targets.selected);
+    setSelectedSubIndustries(subIndustries.selected);
+    setCustomTargetIndustry(targets.customValue);
+    setCustomSubIndustry(subIndustries.customValue);
     setSelectedRoles(result.targetRoles || []);
     setSelectedCountries(result.geography || []);
     toast.success("ICP filters applied");
@@ -219,11 +226,21 @@ export default function Leads() {
 
   const onGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (selectedTargetIndustries.includes(OTHER_INDUSTRY) && !customTargetIndustry.trim()) {
+      toast.error("Please specify the other industry");
+      return;
+    }
+    if (selectedSubIndustries.includes(OTHER_INDUSTRY) && !customSubIndustry.trim()) {
+      toast.error("Please specify the other sub-industry");
+      return;
+    }
+    const targetIndustries = resolveOtherSelection(selectedTargetIndustries, customTargetIndustry);
+    const subIndustries = resolveOtherSelection(selectedSubIndustries, customSubIndustry);
     await generateLeads({
-      targetIndustries: selectedTargetIndustries,
-      subIndustries: selectedSubIndustries,
+      targetIndustries,
+      subIndustries,
       // Keep sending the legacy field for existing webhook consumers.
-      industries: selectedSubIndustries.length ? selectedSubIndustries : selectedTargetIndustries,
+      industries: subIndustries.length ? subIndustries : targetIndustries,
       roles: selectedRoles,
       countries: selectedCountries,
       cities: selectedCities,
@@ -409,20 +426,45 @@ export default function Leads() {
               value={selectedTargetIndustries}
               onChange={(values) => {
                 setSelectedTargetIndustries(values);
+                if (!values.includes(OTHER_INDUSTRY)) setCustomTargetIndustry("");
                 const allowed = industriesForTargets(values);
                 setSelectedSubIndustries((current) => current.filter((industry) => allowed.includes(industry)));
+                if (!allowed.includes(OTHER_INDUSTRY)) setCustomSubIndustry("");
               }}
               testId="leads-target-industry-select"
             />
+            {selectedTargetIndustries.includes(OTHER_INDUSTRY) && (
+              <FieldInput
+                aria-label="Please specify your industry"
+                placeholder="Please specify your industry"
+                value={customTargetIndustry}
+                onChange={(e) => setCustomTargetIndustry(e.target.value)}
+                required
+                data-testid="leads-custom-industry-input"
+              />
+            )}
             <MultiSelectDropdown
               icon={Factory}
               label="Sub-Industry"
               placeholder={selectedTargetIndustries.length ? "Select specific segments..." : "Select a target industry first..."}
               options={availableSubIndustries}
               value={selectedSubIndustries}
-              onChange={setSelectedSubIndustries}
+              onChange={(values) => {
+                setSelectedSubIndustries(values);
+                if (!values.includes(OTHER_INDUSTRY)) setCustomSubIndustry("");
+              }}
               testId="leads-sub-industry-select"
             />
+            {selectedSubIndustries.includes(OTHER_INDUSTRY) && (
+              <FieldInput
+                aria-label="Please specify your sub-industry"
+                placeholder="Please specify your sub-industry"
+                value={customSubIndustry}
+                onChange={(e) => setCustomSubIndustry(e.target.value)}
+                required
+                data-testid="leads-custom-sub-industry-input"
+              />
+            )}
             <MultiSelectDropdown icon={UserRound} label="Target Roles" placeholder="Type or select a role..." options={roles} value={selectedRoles} onChange={setSelectedRoles} testId="leads-roles-select" />
           </FormSection>
           <FormSection label="Location" step="02" icon={Globe2}>
