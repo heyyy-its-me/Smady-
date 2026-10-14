@@ -275,7 +275,8 @@ export default function Leads() {
       ),
     },
     { key: "company", label: "Company", render: (l) => <span className="text-sm text-body">{l.company}</span> },
-    { key: "email", label: "Email", render: (l) => <span className="text-sm text-body">{l.email}</span> },
+    { key: "email", label: "Email", render: (l) => <span className="text-sm text-body">{String(l.email ?? "").trim() || "—"}</span> },
+    { key: "phone", label: "Phone Number", render: (l) => <span className="text-sm text-body">{String(l.phone ?? "").trim() || "—"}</span> },
     {
       key: "linkedin",
       label: "LinkedIn",
