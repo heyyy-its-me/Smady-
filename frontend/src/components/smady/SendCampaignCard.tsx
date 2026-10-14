@@ -51,6 +51,7 @@ export function SendCampaignCard({
   const [productName, setProductName] = useState("Smady Outreach");
   const [productDescription, setProductDescription] = useState("");
   const [name, setName] = useState("");
+  const [subject, setSubject] = useState("");
   const [body, setBody] = useState("Hi {first_name}, ...");
   const [sending, setSending] = useState(false);
 
@@ -70,6 +71,7 @@ export function SendCampaignCard({
       setProductName("Smady Outreach");
       setProductDescription("");
       setName("");
+      setSubject("");
       setBody("Hi {first_name}, ...");
       setRunId(null);
       setRunLeadCount(null);
@@ -136,6 +138,7 @@ export function SendCampaignCard({
     try {
       await addCampaign({
         name: name || "Untitled Campaign",
+        subject: subject.trim() || name.trim(),
         body,
         companyName,
         productName,
@@ -146,7 +149,6 @@ export function SendCampaignCard({
       });
       setSending(false);
       onOpenChange(false);
-      toast.success("Campaign created successfully!");
       onSuccess?.();
     } catch (error) {
       setSending(false);
@@ -300,6 +302,18 @@ export function SendCampaignCard({
               onChange={(e) => setName(e.target.value)}
               placeholder="Q3 SaaS VP Outreach"
               data-testid="campaign-name-input"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted">
+              Email Subject
+            </label>
+            <Input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="A quick idea for {company}"
+              data-testid="campaign-subject-input"
             />
           </div>
 

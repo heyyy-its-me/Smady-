@@ -168,6 +168,7 @@ interface AppDataContextType {
   dashboardStats: DashboardStats;
   outreachStats: OutreachStats;
   refreshDashboard: () => Promise<void>;
+  refreshCampaigns: () => Promise<void>;
   refreshOutreachStats: () => Promise<void>;
 
   analyticsLoading: boolean;
@@ -483,14 +484,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const { data: campaign } = await api.post("/outreach/campaigns", data);
       setCampaigns((prev) => [campaign, ...prev]);
       if (campaign.status === "Failed") {
-        toast.error("Outreach webhook isn't configured yet. Add N8N_OUTREACH_WEBHOOK_URL to send campaigns live.");
+        toast.error("Campaign could not be sent. Check the outreach webhook configuration and backend logs.");
       } else {
-        toast.success("Campaign sent");
+        toast.success("Campaign queued for sending");
       }
       await refreshOutreachStats();
       await refreshDashboard();
     } catch (e) {
       toast.error(formatApiError(e));
+      throw e;
     }
   };
 
@@ -634,6 +636,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         dashboardStats,
         outreachStats,
         refreshDashboard,
+        refreshCampaigns,
         refreshOutreachStats,
         analyticsLoading,
         history,

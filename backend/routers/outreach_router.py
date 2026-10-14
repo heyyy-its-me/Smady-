@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone, date, timedelta
 import uuid
 import logging
+import os
 
 from database import get_db
 from models import outreach_campaigns, outreach_emails, lead_results
@@ -35,7 +36,7 @@ async def _eligible_leads(db: AsyncSession, user_id: str, run_id: Optional[str] 
 
 class CampaignCreateRequest(BaseModel):
     name: str
-    subject: str
+    subject: Optional[str] = None
     body: str
     companyName: Optional[str] = None
     productName: Optional[str] = None
@@ -89,13 +90,14 @@ async def create_campaign(body: CampaignCreateRequest, user: dict = Depends(get_
     
     leads_count = len(eligible)
 
+    subject = (body.subject or body.name).strip()
     request_id = uuid.uuid4()
     configured = is_webhook_configured("outreach")
     status = "Queued" if configured else "Failed"
     result = await db.execute(
         insert(outreach_campaigns).values(
             user_id=user["id"], customer_id=user["customer_id"], request_id=request_id, name=body.name, leads_count=leads_count,
-            status=status, subject=body.subject, body=body.body,
+            status=status, subject=subject, body=body.body,
             sent_date=date.today() if configured else None,
         ).returning(outreach_campaigns)
     )
@@ -106,10 +108,12 @@ async def create_campaign(body: CampaignCreateRequest, user: dict = Depends(get_
         # Send full normalized lead objects with all enrichment fields (Lead Score, ICP Match, etc.)
         # N8N outreach workflow uses these fields to compose personalized emails
         recipient_leads = eligible  # l already has 30+ fields from _normalize_lead()
+        public_url = os.environ.get("PUBLIC_BACKEND_URL", "").strip()
         webhook_ok = await trigger_webhook("outreach", {
             "campaign_id": str(row.id),  # Include campaign_id for email logging
             "request_id": str(request_id), "user_id": user["id"],
-            "subject": body.subject, "body": body.body,
+            "subject": subject, "body": body.body,
+            "callback_url": f"{public_url}/api/outreach/callback" if public_url else None,
             "company_name": body.companyName or "Smady",           # Use form value or default
             "product_name": body.productName or "Smady Outreach",  # Use form value or default
             "product_description": body.productDescription or "",  # Product description for personalization

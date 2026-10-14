@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Mail, TrendingUp, Zap, ChevronDown, BarChart3 } from "lucide-react";
 import { PageHeader } from "@/layouts/PageHeader";
 import { StatCard } from "@/components/smady/StatCard";
@@ -18,8 +18,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export default function Outreach() {
-  const { campaigns, outreachStats } = useAppData();
+  const { campaigns, outreachStats, refreshCampaigns, refreshOutreachStats } = useAppData();
   const [campaignOpen, setCampaignOpen] = useState(false);
+
+  useEffect(() => {
+    const refresh = () => {
+      refreshCampaigns().catch(() => {});
+      refreshOutreachStats().catch(() => {});
+    };
+    refresh();
+    const interval = window.setInterval(refresh, 15000);
+    return () => window.clearInterval(interval);
+  }, [refreshCampaigns, refreshOutreachStats]);
 
   const onSelectRun = async (id: string) => {
     // Placeholder for potential future use
