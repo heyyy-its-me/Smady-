@@ -313,7 +313,7 @@ export default function Leads() {
         ),
     },
     { key: "status", label: "Status", render: (l) => <StatusBadge status={l.status} /> },
-    { key: "source", label: "Source", render: (l) => <StatusBadge status={l.source} /> },
+    { key: "location", label: "Location", render: (l) => <span className="text-sm text-body">{String(l.location ?? "").trim() || "—"}</span> },
     {
       key: "kebab",
       label: "",
