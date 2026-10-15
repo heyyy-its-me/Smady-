@@ -61,6 +61,7 @@ export default function Leads() {
   const [customSubIndustry, setCustomSubIndustry] = useState("");
   const availableSubIndustries = industriesForTargets(selectedTargetIndustries);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [leadSource, setLeadSource] = useState<"" | "linkedin" | "google_maps">("");
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
   const [companySize, setCompanySize] = useState(companySizes[1]);
@@ -226,6 +227,10 @@ export default function Leads() {
 
   const onGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!leadSource) {
+      toast.error("Please select a lead source");
+      return;
+    }
     if (selectedTargetIndustries.includes(OTHER_INDUSTRY) && !customTargetIndustry.trim()) {
       toast.error("Please specify the other industry");
       return;
@@ -237,6 +242,7 @@ export default function Leads() {
     const targetIndustries = resolveOtherSelection(selectedTargetIndustries, customTargetIndustry);
     const subIndustries = resolveOtherSelection(selectedSubIndustries, customSubIndustry);
     await generateLeads({
+      leadSource,
       targetIndustries,
       subIndustries,
       // Keep sending the legacy field for existing webhook consumers.
@@ -417,6 +423,32 @@ export default function Leads() {
           <p className="mt-1 text-sm text-body">Filter by audience and location to source your next batch of leads.</p>
         </div>
         <form onSubmit={onGenerate} className="relative mt-6 space-y-5" data-testid="leads-filter-form">
+          <FormSection label="Lead Source" step="00" icon={Globe2} tint>
+            <div className="group relative sm:col-span-2">
+              <label htmlFor="leads-source-select" className="mb-1.5 block text-xs font-semibold text-body">
+                Lead Source <span className="text-primary-600" aria-hidden="true">*</span>
+              </label>
+              <Select
+                value={leadSource}
+                onValueChange={(value) => {
+                  if (value === "linkedin" || value === "google_maps") setLeadSource(value);
+                }}
+              >
+                <SelectTrigger
+                  id="leads-source-select"
+                  aria-required="true"
+                  data-testid="leads-source-select"
+                  className="h-11 w-full rounded-xl border border-border bg-white px-4 text-sm text-ink shadow-[inset_0_1px_2px_rgba(23,20,18,0.04)] transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-4 focus:ring-primary-500/10"
+                >
+                  <SelectValue placeholder="Choose LinkedIn or Google Maps" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="linkedin">LinkedIn</SelectItem>
+                  <SelectItem value="google_maps">Google Maps</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </FormSection>
           <FormSection label="Industry & Roles" step="01" icon={Factory} tint>
             <MultiSelectDropdown
               icon={Factory}

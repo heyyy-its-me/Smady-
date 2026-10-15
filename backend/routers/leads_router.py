@@ -3,7 +3,7 @@ import time
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from pydantic import BaseModel, ConfigDict
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from sqlalchemy import select, insert, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class LeadsGenerateRequest(BaseModel):
+    leadSource: Literal["linkedin", "google_maps"]
     targetIndustries: List[str] = []
     subIndustries: List[str] = []
     # Legacy industry field stays in the callback payload for existing workflows.

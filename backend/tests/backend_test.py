@@ -212,7 +212,7 @@ class TestLeads:
 
     def test_generate_webhook_not_configured(self, client):
         r = client.post(f"{API}/leads/generate", json={
-            "industries": ["SaaS"], "roles": ["CTO"], "countries": ["USA"], "cities": ["NYC"], "companySize": "50-200"})
+            "leadSource": "linkedin", "industries": ["SaaS"], "roles": ["CTO"], "countries": ["USA"], "cities": ["NYC"], "companySize": "50-200"})
         assert r.status_code == 200, r.text[:300]
         d = r.json()
         assert d["status"] == "webhook_not_configured"
