@@ -318,7 +318,15 @@ export default function Leads() {
           <span className="text-sm text-muted">—</span>
         ),
     },
-    { key: "status", label: "Status", render: (l) => <StatusBadge status={l.status} /> },
+    {
+      key: "industry",
+      label: "Industry",
+      render: (l) => (
+        <span className="text-sm text-body">
+          {String(l.subIndustry || l.industry || l.targetIndustry || "").trim() || "—"}
+        </span>
+      ),
+    },
     { key: "location", label: "Location", render: (l) => <span className="text-sm text-body">{String(l.location ?? "").trim() || "—"}</span> },
     {
       key: "kebab",
