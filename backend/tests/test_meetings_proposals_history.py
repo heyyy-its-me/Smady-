@@ -12,7 +12,7 @@ BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL") or frontend_env.get("REACT_A
 API = BASE_URL if BASE_URL.endswith("/api") else f"{BASE_URL}/api"
 
 backend_env = dotenv_values("/app/backend/.env")
-CALLBACK_SECRET = backend_env.get("N8N_CALLBACK_SECRET")
+CALLBACK_SECRET = os.environ.get("N8N_CALLBACK_SECRET") or backend_env.get("N8N_CALLBACK_SECRET")
 
 EXISTING_EMAIL = "alice.rds.test@example.com"
 EXISTING_PASSWORD = "testpass123"
@@ -24,7 +24,7 @@ def new_client():
     return s
 
 
-def signup(session, email=None, password="password123", name="TEST User", company="TEST Co"):
+def signup(session, email=None, password="A-test-passphrase-for-signup-2026", name="TEST User", company="TEST Co"):
     email = email or f"TEST_mp_{uuid.uuid4().hex[:8]}@example.com"
     r = session.post(f"{API}/auth/signup", json={
         "fullName": name, "email": email, "company": company, "password": password})
@@ -53,7 +53,7 @@ class TestCriticalAuthRegression:
         assert me.status_code == 200
         # login on a new client
         s2 = new_client()
-        login(s2, email=email, password="password123")
+        login(s2, email=email, password="A-test-passphrase-for-signup-2026")
         me2 = s2.get(f"{API}/auth/me")
         assert me2.status_code == 200
         assert me2.json()["email"] == email.lower()

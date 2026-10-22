@@ -17,7 +17,11 @@ BASE_URL = base_url.rstrip("/")
 API = f"{BASE_URL}/api"
 
 backend_env = dotenv_values("/app/backend/.env")
-CALLBACK_SECRET = backend_env.get("N8N_CALLBACK_SECRET")
+CALLBACK_SECRET = os.environ.get("N8N_CALLBACK_SECRET") or backend_env.get("N8N_CALLBACK_SECRET")
+
+
+def backend_setting(name):
+    return os.environ.get(name) or backend_env.get(name)
 
 EXISTING_EMAIL = "testuser@example.com"
 EXISTING_PASSWORD = "password123"
@@ -83,7 +87,7 @@ class TestAuth:
         s = new_client()
         email = f"TEST_signup_{uuid.uuid4().hex[:8]}@example.com"
         r = s.post(f"{API}/auth/signup", json={
-            "fullName": "TEST Signup", "email": email, "company": "TEST Co", "password": "password123"})
+            "fullName": "TEST Signup", "email": email, "company": "TEST Co", "password": "A-test-passphrase-for-signup-2026"})
         assert r.status_code == 200, r.text[:300]
         d = r.json()
         assert d["email"] == email.lower()
@@ -94,7 +98,7 @@ class TestAuth:
         assert me.status_code == 200 and me.json()["email"] == email.lower()
         # duplicate
         r2 = new_client().post(f"{API}/auth/signup", json={
-            "fullName": "x", "email": email, "company": "y", "password": "password123"})
+            "fullName": "x", "email": email, "company": "y", "password": "A-test-passphrase-for-signup-2026"})
         assert r2.status_code == 409, r2.status_code
 
     def test_signup_short_password(self):
@@ -105,15 +109,15 @@ class TestAuth:
 
     def test_signup_invalid_email_422(self):
         r = requests.post(f"{API}/auth/signup", json={
-            "fullName": "x", "email": "not-an-email", "company": "y", "password": "password123"})
+            "fullName": "x", "email": "not-an-email", "company": "y", "password": "A-test-passphrase-for-signup-2026"})
         assert r.status_code == 422
 
     def test_bcrypt_hash_format(self):
         import subprocess
         out = subprocess.run(
-            ["psql", "-h", backend_env["DB_HOST"], "-U", backend_env["DB_USER"], "-d", backend_env["PG_DATABASE"],
-             "-t", "-A", "-c", f"select password_hash from {backend_env['DB_SCHEMA']}.users limit 1;"],
-            capture_output=True, text=True, env={**os.environ, "PGPASSWORD": backend_env["DB_PASSWORD"]})
+            ["psql", "-h", backend_setting("DB_HOST"), "-U", backend_setting("DB_USER"), "-d", backend_setting("PG_DATABASE"),
+             "-t", "-A", "-c", f"select password_hash from {backend_setting('DB_SCHEMA')}.users limit 1;"],
+            capture_output=True, text=True, env={**os.environ, "PGPASSWORD": backend_setting("DB_PASSWORD")})
         assert out.returncode == 0, out.stderr[:300]
         h = out.stdout.strip()
         assert h.startswith("$2b$"), f"unexpected hash prefix: {h[:10]}"
@@ -127,16 +131,14 @@ class TestBruteForce:
         email = f"TEST_lock_{uuid.uuid4().hex[:8]}@example.com"
         # register so the account exists
         r = s.post(f"{API}/auth/signup", json={
-            "fullName": "TEST Lock", "email": email, "company": "c", "password": "password123"})
+            "fullName": "TEST Lock", "email": email, "company": "c", "password": "A-test-passphrase-for-signup-2026"})
         assert r.status_code == 200
         codes = []
         for _ in range(6):
             rr = new_client().post(f"{API}/auth/login", json={"email": email, "password": "wrongpass"})
             codes.append(rr.status_code)
         assert codes[0] == 401, codes
-        # KNOWN BUG: identifier = f"{request.client.host}:{email}" and request.client.host is the
-        # k8s ingress pod IP which rotates between several pods, so the 5-attempt counter is split
-        # across identifiers and lockout does not trigger at 5 real attempts.
+        # Login failures are counted by account email in the shared database across app instances.
         assert 429 in codes, f"expected 429 lockout within 6 attempts, got {codes}"
 
 
@@ -300,10 +302,10 @@ class TestOutreach:
         # need the raw request_id uuid -> query db
         import subprocess
         out = subprocess.run(
-            ["psql", "-h", backend_env["DB_HOST"], "-U", backend_env["DB_USER"], "-d", backend_env["PG_DATABASE"],
+            ["psql", "-h", backend_setting("DB_HOST"), "-U", backend_setting("DB_USER"), "-d", backend_setting("PG_DATABASE"),
              "-t", "-A", "-c",
-             f"select request_id from {backend_env['DB_SCHEMA']}.outreach_campaigns where id='{TestOutreach.campaign_id}';"],
-            capture_output=True, text=True, env={**os.environ, "PGPASSWORD": backend_env["DB_PASSWORD"]})
+             f"select request_id from {backend_setting('DB_SCHEMA')}.outreach_campaigns where id='{TestOutreach.campaign_id}';"],
+            capture_output=True, text=True, env={**os.environ, "PGPASSWORD": backend_setting("DB_PASSWORD")})
         assert out.returncode == 0, out.stderr[:300]
         request_id = out.stdout.strip()
         assert request_id
@@ -380,7 +382,7 @@ class TestIsolation:
         s = new_client()
         email = f"TEST_iso_{uuid.uuid4().hex[:8]}@example.com"
         r = s.post(f"{API}/auth/signup", json={
-            "fullName": "TEST Iso", "email": email, "company": "Iso Co", "password": "password123"})
+            "fullName": "TEST Iso", "email": email, "company": "Iso Co", "password": "A-test-passphrase-for-signup-2026"})
         assert r.status_code == 200
         assert s.get(f"{API}/leads").json() == []
         assert s.get(f"{API}/outreach/campaigns").json() == []
@@ -400,6 +402,6 @@ class TestIsolation:
         other = new_client()
         email = f"TEST_iso2_{uuid.uuid4().hex[:8]}@example.com"
         other.post(f"{API}/auth/signup", json={
-            "fullName": "TEST Iso2", "email": email, "company": "c", "password": "password123"})
+            "fullName": "TEST Iso2", "email": email, "company": "c", "password": "A-test-passphrase-for-signup-2026"})
         r = other.get(f"{API}/icp/status/{rid}")
         assert r.status_code == 404, r.status_code

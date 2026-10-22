@@ -10,7 +10,7 @@ import uuid
 
 from database import get_db
 from models import icp_profiles, company_profiles
-from auth import get_current_user
+from auth import get_current_user, enforce_rate_limit, rate_limit_key
 
 router = APIRouter(prefix="/api/icp", tags=["icp"])
 logger = logging.getLogger(__name__)
@@ -111,6 +111,7 @@ async def _upsert_company_profile(db: AsyncSession, user: dict, body: ICPGenerat
 
 @router.post("/generate")
 async def generate_icp(body: ICPGenerateRequest, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    await enforce_rate_limit(db, rate_limit_key("icp-generation", str(user["id"])), 10, 3600)
     request_id = uuid.uuid4()
     api_url = os.environ.get("ICP_ENGINE_API_URL", "").strip()
     payload = {
@@ -136,8 +137,8 @@ async def generate_icp(body: ICPGenerateRequest, user: dict = Depends(get_curren
         result = _map_icp_result(analysis, body.targetIndustries, requested_sub_industries)
         await _upsert_company_profile(db, user, body, analysis)
         status = "completed"
-    except Exception as e:
-        logger.error(f"ICP Engine API call failed: {e}")
+    except Exception:
+        logger.error("ICP Engine API call failed")
         status = "failed"
 
     await db.execute(

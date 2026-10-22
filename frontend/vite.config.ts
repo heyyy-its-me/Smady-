@@ -14,8 +14,7 @@ export default defineConfig({
     strictPort: true,
     allowedHosts: true,
     proxy: {
-      // Same-origin /api so cookies aren't treated as third-party in dev, mirroring the
-      // Vercel rewrite used in production (see frontend/vercel.json).
+      // Same-origin /api so cookies aren't treated as third-party in development.
       '/api': {
         target: process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000',
         changeOrigin: true,

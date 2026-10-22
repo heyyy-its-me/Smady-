@@ -10,7 +10,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from database import get_db
 from models import meetings, users
-from auth import get_current_user
+from auth import get_current_user, get_optional_current_user
 from webhooks import verify_callback_secret, trigger_webhook, is_webhook_configured
 
 logger = logging.getLogger(__name__)
@@ -73,6 +73,7 @@ class MeetingCallbackRequest(BaseModel):
 class UpdateMeetingStatusRequest(BaseModel):
     lead_email: str
     meeting_date: str
+    meeting_id: Optional[str] = None
     status: str  # "Scheduled", "Failed", "Cancelled", etc.
 
 
@@ -143,6 +144,7 @@ async def schedule_meeting(body: ScheduleMeetingRequest, user: dict = Depends(ge
     # Fire n8n book-slot webhook — same fields as the n8n manual booking form
     if is_webhook_configured("meetings"):
         n8n_payload = {
+            "meeting_id": str(row.id),
             "Client Name": body.lead_name,
             "Client Email": body.lead_email,
             "Meeting Date": raw_date if re.match(r"^\d{4}-\d{2}-\d{2}$", raw_date) else meeting_dt.strftime("%Y-%m-%d"),
@@ -189,19 +191,49 @@ async def meeting_callback(body: MeetingCallbackRequest, x_callback_secret: Opti
 async def update_meeting_status(
     body: UpdateMeetingStatusRequest,
     x_callback_secret: Optional[str] = Header(None),
+    user: Optional[dict] = Depends(get_optional_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Update meeting status (used by N8N to mark as Scheduled or Failed)."""
-    verify_callback_secret(x_callback_secret)
-    
-    # Parse meeting_date
-    meeting_date = parse_dt(body.meeting_date) if "T" in body.meeting_date else parse_dt(f"{body.meeting_date}T00:00:00+00:00")
-    
+    """Update one exact meeting, scoped to a user or authorized webhook caller."""
+    if user is None:
+        verify_callback_secret(x_callback_secret)
+
+    if body.meeting_id:
+        try:
+            meeting_uuid = uuid.UUID(body.meeting_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid meeting_id")
+        target = select(meetings).where(
+            meetings.c.id == meeting_uuid,
+            meetings.c.lead_email == body.lead_email,
+            meetings.c.status != "Cancelled",
+        )
+    else:
+        # Backward compatibility for existing n8n callers: match one meeting for
+        # this email on this date. Refuse ambiguous matches instead of updating all.
+        day_start = parse_dt(body.meeting_date) if "T" in body.meeting_date else parse_dt(f"{body.meeting_date}T00:00:00+00:00")
+        day_start = day_start.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        target = select(meetings).where(
+            meetings.c.lead_email == body.lead_email,
+            meetings.c.meeting_date >= day_start,
+            meetings.c.meeting_date < day_end,
+            meetings.c.status != "Cancelled",
+        )
+    if user is not None:
+        target = target.where(meetings.c.user_id == user["id"])
+    matches = (await db.execute(target)).fetchall()
+    if not matches:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    if len(matches) > 1:
+        raise HTTPException(status_code=409, detail="Multiple meetings match; provide meeting_id")
+
     result = await db.execute(
         update(meetings)
         .where(
-            (meetings.c.lead_email == body.lead_email) &
-            (meetings.c.status != "Cancelled")
+            meetings.c.id == matches[0].id,
+            meetings.c.status != "Cancelled",
+            *([meetings.c.user_id == user["id"]] if user is not None else []),
         )
         .values(status=body.status, updated_at=func.now())
         .returning(meetings)

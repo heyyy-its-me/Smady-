@@ -11,7 +11,7 @@ import uuid
 
 from database import get_db
 from models import lead_results, run_status, lead_runs
-from auth import get_current_user
+from auth import get_current_user, enforce_rate_limit, rate_limit_key
 from webhooks import trigger_webhook, is_webhook_configured, verify_callback_secret
 
 router = APIRouter(prefix="/api/leads", tags=["leads"])
@@ -232,6 +232,7 @@ async def list_runs(
 
 @router.post("/generate")
 async def generate_leads(body: LeadsGenerateRequest, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    await enforce_rate_limit(db, rate_limit_key("lead-generation", str(user["id"])), 10, 3600)
     request_id = uuid.uuid4()
     configured = is_webhook_configured("leads")
     now_ms = int(time.time() * 1000)

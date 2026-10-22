@@ -43,8 +43,9 @@ async def trigger_webhook(kind: str, payload: dict) -> bool:
                 return False
             logger.info(f"n8n webhook '{kind}' → {resp.status_code}")
         return True
-    except Exception as e:
-        logger.error(f"Failed to trigger n8n webhook '{kind}': {e}")
+    except Exception:
+        # Request exception strings can contain the configured webhook URL.
+        logger.error("Failed to trigger n8n webhook '%s'", kind)
         return False
 
 

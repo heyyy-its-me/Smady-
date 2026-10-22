@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useAppData } from "@/context/AppDataContext";
 import { toast } from "@/components/ui/sonner";
 import type { Proposal, PricingPackage } from "@/types";
+import { sanitizeProposalHtml } from "@/lib/sanitizeProposalHtml";
 
 // ── status helpers ─────────────────────────────────────────────────────────────
 
@@ -216,7 +217,7 @@ function ProposalCard({ p, onApprove, onReject }: {
               <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-muted">Proposal Draft</p>
               <div
                 className="rounded-lg border border-border bg-bg p-4 text-sm text-body leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: p.body_html }}
+                dangerouslySetInnerHTML={{ __html: sanitizeProposalHtml(p.body_html) }}
               />
             </div>
           ) : p.proposal_json && Object.keys(p.proposal_json).length > 0 ? (

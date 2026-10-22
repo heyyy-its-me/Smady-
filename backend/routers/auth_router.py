@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 import secrets
 import jwt
+import logging
 from datetime import datetime, timezone, timedelta
 
 from database import get_db
@@ -13,10 +14,12 @@ from auth import (
     hash_password, verify_password, create_access_token, create_refresh_token,
     set_auth_cookies, clear_auth_cookies, user_public, fetch_company_name, get_current_user,
     check_lockout, record_failed_attempt, clear_attempts, get_jwt_secret,
-    COOKIE_SECURE, COOKIE_SAMESITE,
+    COOKIE_SECURE, COOKIE_SAMESITE, validate_new_password, enforce_rate_limit,
+    rate_limit_key, request_ip,
 )
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
 class SignupRequest(BaseModel):
@@ -41,10 +44,12 @@ class ResetPasswordRequest(BaseModel):
 
 
 @router.post("/signup")
-async def signup(body: SignupRequest, response: Response, db: AsyncSession = Depends(get_db)):
+async def signup(body: SignupRequest, request: Request, response: Response, db: AsyncSession = Depends(get_db)):
     email = body.email.lower()
-    if len(body.password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    ip = request_ip(request)
+    await enforce_rate_limit(db, rate_limit_key("signup-ip", ip), 10, 3600)
+    await enforce_rate_limit(db, rate_limit_key("signup-email", email), 3, 3600)
+    validate_new_password(body.password)
     try:
         customer_result = await db.execute(insert(customers).values(name=body.company).returning(customers))
         customer_row = customer_result.first()
@@ -72,6 +77,7 @@ async def signup(body: SignupRequest, response: Response, db: AsyncSession = Dep
 @router.post("/login")
 async def login(body: LoginRequest, request: Request, response: Response, db: AsyncSession = Depends(get_db)):
     email = body.email.lower()
+    await enforce_rate_limit(db, rate_limit_key("login-ip", request_ip(request)), 60, 300)
     identifier = email
     existing_attempt_row = await check_lockout(db, identifier)
 
@@ -122,8 +128,11 @@ async def refresh(request: Request, response: Response, db: AsyncSession = Depen
 
 
 @router.post("/forgot-password")
-async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+async def forgot_password(body: ForgotPasswordRequest, request: Request, db: AsyncSession = Depends(get_db)):
     email = body.email.lower()
+    ip = request_ip(request)
+    await enforce_rate_limit(db, rate_limit_key("password-reset-ip", ip), 10, 3600)
+    await enforce_rate_limit(db, rate_limit_key("password-reset-email", email), 5, 3600)
     result = await db.execute(select(users).where(users.c.email == email))
     row = result.first()
     if row:
@@ -134,12 +143,15 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
             )
         )
         await db.commit()
-        print(f"[password reset] link for {email}: /reset-password?token={token}")
+        # Delivery is configured outside this API; never write reset tokens to process logs.
+        logger.info("Password reset requested for an existing account")
     return {"message": "If that email exists, a reset link has been sent."}
 
 
 @router.post("/reset-password")
-async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+async def reset_password(body: ResetPasswordRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    await enforce_rate_limit(db, rate_limit_key("password-reset-confirm-ip", request_ip(request)), 10, 900)
+    validate_new_password(body.password)
     result = await db.execute(select(password_reset_tokens).where(password_reset_tokens.c.token == body.token))
     row = result.first()
     if not row or row.used or row.expires_at < datetime.now(timezone.utc):

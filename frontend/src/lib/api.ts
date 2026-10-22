@@ -1,7 +1,7 @@
 import axios from "axios";
 
-// Always same-origin: Vite dev proxy (vite.config.ts) or the Vercel rewrite (vercel.json)
-// forwards this to the real backend. Keeping it same-origin means auth cookies are
+// Always same-origin: Vite dev proxy (vite.config.ts) or the Vercel API function
+// (frontend/api/[...path].ts) forwards this to the configured backend. Keeping it same-origin means auth cookies are
 // first-party, so they aren't blocked by browsers' third-party-cookie rules.
 export const API_BASE = "/api";
 

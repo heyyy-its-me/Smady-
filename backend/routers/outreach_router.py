@@ -10,7 +10,7 @@ import os
 
 from database import get_db
 from models import outreach_campaigns, outreach_emails, lead_results
-from auth import get_current_user
+from auth import get_current_user, enforce_rate_limit, rate_limit_key
 from webhooks import trigger_webhook, is_webhook_configured, verify_callback_secret
 from routers.leads_router import _normalize_lead
 
@@ -81,6 +81,7 @@ async def list_campaigns(user: dict = Depends(get_current_user), db: AsyncSessio
 
 @router.post("/campaigns")
 async def create_campaign(body: CampaignCreateRequest, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    await enforce_rate_limit(db, rate_limit_key("outreach-campaign", str(user["id"])), 20, 3600)
     eligible = await _eligible_leads(db, user["id"], run_id=body.runId if body.recipientSource == "run" else None)
     
     # If recipientSource is "selected", filter to only the selected lead IDs
@@ -271,12 +272,9 @@ async def log_emails_sent(
       ]
     }
     """
-    try:
-        if x_callback_secret:
-            verify_callback_secret(x_callback_secret)
-    except Exception as e:
-        logger.warning(f"Webhook secret verification failed: {e}")
-        # Don't fail here - webhook secret is optional
+    # This is a machine-to-machine write endpoint. Reject before parsing or writing
+    # any email data unless the trusted n8n callback secret is valid.
+    verify_callback_secret(x_callback_secret)
     
     # Validate body structure
     if not isinstance(body, dict):

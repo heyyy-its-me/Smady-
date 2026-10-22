@@ -12,7 +12,7 @@ const schema = z.object({
   fullName: z.string().min(2, "Enter your full name"),
   email: z.string().email("Enter a valid work email"),
   company: z.string().min(2, "Enter your company name"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(15, "Use a passphrase of at least 15 characters").max(128, "Password must be no more than 128 characters"),
   terms: z.boolean().refine((v) => v, "You must agree to continue"),
 });
 type FormData = z.infer<typeof schema>;
@@ -52,7 +52,7 @@ export default function Signup() {
   const company = watch("company") ?? "";
 
   // Determine current step
-  const currentStep = password.length >= 6 ? 2 : (name.length >= 2 && email.includes("@") && company.length >= 2) ? 1 : 0;
+  const currentStep = password.length >= 15 ? 2 : (name.length >= 2 && email.includes("@") && company.length >= 2) ? 1 : 0;
 
   const strength = useMemo(() => pwStrength(password), [password]);
 
@@ -116,7 +116,9 @@ export default function Signup() {
           <div className="relative">
             <input
               type={showPassword ? "text" : "password"}
-              placeholder="min. 6 characters"
+              placeholder="15–128 characters"
+              minLength={15}
+              maxLength={128}
               className="auth-input h-11 w-full rounded-xl px-4 pr-11 text-[14px]"
               data-testid="signup-password-input"
               {...register("password", { onChange: e => setPassword(e.target.value) })}

@@ -18,7 +18,7 @@ We scope by matching lead_email against the authenticated user's lead_results ro
 from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from pydantic import BaseModel, field_validator
 from typing import Optional, List, Dict, Any
-from sqlalchemy import select, insert, update, text
+from sqlalchemy import select, insert, update, text, and_, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 import os
@@ -27,8 +27,8 @@ import logging
 from datetime import datetime
 
 from database import get_db
-from models import public_proposal_review_log, proposal_results, pricing_packages, lead_results, users
-from auth import get_current_user
+from models import public_proposal_review_log, proposal_results, pricing_packages, lead_results, users, meetings
+from auth import get_current_user, enforce_rate_limit, rate_limit_key
 from webhooks import trigger_webhook, is_webhook_configured, verify_callback_secret
 
 logger = logging.getLogger(__name__)
@@ -140,6 +140,54 @@ async def _get_user_lead_emails(db: AsyncSession, user_id: str) -> set:
                 if e:
                     emails.add(str(e).lower())
     return emails
+
+
+def _review_log_scope(user_id: str, user_emails: set):
+    """Scope legacy n8n rows by owner, allowing email mapping only if unowned."""
+    owner = public_proposal_review_log.c.user_id
+    email = func.lower(public_proposal_review_log.c.lead_email)
+    return or_(
+        owner == user_id,
+        and_(owner.is_(None), email.in_(sorted(user_emails))),
+    )
+
+
+async def _resolve_review_owner(db: AsyncSession, meeting_id: str, lead_email: str):
+    """Resolve n8n proposal ownership from an application meeting or owned lead."""
+    owner_id = None
+    try:
+        meeting_uuid = uuid.UUID(meeting_id)
+    except (ValueError, TypeError):
+        meeting_uuid = None
+    if meeting_uuid:
+        result = await db.execute(select(meetings).where(meetings.c.id == meeting_uuid))
+        meeting_row = result.first()
+        if not meeting_row:
+            raise HTTPException(status_code=404, detail="Meeting not found")
+        if (meeting_row.lead_email or "").strip().lower() != lead_email.strip().lower():
+            raise HTTPException(status_code=403, detail="Proposal lead does not match the meeting")
+        owner_id = meeting_row.user_id
+    else:
+        result = await db.execute(
+            select(lead_results.c.user_id, lead_results.c.leads).where(lead_results.c.user_id.is_not(None))
+        )
+        owners = set()
+        wanted = lead_email.strip().lower()
+        for lead_run in result.fetchall():
+            for lead in lead_run.leads or []:
+                if isinstance(lead, dict):
+                    email = lead.get("Email") or lead.get("email") or lead.get("email_address")
+                    if email and str(email).strip().lower() == wanted:
+                        owners.add(str(lead_run.user_id))
+        if len(owners) != 1:
+            raise HTTPException(status_code=404, detail="Proposal lead has no unique application owner")
+        owner_id = next(iter(owners))
+
+    owner_result = await db.execute(select(users).where(users.c.id == owner_id))
+    owner = owner_result.first()
+    if not owner:
+        raise HTTPException(status_code=404, detail="Proposal owner not found")
+    return owner
 
 
 # ── GET /api/proposals/packages ───────────────────────────────────────────────
@@ -265,57 +313,22 @@ async def proposal_callback(
     """
     Receive proposal callback from N8N Proposal workflow.
     """
-    # DEBUG: Log exactly what was received
-    logger.info("=== WEBHOOK RAW BODY ===")
-    logger.info(f"body type: {type(body)}")
-    logger.info(f"body dict: {body.model_dump()}")
-    logger.info(f"proposal_json type: {type(body.proposal_json)}")
-    logger.info(f"proposal_json value: {body.proposal_json}")
-    logger.info(f"lead_name: {body.lead_name}")
-    logger.info("=== END RAW BODY ===")
-    
-    # 1. Verify webhook secret
-    try:
-        verify_callback_secret(x_callback_secret)
-    except Exception as e:
-        logger.error("Webhook secret verification failed: %s", e)
-        raise HTTPException(status_code=401, detail="Invalid webhook secret")
-    
-    # 2. Validate required fields
+    verify_callback_secret(x_callback_secret)
     if not body.meeting_id:
         raise HTTPException(status_code=400, detail="meeting_id is required")
     if not body.lead_email:
         raise HTTPException(status_code=400, detail="lead_email is required")
-    
-    # 3. Optional: Validate meeting exists (links to user)
-    if body.meeting_id and body.meeting_id != "test-ff-001":  # Allow test data
-        from models import meetings
-        meeting_check = await db.execute(
-            select(meetings.c.user_id).where(meetings.c.id == body.meeting_id)
-        )
-        meeting_row = meeting_check.first()
-        if not meeting_row:
-            logger.warning("Proposal webhook for unknown meeting_id: %s", body.meeting_id)
-            # Don't fail — N8N may use different meeting_id format; just store it
-        else:
-            # Use meeting's user_id if N8N didn't provide one
-            if not body.user_id:
-                body.user_id = str(meeting_row.user_id)
-    
-    # 4. Upsert into proposal_review_log
-    # Strategy: Try to find existing row by meeting_id, update it; else insert new
-    logger.info(
-        "Proposal webhook: meeting_id=%s, lead_email=%s, user_id=%s, status=%s",
-        body.meeting_id, body.lead_email, body.user_id, body.final_status
-    )
-    logger.info("Received proposal_json type: %s, content: %s", type(body.proposal_json), body.proposal_json)
+    owner = await _resolve_review_owner(db, body.meeting_id, body.lead_email)
+    owner_id = owner.id
+    customer_id = owner.customer_id
+    logger.info("Proposal callback received for an owned meeting/lead; status=%s", body.final_status)
     
     # AUTO-FIX: If proposal_json came as a string, parse it to dict
     if isinstance(body.proposal_json, str):
         try:
             import json
             body.proposal_json = json.loads(body.proposal_json)
-            logger.info("Parsed proposal_json from string to dict, lead_name=%s", body.proposal_json.get("lead_name"))
+            logger.info("Parsed proposal_json from string to dict")
         except json.JSONDecodeError as e:
             logger.error("Failed to parse proposal_json string: %s", e)
             body.proposal_json = {}
@@ -327,7 +340,7 @@ async def proposal_callback(
     # AUTO-FIX: If proposal_json is missing lead_name, add it from top-level field
     if body.lead_name and "lead_name" not in body.proposal_json:
         body.proposal_json["lead_name"] = body.lead_name
-        logger.info("Added lead_name=%s to proposal_json from top-level field", body.lead_name)
+        logger.info("Added proposal lead name from the callback field")
     
     try:
         # Check if proposal already exists for this meeting_id
@@ -339,11 +352,14 @@ async def proposal_callback(
         existing_row = existing.first()
         
         if existing_row:
+            if existing_row.user_id and str(existing_row.user_id) != str(owner_id):
+                raise HTTPException(status_code=409, detail="Meeting is already associated with another user")
             # UPDATE: Keep the ID, update content and status
             stmt = update(public_proposal_review_log).where(
-                public_proposal_review_log.c.meeting_id == body.meeting_id
+                public_proposal_review_log.c.id == existing_row.id
             ).values(
-                user_id=body.user_id,
+                user_id=owner_id,
+                customer_id=customer_id,
                 lead_email=body.lead_email,
                 proposal_json=body.proposal_json,
                 guardrail_errors=body.guardrail_errors or [],
@@ -354,18 +370,13 @@ async def proposal_callback(
             result = await db.execute(stmt)
             proposal_id = result.scalar()
             await db.commit()
-            logger.info(
-                "Updated existing proposal_review_log id=%s with proposal_json type=%s, lead_name=%s",
-                proposal_id,
-                type(body.proposal_json),
-                body.proposal_json.get("lead_name") if isinstance(body.proposal_json, dict) else "N/A (not dict)"
-            )
+            logger.info("Updated proposal_review_log id=%s", proposal_id)
         else:
             # INSERT: Create new row
             stmt = insert(public_proposal_review_log).values(
                 meeting_id=body.meeting_id,
-                user_id=body.user_id,
-                customer_id=body.customer_id,
+                user_id=owner_id,
+                customer_id=customer_id,
                 lead_email=body.lead_email,
                 proposal_json=body.proposal_json,
                 guardrail_errors=body.guardrail_errors or [],
@@ -377,35 +388,24 @@ async def proposal_callback(
             result = await db.execute(stmt)
             proposal_id = result.scalar()
             await db.commit()
-            logger.info(
-                "Created new proposal_review_log id=%s with proposal_json type=%s, lead_name=%s",
-                proposal_id,
-                type(body.proposal_json),
-                body.proposal_json.get("lead_name") if isinstance(body.proposal_json, dict) else "N/A (not dict)"
-            )
-        
-        # DEBUG: Return debug info in response
-        debug_info = {
-            "proposal_json_type": str(type(body.proposal_json)),
-            "proposal_json_keys": list(body.proposal_json.keys()) if isinstance(body.proposal_json, dict) else "NOT_A_DICT",
-            "lead_name_received": body.lead_name,
-            "proposal_json_lead_name": body.proposal_json.get("lead_name") if isinstance(body.proposal_json, dict) else None,
-        }
+            logger.info("Created proposal_review_log id=%s", proposal_id)
         
         return {
             "message": "Proposal stored successfully",
             "proposal_id": proposal_id,
-            "user_id": body.user_id,
+            "user_id": str(owner_id),
             "meeting_id": body.meeting_id,
             "final_status": body.final_status,
             "stored_at": datetime.utcnow().isoformat(),
-            "debug": debug_info,
         }
     
-    except Exception as e:
-        logger.error("Failed to store proposal: %s", e, exc_info=True)
+    except HTTPException:
         await db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to store proposal: {str(e)}")
+        raise
+    except Exception:
+        logger.error("Failed to persist proposal callback")
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to store proposal")
 
 
 # ── GET /api/proposals ────────────────────────────────────────────────────────
@@ -420,17 +420,16 @@ async def list_proposals(
     Returns proposals from public.proposal_review_log (n8n-generated) PLUS
     public.proposal_results (app-generated), most recent first.
 
-    Scoping: proposal_review_log rows are filtered to leads whose email appears
-    in this user's lead_results; proposal_results rows are filtered by user_id.
-    Falls back to showing all proposal_review_log rows if the user has no leads
-    (e.g., first time user, or admin view).
+    Legacy review rows are scoped by user_id, or by an owned lead email only if
+    the row has no user_id. An empty lead mapping returns no unowned rows.
     """
     uid = user["id"]
 
     # --- n8n review log -------------------------------------------------------
     user_emails = await _get_user_lead_emails(db, uid)
 
-    q = select(public_proposal_review_log).order_by(public_proposal_review_log.c.id.desc())
+    scope = _review_log_scope(uid, user_emails)
+    q = select(public_proposal_review_log).where(scope).order_by(public_proposal_review_log.c.id.desc())
     if status:
         q = q.where(public_proposal_review_log.c.final_status == status)
     result = await db.execute(q)
@@ -447,7 +446,7 @@ async def list_proposals(
         # 1. User has no leads yet (first-time user), OR
         # 2. Lead email matches user's imported leads, OR
         # 3. user_id matches (manual proposals not in lead_results)
-        if not user_emails or row_email in user_emails or (row_user_id and row_user_id == str(uid)):
+        if row_user_id == str(uid) or (row_user_id is None and row_email in user_emails):
             d = _serialize_review_log(r)
             # Mark second-cycle reviews
             if r.meeting_id and r.meeting_id in revision_meeting_ids and r.final_status in ("needs_review", "Needs Review"):
@@ -485,21 +484,25 @@ async def get_proposal(
 ):
     """
     Fetch full proposal detail.
-    - If proposal_ref is an integer string → look up public.proposal_review_log by id.
+    - If proposal_ref is an integer string → look up an authorized review-log row by id.
     - If proposal_ref looks like a UUID → look up public.proposal_results by id.
-    - Otherwise treat as meeting_id and search proposal_review_log.
+    - Otherwise treat as meeting_id and search authorized review-log rows.
     """
+    user_emails = await _get_user_lead_emails(db, str(user["id"]))
+    review_scope = _review_log_scope(str(user["id"]), user_emails)
     # Try integer id first (n8n review log)
     try:
         row_id = int(proposal_ref)
         result = await db.execute(
-            select(public_proposal_review_log).where(public_proposal_review_log.c.id == row_id)
+            select(public_proposal_review_log).where(public_proposal_review_log.c.id == row_id, review_scope)
         )
         row = result.first()
         if row:
             return _serialize_review_log(row)
     except ValueError:
         pass
+    else:
+        raise HTTPException(status_code=404, detail="Proposal not found")
 
     # Try UUID (app proposal_results)
     try:
@@ -519,7 +522,7 @@ async def get_proposal(
     # Treat as meeting_id
     result = await db.execute(
         select(public_proposal_review_log)
-        .where(public_proposal_review_log.c.meeting_id == proposal_ref)
+        .where(public_proposal_review_log.c.meeting_id == proposal_ref, review_scope)
         .order_by(public_proposal_review_log.c.id.desc())
         .limit(1)
     )
@@ -549,6 +552,8 @@ async def approve_proposal(
     logger.info(f"[APPROVE] received proposal_ref={proposal_ref} user_id={user['id']}")
     approve_url = os.environ.get("N8N_PROPOSALS_APPROVE_URL", "").strip()
     logger.info(f"[APPROVE] approve_url configured: {bool(approve_url.strip())}")
+    user_emails = await _get_user_lead_emails(db, str(user["id"]))
+    review_scope = _review_log_scope(str(user["id"]), user_emails)
 
     # --- n8n review log (integer id or meeting_id) ---
     meeting_id = None
@@ -556,14 +561,13 @@ async def approve_proposal(
         row_id = int(proposal_ref)
         logger.info(f"[APPROVE] parsed as integer: {row_id}")
         result = await db.execute(
-            select(public_proposal_review_log).where(public_proposal_review_log.c.id == row_id)
+            select(public_proposal_review_log).where(public_proposal_review_log.c.id == row_id, review_scope)
         )
         row = result.first()
-        if row:
-            meeting_id = row.meeting_id
-            logger.info(f"[APPROVE] found in review_log with meeting_id={meeting_id}")
-        else:
-            logger.warning(f"[APPROVE] integer {row_id} NOT found in public_proposal_review_log")
+        if not row:
+            raise HTTPException(status_code=404, detail="Proposal not found")
+        meeting_id = row.meeting_id
+        logger.info("[APPROVE] authorized review-log proposal")
     except ValueError:
         pass
 
@@ -593,11 +597,18 @@ async def approve_proposal(
         # Try as meeting_id string
         logger.info(f"[APPROVE] using {proposal_ref} as meeting_id string")
         meeting_id = proposal_ref
+        result = await db.execute(
+            select(public_proposal_review_log).where(
+                public_proposal_review_log.c.meeting_id == meeting_id, review_scope
+            ).limit(1)
+        )
+        if not result.first():
+            raise HTTPException(status_code=404, detail="Proposal not found")
 
     # Call n8n approve webhook
     if approve_url:
         webhook_url = f"{approve_url}?meeting_id={meeting_id}"
-        logger.info(f"[APPROVE] calling n8n webhook: {webhook_url}")
+        logger.info("[APPROVE] calling configured n8n webhook")
         try:
             async with httpx.AsyncClient(timeout=15) as client:
                 resp = await client.get(webhook_url)
@@ -606,7 +617,7 @@ async def approve_proposal(
                 # n8n's own workflow never updates proposal_review_log.final_status, so do it here
                 await db.execute(
                     update(public_proposal_review_log)
-                    .where(public_proposal_review_log.c.meeting_id == meeting_id)
+                    .where(public_proposal_review_log.c.meeting_id == meeting_id, review_scope)
                     .values(final_status="sent")
                 )
                 await db.commit()
@@ -615,7 +626,7 @@ async def approve_proposal(
                 # n8n workflow is INACTIVE — mark locally, tell user to activate
                 result = await db.execute(
                     update(public_proposal_review_log)
-                    .where(public_proposal_review_log.c.meeting_id == meeting_id)
+                    .where(public_proposal_review_log.c.meeting_id == meeting_id, review_scope)
                     .values(final_status="Approved")
                 )
                 await db.commit()
@@ -626,18 +637,18 @@ async def approve_proposal(
                     "local_status": "Approved",
                 }
             else:
-                logger.error("n8n approve webhook returned %s: %s", resp.status_code, resp.text[:200])
+                logger.error("n8n approve webhook returned status %s", resp.status_code)
                 raise HTTPException(status_code=502, detail=f"n8n approve webhook returned {resp.status_code}")
         except HTTPException:
             raise
-        except Exception as e:
-            logger.error("n8n approve webhook failed: %s", e)
-            raise HTTPException(status_code=502, detail=f"Failed to reach n8n approve webhook: {e}")
+        except Exception:
+            logger.error("n8n approve webhook request failed")
+            raise HTTPException(status_code=502, detail="Failed to reach n8n approve webhook")
     else:
         # No webhook — update local DB status as a dry-run
         result = await db.execute(
             update(public_proposal_review_log)
-            .where(public_proposal_review_log.c.meeting_id == meeting_id)
+            .where(public_proposal_review_log.c.meeting_id == meeting_id, review_scope)
             .values(final_status="Approved")
         )
         await db.commit()
@@ -676,16 +687,19 @@ async def reject_proposal(
     logger.info(f"[REJECT] received proposal_ref={proposal_ref} user_id={user['id']} feedback_len={len(body.feedback)}")
     reject_url = os.environ.get("N8N_PROPOSALS_REJECT_WEBHOOK_URL", "").strip()
     logger.info(f"[REJECT] reject_url configured: {bool(reject_url.strip())}")
+    user_emails = await _get_user_lead_emails(db, str(user["id"]))
+    review_scope = _review_log_scope(str(user["id"]), user_emails)
 
     meeting_id = None
     try:
         row_id = int(proposal_ref)
         result = await db.execute(
-            select(public_proposal_review_log).where(public_proposal_review_log.c.id == row_id)
+            select(public_proposal_review_log).where(public_proposal_review_log.c.id == row_id, review_scope)
         )
         row = result.first()
-        if row:
-            meeting_id = row.meeting_id
+        if not row:
+            raise HTTPException(status_code=404, detail="Proposal not found")
+        meeting_id = row.meeting_id
     except ValueError:
         pass
 
@@ -706,14 +720,22 @@ async def reject_proposal(
             await db.commit()
             return _serialize_proposal_result(row)
         except ValueError:
-            pass
-        meeting_id = proposal_ref
+            meeting_id = proposal_ref
+
+        if meeting_id is not None:
+            review_result = await db.execute(
+                select(public_proposal_review_log).where(
+                    public_proposal_review_log.c.meeting_id == meeting_id, review_scope
+                ).limit(1)
+            )
+            if not review_result.first():
+                raise HTTPException(status_code=404, detail="Proposal not found")
 
     if reject_url:
         # n8n form trigger expects form-encoded POST with the exact field names
         # the form defines: "Meeting ID" and "Feedback"
         form_data = {"Meeting ID": meeting_id, "Feedback": body.feedback}
-        logger.info(f"[REJECT] calling n8n webhook with form_data: {form_data}")
+        logger.info("[REJECT] calling configured n8n feedback webhook")
         try:
             async with httpx.AsyncClient(timeout=15) as client:
                 resp = await client.post(reject_url, data=form_data)
@@ -722,7 +744,7 @@ async def reject_proposal(
                 # n8n's own workflow never updates proposal_review_log.final_status, so do it here
                 await db.execute(
                     update(public_proposal_review_log)
-                    .where(public_proposal_review_log.c.meeting_id == meeting_id)
+                    .where(public_proposal_review_log.c.meeting_id == meeting_id, review_scope)
                     .values(final_status="Rejected")
                 )
                 await db.commit()
@@ -735,7 +757,7 @@ async def reject_proposal(
                 # n8n form workflow inactive or error — mark locally as Rejected
                 await db.execute(
                     update(public_proposal_review_log)
-                    .where(public_proposal_review_log.c.meeting_id == meeting_id)
+                    .where(public_proposal_review_log.c.meeting_id == meeting_id, review_scope)
                     .values(final_status="Rejected")
                 )
                 await db.commit()
@@ -745,13 +767,13 @@ async def reject_proposal(
                     "n8n_status": resp.status_code,
                     "local_status": "Rejected",
                 }
-        except Exception as e:
-            logger.error("n8n reject form failed: %s", e)
-            raise HTTPException(status_code=502, detail=f"Failed to reach n8n reject form: {e}")
+        except Exception:
+            logger.error("n8n reject form request failed")
+            raise HTTPException(status_code=502, detail="Failed to reach n8n reject form")
     else:
         result = await db.execute(
             update(public_proposal_review_log)
-            .where(public_proposal_review_log.c.meeting_id == meeting_id)
+            .where(public_proposal_review_log.c.meeting_id == meeting_id, review_scope)
             .values(final_status="Rejected")
         )
         await db.commit()
@@ -773,6 +795,7 @@ class GenerateProposalRequest(BaseModel):
 
 @router.post("/generate")
 async def generate_proposal(body: GenerateProposalRequest, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    await enforce_rate_limit(db, rate_limit_key("proposal-generation", str(user["id"])), 20, 3600)
     request_id = uuid.uuid4()
     configured = is_webhook_configured("proposals")
     # Note: this row is just an app-side receipt of the request. The real reviewable
@@ -818,21 +841,16 @@ class ProposalCallbackRequest(BaseModel):
 @router.post("/callback")
 async def proposal_callback(body: ProposalCallbackRequest, x_callback_secret: Optional[str] = Header(None), db: AsyncSession = Depends(get_db)):
     verify_callback_secret(x_callback_secret)
-    try:
-        user_uuid = uuid.UUID(body.user_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid user_id")
-    user_check = await db.execute(select(users.c.id).where(users.c.id == user_uuid))
-    if not user_check.first():
-        raise HTTPException(status_code=404, detail="Unknown user_id")
-
     result = await db.execute(select(proposal_results).where(proposal_results.c.request_id == body.request_id))
     row = result.first()
     if not row:
         raise HTTPException(status_code=404, detail="Proposal request not found")
 
     await db.execute(
-        update(proposal_results).where(proposal_results.c.request_id == body.request_id).values(
+        update(proposal_results).where(
+            proposal_results.c.request_id == body.request_id,
+            proposal_results.c.user_id == row.user_id,
+        ).values(
             proposal_json=body.proposal_json,
             guardrail_errors=body.guardrail_errors,
             reviewer_approved=body.reviewer_approved,

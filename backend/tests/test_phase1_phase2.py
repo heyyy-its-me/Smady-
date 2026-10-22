@@ -12,15 +12,19 @@ backend_env = dotenv_values("/app/backend/.env")
 BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL") or frontend_env["REACT_APP_BACKEND_URL"]).rstrip("/")
 API = f"{BASE_URL}/api"
 
+
+def backend_setting(name, default=None):
+    return os.environ.get(name) or backend_env.get(name, default)
+
 EXISTING_EMAIL = "phase1_test_1788798832@example.com"
 EXISTING_PASSWORD = "TestPass123!"
 
 
 def _pg():
     return psycopg2.connect(
-        host=backend_env["DB_HOST"], port=int(backend_env["DB_PORT"]),
-        user=backend_env["DB_USER"], password=backend_env["DB_PASSWORD"],
-        dbname=backend_env["PG_DATABASE"], sslmode=backend_env.get("DB_SSLMODE", "prefer"),
+        host=backend_setting("DB_HOST"), port=int(backend_setting("DB_PORT")),
+        user=backend_setting("DB_USER"), password=backend_setting("DB_PASSWORD"),
+        dbname=backend_setting("PG_DATABASE"), sslmode=backend_setting("DB_SSLMODE", "prefer"),
     )
 
 
@@ -42,13 +46,13 @@ class TestAuthPbkdf2:
     def test_signup_creates_pbkdf2_hash_and_login(self):
         s = requests.Session()
         email = f"test_pbkdf2_{uuid.uuid4().hex[:8]}@example.com"
-        pwd = "TestPass123!"
+        pwd = "A-test-passphrase-for-signup-2026"
         r = s.post(f"{API}/auth/signup", json={
             "fullName": "PBKDF2 Test", "email": email, "company": "Co", "password": pwd})
         assert r.status_code == 200, r.text[:300]
 
         # verify pbkdf2 hash in DB
-        schema = backend_env.get("DB_SCHEMA", "public")
+        schema = backend_setting("DB_SCHEMA", "public")
         conn = _pg()
         try:
             cur = conn.cursor()
@@ -87,7 +91,7 @@ class TestAuthPbkdf2:
         s = requests.Session()
         email = f"test_lock_{uuid.uuid4().hex[:8]}@example.com"
         r = s.post(f"{API}/auth/signup", json={
-            "fullName": "Lock", "email": email, "company": "c", "password": "TestPass123!"})
+            "fullName": "Lock", "email": email, "company": "c", "password": "A-test-passphrase-for-signup-2026"})
         assert r.status_code == 200
         codes = []
         for _ in range(6):
@@ -97,7 +101,7 @@ class TestAuthPbkdf2:
         assert 429 in codes, f"expected 429 lockout, got {codes}"
         # cleanup: clear lockout
         try:
-            schema = backend_env.get("DB_SCHEMA", "public")
+            schema = backend_setting("DB_SCHEMA", "public")
             conn = _pg()
             cur = conn.cursor()
             for sch in [schema, "public"]:
