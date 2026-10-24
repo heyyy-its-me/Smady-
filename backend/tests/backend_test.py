@@ -284,7 +284,8 @@ class TestOutreach:
                           if x["status"] in ("New", "Verified", "Contacted")])
         name = f"TEST Campaign {uuid.uuid4().hex[:6]}"
         r = client.post(f"{API}/outreach/campaigns", json={
-            "name": name, "subject": "TEST subject", "body": "TEST body", "recipientSource": "all"})
+            "name": name, "subject": "TEST subject", "body": "TEST body", "recipientSource": "all",
+            "recipientsOptedIn": True})
         assert r.status_code == 200, r.text[:300]
         d = r.json()
         assert d["status"] == "Failed", d

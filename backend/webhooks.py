@@ -1,5 +1,6 @@
 import os
 import logging
+import hmac
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -52,5 +53,5 @@ async def trigger_webhook(kind: str, payload: dict) -> bool:
 def verify_callback_secret(secret: str | None):
     from fastapi import HTTPException
     expected = os.environ.get("N8N_CALLBACK_SECRET")
-    if not expected or secret != expected:
+    if not expected or not secret or not hmac.compare_digest(secret, expected):
         raise HTTPException(status_code=401, detail="Invalid callback secret")

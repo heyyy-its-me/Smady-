@@ -53,6 +53,7 @@ export function SendCampaignCard({
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("Hi {first_name}, ...");
+  const [recipientsOptedIn, setRecipientsOptedIn] = useState(false);
   const [sending, setSending] = useState(false);
 
   // Fetch ICPs when dialog opens
@@ -73,6 +74,7 @@ export function SendCampaignCard({
       setName("");
       setSubject("");
       setBody("Hi {first_name}, ...");
+      setRecipientsOptedIn(false);
       setRunId(null);
       setRunLeadCount(null);
     }
@@ -133,6 +135,10 @@ export function SendCampaignCard({
       toast.error("Product name is required");
       return;
     }
+    if (!recipientsOptedIn) {
+      toast.error("Confirm every recipient opted in before sending");
+      return;
+    }
 
     setSending(true);
     try {
@@ -146,6 +152,7 @@ export function SendCampaignCard({
         recipientSource: recipientSource === "selected" ? "selected" : recipientSource,
         runId: recipientSource === "run" ? runId ?? undefined : undefined,
         selectedLeadIds: recipientSource === "selected" ? selectedLeadIds : undefined,
+        recipientsOptedIn,
       });
       setSending(false);
       onOpenChange(false);
@@ -162,6 +169,7 @@ export function SendCampaignCard({
     companyName.trim() &&
     productName.trim() &&
     (recipientSource === "all" || recipientSource === "selected" || runId);
+  const canSend = Boolean(isValid && recipientsOptedIn);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -329,6 +337,16 @@ export function SendCampaignCard({
               data-testid="campaign-body-textarea"
             />
           </div>
+          <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-950">
+            <input
+              type="checkbox"
+              checked={recipientsOptedIn}
+              onChange={(event) => setRecipientsOptedIn(event.target.checked)}
+              className="mt-0.5 accent-amber-700"
+              data-testid="campaign-recipient-consent-checkbox"
+            />
+            <span>I confirm every recipient selected for this campaign explicitly consented to receive these emails. I will honor unsubscribes and applicable email laws. I will not use Smady/Gmail to send unsolicited or bulk spam.</span>
+          </label>
         </div>
 
         {/* Send Button - Fixed at bottom */}
@@ -336,7 +354,7 @@ export function SendCampaignCard({
           <ButtonPrimary
             fullWidth
             loading={sending}
-            disabled={!isValid}
+            disabled={!canSend}
             onClick={onSend}
             data-testid="campaign-send-button"
           >

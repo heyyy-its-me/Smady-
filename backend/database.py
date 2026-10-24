@@ -48,3 +48,11 @@ async def init_db():
     async with engine.begin() as conn:
         await conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{DB_SCHEMA}"'))
         await conn.run_sync(metadata.create_all, checkfirst=True)
+        await conn.execute(text(
+            f'ALTER TABLE "{DB_SCHEMA}".outreach_campaigns '
+            'ADD COLUMN IF NOT EXISTS recipients_opted_in BOOLEAN NOT NULL DEFAULT false'
+        ))
+        await conn.execute(text(
+            f'ALTER TABLE "{DB_SCHEMA}".outreach_campaigns '
+            'ADD COLUMN IF NOT EXISTS recipients_opted_in_at TIMESTAMPTZ'
+        ))

@@ -128,6 +128,7 @@ export interface ICPResult {
 }
 
 export interface User {
+  id: string;
   name: string;
   email: string;
   company: string;

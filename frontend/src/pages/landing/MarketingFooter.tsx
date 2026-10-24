@@ -5,7 +5,7 @@ import { Logo } from "@/components/smady/Logo";
 const columns = [
   { title: "Product", links: ["ICP Engine", "Lead Management", "Outreach", "Meeting Scheduler", "Proposals", "Reports"] },
   { title: "Company", links: ["About", "Blog", "Careers", "Contact"] },
-  { title: "Legal", links: ["Privacy Policy", "Terms of Service"] },
+  { title: "Legal", links: [{ label: "Privacy Policy", to: "/privacy" }, { label: "Terms of Service", to: "/terms" }] },
 ];
 
 export function MarketingFooter() {
@@ -21,11 +21,14 @@ export function MarketingFooter() {
             <div key={col.title}>
               <p className="text-[11px] font-semibold uppercase tracking-wide text-white/40">{col.title}</p>
               <div className="mt-4 space-y-2">
-                {col.links.map((l) => (
-                  <Link key={l} to="/" className="block text-sm text-white/60 hover:text-white">
-                    {l}
-                  </Link>
-                ))}
+                {col.links.map((item) => {
+                  const link = typeof item === "string" ? { label: item, to: "/" } : item;
+                  return (
+                    <Link key={link.label} to={link.to} className="block text-sm text-white/60 hover:text-white">
+                      {link.label}
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           ))}

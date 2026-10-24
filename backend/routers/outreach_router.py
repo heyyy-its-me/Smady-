@@ -44,6 +44,7 @@ class CampaignCreateRequest(BaseModel):
     recipientSource: str = "all"
     runId: Optional[str] = None
     selectedLeadIds: Optional[List[str]] = None
+    recipientsOptedIn: bool = False
 
 
 class EmailEvent(BaseModel):
@@ -81,6 +82,11 @@ async def list_campaigns(user: dict = Depends(get_current_user), db: AsyncSessio
 
 @router.post("/campaigns")
 async def create_campaign(body: CampaignCreateRequest, user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if not body.recipientsOptedIn:
+        raise HTTPException(
+            status_code=400,
+            detail="Confirm that every recipient opted in before sending an email campaign",
+        )
     await enforce_rate_limit(db, rate_limit_key("outreach-campaign", str(user["id"])), 20, 3600)
     eligible = await _eligible_leads(db, user["id"], run_id=body.runId if body.recipientSource == "run" else None)
     
@@ -99,6 +105,8 @@ async def create_campaign(body: CampaignCreateRequest, user: dict = Depends(get_
         insert(outreach_campaigns).values(
             user_id=user["id"], customer_id=user["customer_id"], request_id=request_id, name=body.name, leads_count=leads_count,
             status=status, subject=subject, body=body.body,
+            recipients_opted_in=True,
+            recipients_opted_in_at=datetime.now(timezone.utc),
             sent_date=date.today() if configured else None,
         ).returning(outreach_campaigns)
     )
@@ -113,6 +121,7 @@ async def create_campaign(body: CampaignCreateRequest, user: dict = Depends(get_
         webhook_ok = await trigger_webhook("outreach", {
             "campaign_id": str(row.id),  # Include campaign_id for email logging
             "request_id": str(request_id), "user_id": user["id"],
+            "recipients_opted_in": True,
             "subject": subject, "body": body.body,
             "callback_url": f"{public_url}/api/outreach/callback" if public_url else None,
             "company_name": body.companyName or "Smady",           # Use form value or default

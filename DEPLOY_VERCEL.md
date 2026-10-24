@@ -36,6 +36,9 @@ own GitHub account. Everything below starts from that GitHub repo.
    | `N8N_MEETINGS_WEBHOOK_URL` | (if/when you wire an n8n meetings workflow) |
    | `N8N_PROPOSALS_WEBHOOK_URL` | (if/when you wire an n8n proposals workflow) |
    | `N8N_CALLBACK_SECRET` | Generate a new independent random secret of at least 64 characters; update it in every n8n callback node. |
+   | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Credentials for your Google Cloud OAuth **Web application** client. |
+   | `GOOGLE_REDIRECT_URI` | `https://YOUR-FRONTEND-DOMAIN/api/auth/google/callback` (must match the Google OAuth client exactly). |
+   | `GOOGLE_TOKEN_ENCRYPTION_KEY` | A Fernet key generated with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`; keep it stable and secret. |
    | `PUBLIC_BACKEND_URL` | Your Render service's public URL, e.g. `https://smady-backend.onrender.com` (needed so the backend can tell n8n where to call back) |
    | `CORS_ORIGINS` | Exact Vercel/custom frontend origins, comma-separated; never use `*`. |
    | `JWT_SECRET` | Generate a new independent random secret of at least 64 characters. Rotating this logs out existing sessions. |
@@ -47,14 +50,18 @@ own GitHub account. Everything below starts from that GitHub repo.
 
 1. Import the same GitHub repo into Vercel, set **Root Directory** to `frontend/`.
 2. Framework preset: Vite. Build command: `yarn build`. Output directory: `dist`.
-3. Add this Environment Variable for the same-origin API proxy function:
+3. Add these Environment Variables for the frontend build and same-origin API rewrite:
 
    | Variable | Value |
    |---|---|
    | `BACKEND_API_URL` | Backend origin only, with no trailing slash and no `/api` suffix. |
+   | `VITE_LEGAL_OPERATOR_NAME` | Your actual legal business/operator name (not a placeholder). |
+   | `VITE_PRIVACY_CONTACT_EMAIL` | A monitored privacy/support email address that users and Google reviewers can contact. |
 
 4. Deploy. Record the frontend origin assigned by Vercel.
 5. Go back to the backend host and update `CORS_ORIGINS` and `PUBLIC_BACKEND_URL` with the deployed origins, then redeploy the backend.
+
+Vercel routes `/api/*` to the backend using `BACKEND_API_URL`, while the browser continues to call the same frontend origin so auth cookies remain first-party. The Google OAuth callback must use the frontend origin so the browser's one-time OAuth state cookie is sent. Configure the Google Cloud OAuth consent screen and callback as described in [`GOOGLE_N8N_SETUP.md`](GOOGLE_N8N_SETUP.md).
 
 ## 3. Update your n8n workflows
 

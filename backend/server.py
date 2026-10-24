@@ -12,7 +12,7 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 from database import init_db, engine
-from routers import auth_router, icp_router, leads_router, outreach_router, dashboard_router, meetings_router, proposals_router, history_router
+from routers import auth_router, google_router, icp_router, leads_router, outreach_router, dashboard_router, meetings_router, proposals_router, history_router
 from auth import validate_security_configuration
 
 
@@ -55,6 +55,8 @@ async def root():
 
 app.include_router(api_router)
 app.include_router(auth_router.router)
+app.include_router(google_router.auth_router)
+app.include_router(google_router.integration_router)
 app.include_router(icp_router.router)
 app.include_router(leads_router.router)
 app.include_router(outreach_router.router)

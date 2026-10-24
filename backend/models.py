@@ -162,6 +162,31 @@ login_attempts = Table(
     schema=DB_SCHEMA,
 )
 
+google_accounts = Table(
+    "google_accounts", metadata,
+    Column("id", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4),
+    Column("user_id", UUID(as_uuid=True), ForeignKey("public.users.id"), nullable=False, unique=True),
+    Column("google_sub", String, nullable=False, unique=True),
+    Column("email", String, nullable=False),
+    Column("access_token_encrypted", Text, nullable=True),
+    Column("refresh_token_encrypted", Text, nullable=False),
+    Column("token_expires_at", DateTime(timezone=True), nullable=True),
+    Column("scopes", Text, nullable=False, server_default=""),
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
+    Column("updated_at", DateTime(timezone=True), server_default=func.now(), onupdate=func.now()),
+    schema=DB_SCHEMA,
+)
+
+google_identities = Table(
+    "google_identities", metadata,
+    Column("id", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4),
+    Column("user_id", UUID(as_uuid=True), ForeignKey("public.users.id"), nullable=False, unique=True),
+    Column("google_sub", String, nullable=False, unique=True),
+    Column("email", String, nullable=False),
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
+    schema=DB_SCHEMA,
+)
+
 password_reset_tokens = Table(
     "password_reset_tokens", metadata,
     Column("id", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4),
@@ -231,6 +256,8 @@ outreach_campaigns = Table(
     Column("status", String, server_default="Queued"),
     Column("subject", Text),
     Column("body", Text),
+    Column("recipients_opted_in", Boolean, nullable=False, server_default="false"),
+    Column("recipients_opted_in_at", DateTime(timezone=True), nullable=True),
     Column("sent_date", Date, nullable=True),
     Column("created_at", DateTime(timezone=True), server_default=func.now()),
     Column("updated_at", DateTime(timezone=True), server_default=func.now(), onupdate=func.now()),

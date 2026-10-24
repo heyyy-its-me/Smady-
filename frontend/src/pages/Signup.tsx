@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -38,6 +38,13 @@ export default function Signup() {
   const [terms, setTerms] = useState(false);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("google") === "error") {
+      toast.error("Google sign-in could not be completed. Please try again.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
   const {
     register,
@@ -148,7 +155,7 @@ export default function Signup() {
             onChange={e => { setTerms(e.target.checked); setValue("terms", e.target.checked); }}
             data-testid="signup-terms-checkbox"
           />
-          I agree to the Terms of Service and Privacy Policy
+          I agree to the <Link to="/terms" className="underline underline-offset-2">Terms of Service</Link> and <Link to="/privacy" className="underline underline-offset-2">Privacy Policy</Link>
         </label>
         {errors.terms && <p className="text-[12px] text-red-400">{errors.terms.message}</p>}
 
@@ -169,11 +176,14 @@ export default function Signup() {
       </div>
       <div className="grid grid-cols-2 gap-3">
         {["Google","Microsoft"].map(p => (
-          <button key={p} type="button" className="h-10 rounded-xl text-[13px] font-medium" style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }} data-testid={`signup-${p.toLowerCase()}-button`}>
+          <button key={p} type="button" onClick={() => p === "Google" && window.location.assign("/api/auth/google/start?intent=login&return_to=%2Fsignup")} className="h-10 rounded-xl text-[13px] font-medium" style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }} data-testid={`signup-${p.toLowerCase()}-button`}>
             {p}
           </button>
         ))}
       </div>
+      <p className="mt-2 text-center text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+        Google sign-in uses your name and email only. Connect Gmail and Calendar later in Profile if you want those features.
+      </p>
       <p className="mt-5 text-center text-[13px]" style={{ color: "rgba(255,255,255,0.35)" }}>
         Already have an account?{" "}
         <Link to="/login" className="auth-link font-semibold" data-testid="signup-login-link">Log in</Link>

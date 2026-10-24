@@ -18,6 +18,8 @@ import Meetings from "@/pages/Meetings";
 import Proposals from "@/pages/Proposals";
 import Reports from "@/pages/Reports";
 import Profile from "@/pages/Profile";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import TermsOfService from "@/pages/TermsOfService";
 
 function PageTransition({ children }: { children: ReactNode }) {
   return (
@@ -34,6 +36,8 @@ function AnimatedRoutes() {
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<LandingV2 />} />
         <Route path="/preview" element={<LandingV2 />} />
+        <Route path="/privacy" element={<PageTransition><PrivacyPolicy /></PageTransition>} />
+        <Route path="/terms" element={<PageTransition><TermsOfService /></PageTransition>} />
         <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
         <Route path="/signup" element={<PageTransition><Signup /></PageTransition>} />
         <Route path="/forgot-password" element={<PageTransition><ForgotPassword /></PageTransition>} />

@@ -479,7 +479,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addCampaign = async (data: { name: string; subject: string; body: string; companyName?: string; productName?: string; productDescription?: string; recipientSource?: string; runId?: string; selectedLeadIds?: string[] }) => {
+  const addCampaign = async (data: { name: string; subject: string; body: string; companyName?: string; productName?: string; productDescription?: string; recipientSource?: string; runId?: string; selectedLeadIds?: string[]; recipientsOptedIn: boolean }) => {
     try {
       const { data: campaign } = await api.post("/outreach/campaigns", data);
       setCampaigns((prev) => [campaign, ...prev]);

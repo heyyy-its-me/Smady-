@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,6 +18,13 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("google") === "error") {
+      toast.error("Google sign-in could not be completed. Please try again.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
   const {
     register,
     handleSubmit,
@@ -127,11 +134,14 @@ export default function Login() {
       </div>
       <div className="grid grid-cols-2 gap-3">
         {["Google","Microsoft"].map(p => (
-          <button key={p} type="button" className="h-10 rounded-xl text-[13px] font-medium" style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }} data-testid={`login-${p.toLowerCase()}-button`}>
+          <button key={p} type="button" onClick={() => p === "Google" && window.location.assign("/api/auth/google/start?intent=login&return_to=%2Flogin")} className="h-10 rounded-xl text-[13px] font-medium" style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }} data-testid={`login-${p.toLowerCase()}-button`}>
             {p}
           </button>
         ))}
       </div>
+      <p className="mt-2 text-center text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+        Google sign-in uses your name and email only. Connect Gmail and Calendar later in Profile if you want those features.
+      </p>
 
       <p className="mt-7 text-center text-[13px]" style={{ color: "rgba(255,255,255,0.35)" }}>
         New to Smady?{" "}

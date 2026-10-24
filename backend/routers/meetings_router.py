@@ -70,6 +70,12 @@ class MeetingCallbackRequest(BaseModel):
     meeting_link: Optional[str] = None
 
 
+class GoogleMeetingResultRequest(BaseModel):
+    meeting_id: str
+    user_id: str
+    meeting_link: str
+
+
 class UpdateMeetingStatusRequest(BaseModel):
     lead_email: str
     meeting_date: str
@@ -145,6 +151,7 @@ async def schedule_meeting(body: ScheduleMeetingRequest, user: dict = Depends(ge
     if is_webhook_configured("meetings"):
         n8n_payload = {
             "meeting_id": str(row.id),
+            "user_id": str(user["id"]),
             "Client Name": body.lead_name,
             "Client Email": body.lead_email,
             "Meeting Date": raw_date if re.match(r"^\d{4}-\d{2}-\d{2}$", raw_date) else meeting_dt.strftime("%Y-%m-%d"),
@@ -183,6 +190,33 @@ async def meeting_callback(body: MeetingCallbackRequest, x_callback_secret: Opti
         ).returning(meetings)
     )
     row = result.first()
+    await db.commit()
+    return serialize(row)
+
+
+@router.post("/google-event-callback")
+async def google_event_callback(
+    body: GoogleMeetingResultRequest,
+    x_callback_secret: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Save the Google Calendar/Meet link onto the app-created meeting, without inserting a duplicate."""
+    verify_callback_secret(x_callback_secret)
+    try:
+        meeting_uuid = uuid.UUID(body.meeting_id)
+        user_uuid = uuid.UUID(body.user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid meeting_id or user_id")
+
+    result = await db.execute(
+        update(meetings)
+        .where(meetings.c.id == meeting_uuid, meetings.c.user_id == user_uuid)
+        .values(meeting_link=body.meeting_link, status="Confirmed", updated_at=func.now())
+        .returning(meetings)
+    )
+    row = result.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Meeting not found for this user")
     await db.commit()
     return serialize(row)
 

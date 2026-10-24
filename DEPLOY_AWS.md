@@ -31,6 +31,9 @@ Use **"Save to GitHub"** in the Emergent chat input to push this repo to your ow
    | `ICP_ENGINE_API_URL` | `http://icp-engine-api-env.eba-vbwk9qkm.eu-north-1.elasticbeanstalk.com/api/v1/recommend` |
    | `N8N_LEADS_WEBHOOK_URL` / `N8N_OUTREACH_WEBHOOK_URL` / `N8N_MEETINGS_WEBHOOK_URL` / `N8N_PROPOSALS_WEBHOOK_URL` | Your n8n webhook URLs |
    | `N8N_CALLBACK_SECRET` | **New random secret for production** — must match what you put in n8n's HTTP node headers |
+   | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Credentials for your Google Cloud OAuth **Web application** client |
+   | `GOOGLE_REDIRECT_URI` | `https://YOUR-FRONTEND-DOMAIN/api/auth/google/callback` (the frontend must proxy `/api/*` to this backend, including the callback) |
+   | `GOOGLE_TOKEN_ENCRYPTION_KEY` | A stable Fernet key generated with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
    | `PUBLIC_BACKEND_URL` | Your EB environment's URL, e.g. `http://smady-backend-env.eba-xxxxx.eu-north-1.elasticbeanstalk.com` (or your custom domain once set up) |
    | `CORS_ORIGINS` | Your Amplify frontend URL |
    | `JWT_SECRET` | **New random 32+ char secret for production** |
@@ -49,14 +52,18 @@ Use **"Save to GitHub"** in the Emergent chat input to push this repo to your ow
 2. Set the app root to `frontend/`. Amplify auto-detects the Vite build; if not, set manually:
    - Build command: `yarn build`
    - Output directory: `dist`
-3. Add one Environment Variable in Amplify's build settings:
+3. Add these Environment Variables in Amplify's build settings:
 
    | Variable | Value |
    |---|---|
    | `REACT_APP_BACKEND_URL` | Your EB backend URL from step 1 (no trailing `/api`) |
+   | `VITE_LEGAL_OPERATOR_NAME` | Your actual legal business/operator name (not a placeholder). |
+   | `VITE_PRIVACY_CONTACT_EMAIL` | A monitored privacy/support email address that users and Google reviewers can contact. |
 
 4. Save and deploy. Amplify gives you a URL like `https://main.dxxxxx.amplifyapp.com`.
 5. Go back to EB and set `CORS_ORIGINS` / `PUBLIC_BACKEND_URL` to match, redeploy.
+
+The frontend host must forward same-origin `/api/*` requests to FastAPI for browser auth cookies and the Google OAuth callback to work. Configure the Google OAuth consent screen and callback as described in [`GOOGLE_N8N_SETUP.md`](GOOGLE_N8N_SETUP.md).
 
 *(Alternative if you'd rather not use Amplify: build locally with `yarn build`, upload the
 `frontend/dist` folder to an S3 bucket with static website hosting enabled, and put a CloudFront

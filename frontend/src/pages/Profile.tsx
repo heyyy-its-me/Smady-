@@ -1,19 +1,47 @@
 import { useAuth } from "@/context/AuthContext";
 import { PageHeader } from "@/layouts/PageHeader";
 import { AvatarInitial } from "@/components/smady/AvatarStack";
-import { Mail, Building2, Zap, User, Copy } from "lucide-react";
-import { ButtonPrimary } from "@/components/smady/Button";
+import { Mail, Building2, Zap, User, Copy, Link2, Unlink } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { api, formatApiError } from "@/lib/api";
+import { Link } from "react-router-dom";
 
 export default function Profile() {
   const { user } = useAuth();
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [googleStatus, setGoogleStatus] = useState<{ connected: boolean; email: string | null } | null>(null);
+  const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
+  const [googleDisclosureAccepted, setGoogleDisclosureAccepted] = useState(false);
+
+  useEffect(() => {
+    api.get("/integrations/google/status")
+      .then(({ data }) => setGoogleStatus(data))
+      .catch(() => setGoogleStatus({ connected: false, email: null }));
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("google") === "connected") toast.success("Google account connected");
+    if (params.get("google") === "error") toast.error("Google account could not be connected. Please try again.");
+    if (params.has("google")) window.history.replaceState({}, "", window.location.pathname);
+  }, []);
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
     setCopiedField(field);
     setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  const disconnectGoogle = async () => {
+    setDisconnectingGoogle(true);
+    try {
+      await api.delete("/integrations/google");
+      setGoogleStatus({ connected: false, email: null });
+      setGoogleDisclosureAccepted(false);
+      toast.success("Google account disconnected");
+    } catch (error) {
+      toast.error(formatApiError(error));
+    } finally {
+      setDisconnectingGoogle(false);
+    }
   };
 
   if (!user) {
@@ -104,6 +132,58 @@ export default function Profile() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-primary-100/70 bg-surface p-8 shadow-card" data-testid="google-connection-card">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="font-display text-lg font-bold text-ink">Google account</h3>
+            <p className="mt-1 text-sm text-muted">
+              {googleStatus?.connected
+                ? `Connected as ${googleStatus.email}. Smady and your n8n workflows can send mail and create calendar events.`
+                : "Connect the Google account you want Smady and n8n to use for email and calendar events."}
+            </p>
+            {!googleStatus?.connected && (
+              <div className="mt-4 max-w-2xl rounded-xl border border-primary-100 bg-primary-50/70 p-4 text-sm leading-relaxed text-ink">
+                <p><strong>What access means:</strong> Connecting Google lets Smady use Gmail to send messages you request and your owned Google Calendar to create events and Meet links. Smady does not read your inbox. OAuth tokens are encrypted in Smady and short-lived access tokens are passed to the configured n8n workflow to complete the requested action.</p>
+                <p className="mt-2">We do not use Google data for advertising or generalized AI training. Read our <Link to="/privacy" className="font-semibold text-primary-700 underline">Privacy Policy</Link> for details.</p>
+                <label className="mt-3 flex cursor-pointer items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={googleDisclosureAccepted}
+                    onChange={(event) => setGoogleDisclosureAccepted(event.target.checked)}
+                    className="mt-1 accent-orange-600"
+                    data-testid="google-disclosure-consent-checkbox"
+                  />
+                  <span>I understand and agree to connect Gmail and Calendar for these features.</span>
+                </label>
+              </div>
+            )}
+          </div>
+          {googleStatus?.connected ? (
+            <button
+              type="button"
+              onClick={disconnectGoogle}
+              disabled={disconnectingGoogle}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
+              data-testid="google-disconnect-button"
+            >
+              <Unlink className="h-4 w-4" />
+              {disconnectingGoogle ? "Disconnecting…" : "Disconnect"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => window.location.assign("/api/auth/google/start?intent=connect")}
+              disabled={!googleDisclosureAccepted}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-700"
+              data-testid="google-connect-button"
+            >
+              <Link2 className="h-4 w-4" />
+              Connect Google
+            </button>
+          )}
         </div>
       </div>
 
