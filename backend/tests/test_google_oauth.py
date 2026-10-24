@@ -7,6 +7,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+import jwt
 from cryptography.fernet import Fernet
 from fastapi import HTTPException
 from starlette.responses import Response
@@ -113,6 +114,32 @@ def test_google_connect_requests_integration_scopes_after_explicit_login(monkeyp
     assert "calendar.events.owned" in params["scope"][0]
     assert params["access_type"] == ["offline"]
     assert params["prompt"] == ["consent select_account"]
+
+
+def test_password_mailer_setup_requires_private_secret(monkeypatch):
+    monkeypatch.setenv("GOOGLE_MAILER_SETUP_SECRET", TEST_SECRET)
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(google_router.google_mailer_start("incorrect"))
+    assert error.value.status_code == 401
+
+
+def test_password_mailer_setup_builds_scoped_callback_url(monkeypatch):
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-client-id")
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "test-client-secret")
+    monkeypatch.setenv("GOOGLE_REDIRECT_URI", "https://app.example/api/auth/google/callback")
+    monkeypatch.setenv("GOOGLE_MAILER_REDIRECT_URI", "https://app.example/api/auth/google/mailer/callback")
+    monkeypatch.setenv("GOOGLE_MAILER_SETUP_SECRET", TEST_SECRET)
+    monkeypatch.setenv("GOOGLE_TOKEN_ENCRYPTION_KEY", Fernet.generate_key().decode())
+    monkeypatch.setenv("JWT_SECRET", TEST_SECRET)
+
+    result = asyncio.run(google_router.google_mailer_start(TEST_SECRET))
+    params = parse_qs(urlparse(result["authorization_url"]).query)
+    assert params["redirect_uri"] == ["https://app.example/api/auth/google/mailer/callback"]
+    assert "gmail.send" in params["scope"][0]
+    assert params["access_type"] == ["offline"]
+    state = jwt.decode(params["state"][0], TEST_SECRET, algorithms=["HS256"])
+    assert state["type"] == "google_mailer_setup"
+    assert state["exp"]
 
 
 def test_campaign_api_rejects_without_recipient_opt_in_attestation(monkeypatch):

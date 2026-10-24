@@ -187,6 +187,19 @@ google_identities = Table(
     schema=DB_SCHEMA,
 )
 
+google_mailer_accounts = Table(
+    "google_mailer_accounts", metadata,
+    Column("id", Integer, primary_key=True),
+    Column("google_sub", String, nullable=False, unique=True),
+    Column("email", String, nullable=False),
+    Column("access_token_encrypted", Text, nullable=True),
+    Column("refresh_token_encrypted", Text, nullable=False),
+    Column("token_expires_at", DateTime(timezone=True), nullable=True),
+    Column("scopes", Text, nullable=False, server_default=""),
+    Column("updated_at", DateTime(timezone=True), server_default=func.now(), onupdate=func.now()),
+    schema=DB_SCHEMA,
+)
+
 password_reset_tokens = Table(
     "password_reset_tokens", metadata,
     Column("id", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4),

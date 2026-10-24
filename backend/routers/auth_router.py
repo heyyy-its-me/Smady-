@@ -9,6 +9,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 
 from database import get_db
+from google_mailer import send_password_reset_email
 from models import users, password_reset_tokens, customers
 from auth import (
     hash_password, verify_password, create_access_token, create_refresh_token,
@@ -143,8 +144,11 @@ async def forgot_password(body: ForgotPasswordRequest, request: Request, db: Asy
             )
         )
         await db.commit()
-        # Delivery is configured outside this API; never write reset tokens to process logs.
+        # Never log reset tokens, email addresses, or provider response data.
+        await send_password_reset_email(db, email, token)
         logger.info("Password reset requested for an existing account")
+    else:
+        await db.commit()
     return {"message": "If that email exists, a reset link has been sent."}
 
 

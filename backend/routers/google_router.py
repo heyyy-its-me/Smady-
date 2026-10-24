@@ -1,4 +1,5 @@
 import logging
+import hmac
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -9,7 +10,7 @@ import httpx
 import jwt
 from cryptography.fernet import Fernet, InvalidToken
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +27,8 @@ from auth import (
     set_auth_cookies,
 )
 from database import get_db
-from models import customers, google_accounts, google_identities, users
+from models import customers, google_accounts, google_identities, google_mailer_accounts, users
+from google_mailer import encrypt_refresh_token
 from webhooks import verify_callback_secret
 
 logger = logging.getLogger(__name__)
@@ -35,6 +37,7 @@ GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke"
+GOOGLE_MAILER_USERINFO_URL = GOOGLE_USERINFO_URL
 GOOGLE_IDENTITY_SCOPES = "openid email profile"
 GOOGLE_INTEGRATION_SCOPES = (
     f"{GOOGLE_IDENTITY_SCOPES} "
@@ -56,6 +59,51 @@ class N8NTokenRequest(BaseModel):
 class OAuthFlowError(Exception):
     def __init__(self, code: str):
         self.code = code
+
+
+def _mailer_setup_key() -> str:
+    value = os.environ.get("GOOGLE_MAILER_SETUP_SECRET", "").strip()
+    if len(value) < 64 or len(set(value)) < 16:
+        raise HTTPException(status_code=503, detail="Google mailer setup is not configured")
+    return value
+
+
+def _mailer_state(nonce: str) -> str:
+    return jwt.encode(
+        {
+            "type": "google_mailer_setup",
+            "nonce": nonce,
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=10),
+        },
+        get_jwt_secret(),
+        algorithm="HS256",
+    )
+
+
+@auth_router.post("/mailer/start")
+async def google_mailer_start(
+    x_mailer_setup_secret: str | None = Header(default=None, alias="X-Mailer-Setup-Secret"),
+):
+    expected = _mailer_setup_key()
+    if not x_mailer_setup_secret or not hmac.compare_digest(x_mailer_setup_secret, expected):
+        raise HTTPException(status_code=401, detail="Invalid mailer setup credential")
+    client_id, _client_secret, _redirect_uri, _cipher = _google_settings(require_encryption=True)
+    mailer_redirect_uri = os.environ.get("GOOGLE_MAILER_REDIRECT_URI", "").strip()
+    if not mailer_redirect_uri:
+        raise HTTPException(status_code=503, detail="GOOGLE_MAILER_REDIRECT_URI is not configured")
+
+    state = _mailer_state(secrets.token_urlsafe(32))
+    query = urlencode({
+        "client_id": client_id,
+        "redirect_uri": mailer_redirect_uri,
+        "response_type": "code",
+        "scope": f"{GOOGLE_IDENTITY_SCOPES} https://www.googleapis.com/auth/gmail.send",
+        "access_type": "offline",
+        "include_granted_scopes": "true",
+        "prompt": "consent select_account",
+        "state": state,
+    })
+    return {"authorization_url": f"{GOOGLE_AUTH_URL}?{query}"}
 
 
 def _google_settings(require_encryption: bool = False) -> tuple[str, str, str, Fernet | None]:
@@ -372,6 +420,101 @@ async def google_callback(
         intent = state_payload.get("intent", "login") if state_payload else "login"
         return_to = state_payload.get("return_to", "/login") if state_payload else "/login"
         return _redirect(intent, return_to, "oauth_failed")
+
+
+@auth_router.get("/mailer/callback", response_class=HTMLResponse)
+async def google_mailer_callback(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Complete the one-time authorization of Smady's transactional email sender."""
+    try:
+        state = request.query_params.get("state")
+        code = request.query_params.get("code")
+        if request.query_params.get("error") or not state or not code:
+            raise OAuthFlowError("consent_denied")
+        try:
+            state_payload = jwt.decode(state, get_jwt_secret(), algorithms=["HS256"])
+        except jwt.PyJWTError:
+            raise OAuthFlowError("oauth_state_invalid")
+        if state_payload.get("type") != "google_mailer_setup" or not isinstance(state_payload.get("nonce"), str):
+            raise OAuthFlowError("oauth_state_invalid")
+
+        client_id, client_secret, _user_redirect_uri, cipher = _google_settings(require_encryption=True)
+        assert cipher is not None
+        mailer_redirect_uri = os.environ.get("GOOGLE_MAILER_REDIRECT_URI", "").strip()
+        if not mailer_redirect_uri:
+            raise OAuthFlowError("mailer_redirect_not_configured")
+        async with httpx.AsyncClient(timeout=15) as client:
+            token_response = await client.post(
+                GOOGLE_TOKEN_URL,
+                data={
+                    "code": code,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uri": mailer_redirect_uri,
+                    "grant_type": "authorization_code",
+                },
+            )
+            if token_response.status_code >= 400:
+                raise OAuthFlowError("token_exchange_failed")
+            token_data = token_response.json()
+            access_token = token_data.get("access_token")
+            refresh_token = token_data.get("refresh_token")
+            if not access_token or not refresh_token:
+                raise OAuthFlowError("refresh_token_missing")
+            profile_response = await client.get(
+                GOOGLE_MAILER_USERINFO_URL,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            if profile_response.status_code >= 400:
+                raise OAuthFlowError("google_profile_failed")
+            profile = profile_response.json()
+
+        email = profile.get("email", "").strip().lower()
+        google_sub = profile.get("sub")
+        if not email or not google_sub or profile.get("email_verified") is not True:
+            raise OAuthFlowError("google_email_unverified")
+
+        now = datetime.now(timezone.utc)
+        values = {
+            "google_sub": google_sub,
+            "email": email,
+            "access_token_encrypted": encrypt_refresh_token(cipher, access_token),
+            "refresh_token_encrypted": encrypt_refresh_token(cipher, refresh_token),
+            "token_expires_at": now + timedelta(seconds=int(token_data.get("expires_in", 3600))),
+            "scopes": token_data.get("scope", ""),
+            "updated_at": now,
+        }
+        existing = (await db.execute(
+            select(google_mailer_accounts).where(google_mailer_accounts.c.id == 1)
+        )).first()
+        if existing:
+            await db.execute(
+                update(google_mailer_accounts).where(google_mailer_accounts.c.id == 1).values(**values)
+            )
+        else:
+            await db.execute(insert(google_mailer_accounts).values(id=1, **values))
+        await db.commit()
+        return HTMLResponse(
+            "<h1>Smady mailer connected</h1><p>Password-reset email delivery is authorized. You can close this window.</p>",
+            headers={"Cache-Control": "no-store"},
+        )
+    except OAuthFlowError:
+        await db.rollback()
+        return HTMLResponse(
+            "<h1>Mailer connection failed</h1><p>Return to your administrator and retry setup. No credentials were displayed.</p>",
+            status_code=400,
+            headers={"Cache-Control": "no-store"},
+        )
+    except Exception:
+        await db.rollback()
+        logger.warning("Google mailer OAuth callback failed")
+        return HTMLResponse(
+            "<h1>Mailer connection failed</h1><p>Return to your administrator and retry setup. No credentials were displayed.</p>",
+            status_code=500,
+            headers={"Cache-Control": "no-store"},
+        )
 
 
 @integration_router.get("/status")

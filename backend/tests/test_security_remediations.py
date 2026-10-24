@@ -156,9 +156,14 @@ def test_refresh_cookie_is_limited_and_deleted_at_the_same_path():
 
 def test_password_reset_token_is_not_written_to_logs(monkeypatch, caplog):
     monkeypatch.setenv("JWT_SECRET", TEST_JWT_SECRET)
+
+    async def allow_rate_limited_request(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(auth_router, "enforce_rate_limit", allow_rate_limited_request)
     db = FakeDatabase([FakeResult(row=SimpleNamespace(id="user-a"))])
     request = make_request()
-    body = auth_router.ForgotPasswordRequest(email="user@example.test")
+    body = auth_router.ForgotPasswordRequest(email="user@example.com")
     with caplog.at_level("INFO", logger="routers.auth_router"):
         asyncio.run(auth_router.forgot_password(body, request, db))
     issued_token = db.statements[1].compile().params["token"]

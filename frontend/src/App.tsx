@@ -20,6 +20,7 @@ import Reports from "@/pages/Reports";
 import Profile from "@/pages/Profile";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
+import ResetPassword from "@/pages/ResetPassword";
 
 function PageTransition({ children }: { children: ReactNode }) {
   return (
@@ -41,6 +42,7 @@ function AnimatedRoutes() {
         <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
         <Route path="/signup" element={<PageTransition><Signup /></PageTransition>} />
         <Route path="/forgot-password" element={<PageTransition><ForgotPassword /></PageTransition>} />
+        <Route path="/reset-password" element={<PageTransition><ResetPassword /></PageTransition>} />
         <Route element={<AppShell />}>
           <Route path="/dashboard" element={<PageTransition><Dashboard /></PageTransition>} />
           <Route path="/icp" element={<PageTransition><ICPEngine /></PageTransition>} />
