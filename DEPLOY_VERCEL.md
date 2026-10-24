@@ -50,7 +50,7 @@ own GitHub account. Everything below starts from that GitHub repo.
 
 1. Import the same GitHub repo into Vercel, set **Root Directory** to `frontend/`.
 2. Framework preset: Vite. Build command: `yarn build`. Output directory: `dist`.
-3. Add these Environment Variables for the frontend build and same-origin API rewrite:
+3. Add these Environment Variables for the frontend build and same-origin API function:
 
    | Variable | Value |
    |---|---|
@@ -61,7 +61,7 @@ own GitHub account. Everything below starts from that GitHub repo.
 4. Deploy. Record the frontend origin assigned by Vercel.
 5. Go back to the backend host and update `CORS_ORIGINS` and `PUBLIC_BACKEND_URL` with the deployed origins, then redeploy the backend.
 
-Vercel routes `/api/*` to the backend using `BACKEND_API_URL`, while the browser continues to call the same frontend origin so auth cookies remain first-party. The Google OAuth callback must use the frontend origin so the browser's one-time OAuth state cookie is sent. Configure the Google Cloud OAuth consent screen and callback as described in [`GOOGLE_N8N_SETUP.md`](GOOGLE_N8N_SETUP.md).
+`frontend/vercel.json` rewrites `/api/*` directly to the Render backend, before its SPA fallback. If you change the backend hostname, update that rewrite destination and redeploy. The browser continues to call the same frontend origin so auth cookies remain first-party. The Google OAuth callback must use the frontend origin so the browser's one-time OAuth state cookie is sent. Configure the Google Cloud OAuth consent screen and callback as described in [`GOOGLE_N8N_SETUP.md`](GOOGLE_N8N_SETUP.md).
 
 ## 3. Update your n8n workflows
 
