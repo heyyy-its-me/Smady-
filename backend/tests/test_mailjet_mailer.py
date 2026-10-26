@@ -71,9 +71,9 @@ def test_reset_email_uses_mailjet_v31_and_verified_sender(monkeypatch):
     message = FakeMailjetClient.captured["payload"]["Messages"][0]
     assert message["From"] == {"Email": "verified@example.com", "Name": "Smady Test"}
     assert message["To"] == [{"Email": "person@example.net"}]
-    assert "one-time-token" in message["TextPart"]
-    assert "one-time-token" in message["HTMLPart"]
-    assert "HTMLPart" in message and "TextPart" in message
+    assert "<!doctype html>" in message["HTMLPart"]
+    assert "Reset password" in message["HTMLPart"]
+    assert "one-time-token" in message["TextPart"] and "one-time-token" in message["HTMLPart"]
 
 
 def test_reset_email_fails_closed_when_sender_is_missing(monkeypatch):

@@ -29,6 +29,8 @@ Password-reset messages are sent through Mailjet Send API v3.1. This is a transa
 
 The endpoint limits password-reset requests to **three per normalized email address per rolling 24 hours**, plus an IP-based limit. The response remains generic to avoid revealing whether an account exists. Delivery requires `MAILJET_API_KEY`, `MAILJET_API_SECRET`, `MAILJET_FROM_EMAIL`, and `PUBLIC_FRONTEND_URL` on the backend.
 
+For deliverability, verify the sender/domain in Mailjet and publish the exact SPF and DKIM DNS records Mailjet provides. Configure a DMARC policy for the sending domain and make sure the visible `From` domain aligns with the authenticated domain. If the domain already has SPF, merge Mailjet's include into the existing SPF record; do not publish multiple SPF records. Start with low transactional volume and monitor Mailjet's delivery/bounce events. Inbox placement depends on domain reputation, recipient/provider policies, and user behavior; **no template or provider can guarantee a 99% inbox rate**. The HTML and plain-text reset template is inline in `backend/mailjet_mailer.py` and does not require a Mailjet template ID.
+
 Google authorization is incremental: Login/Signup requests only `openid`, `email`, and `profile` for identity. A signed-in user must separately choose **Profile → Connect Google** to grant `https://www.googleapis.com/auth/gmail.send` and `https://www.googleapis.com/auth/calendar.events.owned` for email/calendar features. These scopes cover:
 
 | Feature | Permission/API | What it allows |
