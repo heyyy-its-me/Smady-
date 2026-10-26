@@ -75,7 +75,6 @@ const CSS = `
 
 export default function ForgotPassword() {
   const [sent, setSent] = useState(false);
-  const [sentEmail, setSentEmail] = useState("");
   const [showShoot, setShowShoot] = useState(false);
 
   const {
@@ -90,7 +89,6 @@ export default function ForgotPassword() {
   const onSubmit = async (data: FormData) => {
     try {
       await api.post("/auth/forgot-password", { email: data.email });
-      setSentEmail(data.email);
       setShowShoot(true);
       setTimeout(() => { setSent(true); setShowShoot(false); }, 1200);
     } catch (e) {
@@ -143,13 +141,13 @@ export default function ForgotPassword() {
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                 </div>
               </div>
-              <h1 className="text-[26px] font-[800] tracking-tight text-white text-center">Check your inbox.</h1>
+              <h1 className="text-[26px] font-[800] tracking-tight text-white text-center">Request received.</h1>
               <p className="mt-2 text-[14px] text-center leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>
-                We&apos;ve shot a reset link to <span className="font-semibold text-orange-400">{sentEmail}</span>. Should land within a few minutes.
+                If an account matches that address and reset-email delivery is configured, we&apos;ll send a one-time link. Check your inbox and spam folder.
               </p>
               <div className="mt-6 flex items-center justify-center gap-2 text-[13px]" style={{ color: "rgba(255,255,255,0.35)" }}>
                 <p>Didn&apos;t get it? Check spam or</p>
-                <button onClick={() => { setSent(false); setSentEmail(""); }} className="font-semibold" style={{ color: "#f97316" }}>try again</button>
+                <button onClick={() => setSent(false)} className="font-semibold" style={{ color: "#f97316" }}>try again</button>
               </div>
               <Link
                 to="/login"

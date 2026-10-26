@@ -15,7 +15,8 @@ Smady uses Google OAuth both to sign users in and to let each user authorize the
    - `GOOGLE_CLIENT_ID`: OAuth client ID
    - `GOOGLE_CLIENT_SECRET`: OAuth client secret
    - `GOOGLE_REDIRECT_URI`: the exact callback URL above
-   - `GOOGLE_MAILER_REDIRECT_URI`: `https://YOUR-FRONTEND-DOMAIN/api/auth/google/mailer/callback` (second callback for the dedicated password-reset sender)
+   - `GOOGLE_MAILER_CLIENT_ID` / `GOOGLE_MAILER_CLIENT_SECRET`: separate OAuth Web client credentials for the Smady-owned password-reset sender
+   - `GOOGLE_MAILER_REDIRECT_URI`: `https://YOUR-FRONTEND-DOMAIN/api/auth/google/mailer/callback` (authorized on the dedicated mailer client)
    - `GOOGLE_MAILER_SETUP_SECRET`: a separate random secret of at least 64 characters; protects the one-time sender-account setup endpoint
    - `GOOGLE_TOKEN_ENCRYPTION_KEY`: a Fernet key generated with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
    - `PUBLIC_FRONTEND_URL`: `https://YOUR-FRONTEND-DOMAIN`, used to build password-reset links
@@ -24,7 +25,7 @@ Smady uses Google OAuth both to sign users in and to let each user authorize the
 
 ### Authorize Smady's password-reset sender
 
-Password-reset mail uses one Smady-owned Gmail mailbox, not the account being recovered and not customers' connected accounts. Add the mailer callback above as an additional authorized redirect URI in the same Google OAuth Web client. Set `GOOGLE_MAILER_REDIRECT_URI`, `GOOGLE_MAILER_SETUP_SECRET`, and `PUBLIC_FRONTEND_URL` on the backend. The sender's refresh token is encrypted in the `google_mailer_accounts` table.
+Password-reset mail uses one Smady-owned Gmail mailbox, not the account being recovered and not customers' connected accounts. Create a **separate OAuth Web client** for this sender, and add the mailer callback above as an authorized redirect URI on that client. Set `GOOGLE_MAILER_CLIENT_ID`, `GOOGLE_MAILER_CLIENT_SECRET`, `GOOGLE_MAILER_REDIRECT_URI`, `GOOGLE_MAILER_SETUP_SECRET`, and `PUBLIC_FRONTEND_URL` on the backend. The sender's refresh token is encrypted in the `google_mailer_accounts` table. Keep the original `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI` for user sign-in/Google connections.
 
 To start the one-time connection, send `POST https://YOUR-BACKEND-HOST/api/auth/google/mailer/start` with header `X-Mailer-Setup-Secret` set to `GOOGLE_MAILER_SETUP_SECRET`. The endpoint returns an `authorization_url`; open it in a browser, sign in to the dedicated Smady sender Gmail account, and consent to Gmail sending. Google returns to `/api/auth/google/mailer/callback`, which saves the encrypted refresh token and displays a success page. The setup secret is an admin credential: never place it in browser code, a URL, workflow JSON, or chat. Keep it in a secure password manager and rotate it if exposed.
 

@@ -33,6 +33,7 @@ Use **"Save to GitHub"** in the Emergent chat input to push this repo to your ow
    | `N8N_CALLBACK_SECRET` | **New random secret for production** — must match what you put in n8n's HTTP node headers |
    | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Credentials for your Google Cloud OAuth **Web application** client |
    | `GOOGLE_REDIRECT_URI` | `https://YOUR-FRONTEND-DOMAIN/api/auth/google/callback` (the frontend must proxy `/api/*` to this backend, including the callback) |
+   | `GOOGLE_MAILER_CLIENT_ID` / `GOOGLE_MAILER_CLIENT_SECRET` | A separate Google Cloud OAuth Web client for the dedicated password-reset sender account |
    | `GOOGLE_MAILER_REDIRECT_URI` | `https://YOUR-FRONTEND-DOMAIN/api/auth/google/mailer/callback` (second authorized redirect for password-reset sender setup) |
    | `GOOGLE_MAILER_SETUP_SECRET` | A separate random secret of at least 64 characters to protect one-time mailer setup |
    | `GOOGLE_TOKEN_ENCRYPTION_KEY` | A stable Fernet key generated with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |

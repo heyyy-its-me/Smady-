@@ -124,9 +124,8 @@ def test_password_mailer_setup_requires_private_secret(monkeypatch):
 
 
 def test_password_mailer_setup_builds_scoped_callback_url(monkeypatch):
-    monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-client-id")
-    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "test-client-secret")
-    monkeypatch.setenv("GOOGLE_REDIRECT_URI", "https://app.example/api/auth/google/callback")
+    monkeypatch.setenv("GOOGLE_MAILER_CLIENT_ID", "test-mailer-client-id")
+    monkeypatch.setenv("GOOGLE_MAILER_CLIENT_SECRET", "test-mailer-client-secret")
     monkeypatch.setenv("GOOGLE_MAILER_REDIRECT_URI", "https://app.example/api/auth/google/mailer/callback")
     monkeypatch.setenv("GOOGLE_MAILER_SETUP_SECRET", TEST_SECRET)
     monkeypatch.setenv("GOOGLE_TOKEN_ENCRYPTION_KEY", Fernet.generate_key().decode())
@@ -134,6 +133,7 @@ def test_password_mailer_setup_builds_scoped_callback_url(monkeypatch):
 
     result = asyncio.run(google_router.google_mailer_start(TEST_SECRET))
     params = parse_qs(urlparse(result["authorization_url"]).query)
+    assert params["client_id"] == ["test-mailer-client-id"]
     assert params["redirect_uri"] == ["https://app.example/api/auth/google/mailer/callback"]
     assert "gmail.send" in params["scope"][0]
     assert params["access_type"] == ["offline"]

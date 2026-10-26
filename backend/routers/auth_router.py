@@ -149,7 +149,7 @@ async def forgot_password(body: ForgotPasswordRequest, request: Request, db: Asy
         logger.info("Password reset requested for an existing account")
     else:
         await db.commit()
-    return {"message": "If that email exists, a reset link has been sent."}
+    return {"message": "If an account exists and email delivery is configured, a reset link will be sent."}
 
 
 @router.post("/reset-password")

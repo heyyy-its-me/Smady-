@@ -25,14 +25,14 @@ class MailerNotConfigured(Exception):
     pass
 
 
-def _settings(require_frontend: bool = False) -> tuple[str, str, str, Fernet, str | None]:
-    client_id = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
-    client_secret = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
+def mailer_oauth_settings(require_frontend: bool = False) -> tuple[str, str, str, Fernet, str | None]:
+    client_id = os.environ.get("GOOGLE_MAILER_CLIENT_ID", "").strip()
+    client_secret = os.environ.get("GOOGLE_MAILER_CLIENT_SECRET", "").strip()
     redirect_uri = os.environ.get("GOOGLE_MAILER_REDIRECT_URI", "").strip()
     encryption_key = os.environ.get("GOOGLE_TOKEN_ENCRYPTION_KEY", "").strip()
     frontend_url = os.environ.get("PUBLIC_FRONTEND_URL", "").strip().rstrip("/")
     if not all((client_id, client_secret, redirect_uri, encryption_key)) or (require_frontend and not frontend_url):
-        raise MailerNotConfigured("Google password-reset mailer is not configured")
+        raise MailerNotConfigured("Dedicated Google password-reset mailer client is not configured")
     try:
         cipher = Fernet(encryption_key.encode("ascii"))
     except (ValueError, UnicodeEncodeError):
@@ -52,7 +52,7 @@ def decrypt_refresh_token(cipher: Fernet, token: str) -> str:
 
 
 async def get_mailer_access_token(db: AsyncSession) -> tuple[str, str]:
-    client_id, client_secret, _redirect_uri, cipher, _frontend_url = _settings()
+    client_id, client_secret, _redirect_uri, cipher, _frontend_url = mailer_oauth_settings()
     account = (await db.execute(
         select(google_mailer_accounts).where(google_mailer_accounts.c.id == 1)
     )).first()
@@ -102,7 +102,7 @@ async def get_mailer_access_token(db: AsyncSession) -> tuple[str, str]:
 async def send_password_reset_email(db: AsyncSession, recipient: str, reset_token: str) -> bool:
     """Send a reset link. Never log the recipient, reset token, or provider response body."""
     try:
-        _client_id, _client_secret, _redirect_uri, _cipher, frontend_url = _settings(require_frontend=True)
+        _client_id, _client_secret, _redirect_uri, _cipher, frontend_url = mailer_oauth_settings(require_frontend=True)
         access_token, sender_email = await get_mailer_access_token(db)
         reset_url = f"{frontend_url}/reset-password?{urlencode({'token': reset_token})}"
         safe_url = html.escape(reset_url, quote=True)

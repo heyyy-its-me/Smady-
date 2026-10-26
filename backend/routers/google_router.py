@@ -28,7 +28,7 @@ from auth import (
 )
 from database import get_db
 from models import customers, google_accounts, google_identities, google_mailer_accounts, users
-from google_mailer import encrypt_refresh_token
+from google_mailer import MailerNotConfigured, encrypt_refresh_token, mailer_oauth_settings
 from webhooks import verify_callback_secret
 
 logger = logging.getLogger(__name__)
@@ -87,10 +87,10 @@ async def google_mailer_start(
     expected = _mailer_setup_key()
     if not x_mailer_setup_secret or not hmac.compare_digest(x_mailer_setup_secret, expected):
         raise HTTPException(status_code=401, detail="Invalid mailer setup credential")
-    client_id, _client_secret, _redirect_uri, _cipher = _google_settings(require_encryption=True)
-    mailer_redirect_uri = os.environ.get("GOOGLE_MAILER_REDIRECT_URI", "").strip()
-    if not mailer_redirect_uri:
-        raise HTTPException(status_code=503, detail="GOOGLE_MAILER_REDIRECT_URI is not configured")
+    try:
+        client_id, _client_secret, mailer_redirect_uri, _cipher, _frontend_url = mailer_oauth_settings()
+    except MailerNotConfigured as error:
+        raise HTTPException(status_code=503, detail=str(error))
 
     state = _mailer_state(secrets.token_urlsafe(32))
     query = urlencode({
@@ -440,11 +440,10 @@ async def google_mailer_callback(
         if state_payload.get("type") != "google_mailer_setup" or not isinstance(state_payload.get("nonce"), str):
             raise OAuthFlowError("oauth_state_invalid")
 
-        client_id, client_secret, _user_redirect_uri, cipher = _google_settings(require_encryption=True)
-        assert cipher is not None
-        mailer_redirect_uri = os.environ.get("GOOGLE_MAILER_REDIRECT_URI", "").strip()
-        if not mailer_redirect_uri:
-            raise OAuthFlowError("mailer_redirect_not_configured")
+        try:
+            client_id, client_secret, mailer_redirect_uri, cipher, _frontend_url = mailer_oauth_settings()
+        except MailerNotConfigured:
+            raise OAuthFlowError("mailer_not_configured")
         async with httpx.AsyncClient(timeout=15) as client:
             token_response = await client.post(
                 GOOGLE_TOKEN_URL,
