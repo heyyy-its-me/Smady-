@@ -156,11 +156,19 @@ def test_refresh_cookie_is_limited_and_deleted_at_the_same_path():
 
 def test_password_reset_token_is_not_written_to_logs(monkeypatch, caplog):
     monkeypatch.setenv("JWT_SECRET", TEST_JWT_SECRET)
+    rate_limit_calls = []
+    reset_emails = []
 
     async def allow_rate_limited_request(*_args, **_kwargs):
+        rate_limit_calls.append((_args[2], _args[3]))
         return None
 
+    async def capture_reset_email(email, token):
+        reset_emails.append((email, token))
+        return False
+
     monkeypatch.setattr(auth_router, "enforce_rate_limit", allow_rate_limited_request)
+    monkeypatch.setattr(auth_router, "send_password_reset_email", capture_reset_email)
     db = FakeDatabase([FakeResult(row=SimpleNamespace(id="user-a"))])
     request = make_request()
     body = auth_router.ForgotPasswordRequest(email="user@example.com")
@@ -169,6 +177,9 @@ def test_password_reset_token_is_not_written_to_logs(monkeypatch, caplog):
     issued_token = db.statements[1].compile().params["token"]
     assert issued_token not in caplog.text
     assert "Password reset requested" in caplog.text
+    assert rate_limit_calls == [(10, 3600), (3, 86400)]
+    assert reset_emails and reset_emails[0][0] == "user@example.com"
+    assert reset_emails[0][1] == issued_token
 
 
 def test_rate_limiter_uses_shared_atomic_database_counter_and_returns_429():

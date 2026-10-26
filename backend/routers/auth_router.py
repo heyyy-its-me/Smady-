@@ -9,7 +9,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 
 from database import get_db
-from google_mailer import send_password_reset_email
+from mailjet_mailer import send_password_reset_email
 from models import users, password_reset_tokens, customers
 from auth import (
     hash_password, verify_password, create_access_token, create_refresh_token,
@@ -133,7 +133,7 @@ async def forgot_password(body: ForgotPasswordRequest, request: Request, db: Asy
     email = body.email.lower()
     ip = request_ip(request)
     await enforce_rate_limit(db, rate_limit_key("password-reset-ip", ip), 10, 3600)
-    await enforce_rate_limit(db, rate_limit_key("password-reset-email", email), 5, 3600)
+    await enforce_rate_limit(db, rate_limit_key("password-reset-email", email), 3, 86400)
     result = await db.execute(select(users).where(users.c.email == email))
     row = result.first()
     if row:
@@ -145,7 +145,7 @@ async def forgot_password(body: ForgotPasswordRequest, request: Request, db: Asy
         )
         await db.commit()
         # Never log reset tokens, email addresses, or provider response data.
-        await send_password_reset_email(db, email, token)
+        await send_password_reset_email(email, token)
         logger.info("Password reset requested for an existing account")
     else:
         await db.commit()

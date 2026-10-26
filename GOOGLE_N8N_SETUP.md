@@ -15,29 +15,19 @@ Smady uses Google OAuth both to sign users in and to let each user authorize the
    - `GOOGLE_CLIENT_ID`: OAuth client ID
    - `GOOGLE_CLIENT_SECRET`: OAuth client secret
    - `GOOGLE_REDIRECT_URI`: the exact callback URL above
-   - `GOOGLE_MAILER_CLIENT_ID` / `GOOGLE_MAILER_CLIENT_SECRET`: separate OAuth Web client credentials for the Smady-owned password-reset sender
-   - `GOOGLE_MAILER_REDIRECT_URI`: `https://YOUR-FRONTEND-DOMAIN/api/auth/google/mailer/callback` (authorized on the dedicated mailer client)
-   - `GOOGLE_MAILER_SETUP_SECRET`: a separate random secret of at least 64 characters; protects the one-time sender-account setup endpoint
    - `GOOGLE_TOKEN_ENCRYPTION_KEY`: a Fernet key generated with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
    - `PUBLIC_FRONTEND_URL`: `https://YOUR-FRONTEND-DOMAIN`, used to build password-reset links
+   - `MAILJET_API_KEY` / `MAILJET_API_SECRET`: Mailjet v3.1 API credentials; store in the backend secret manager
+   - `MAILJET_FROM_EMAIL`: a sender address verified in Mailjet
+   - `MAILJET_FROM_NAME`: optional sender display name (defaults to `Smady`)
 5. Keep `COOKIE_SECURE=true` in production. The Google callback cookie is short-lived, HttpOnly, and SameSite=Lax.
 6. Deploy the backend. Its startup creates the new `google_accounts` table in `DB_SCHEMA`; no change to the shared `public.users` table or separate migration command is needed.
 
-### Authorize Smady's password-reset sender
+### Password-reset mail via Mailjet
 
-Password-reset mail uses one Smady-owned Gmail mailbox, not the account being recovered and not customers' connected accounts. Create a **separate OAuth Web client** for this sender, and add the mailer callback above as an authorized redirect URI on that client. Set `GOOGLE_MAILER_CLIENT_ID`, `GOOGLE_MAILER_CLIENT_SECRET`, `GOOGLE_MAILER_REDIRECT_URI`, `GOOGLE_MAILER_SETUP_SECRET`, and `PUBLIC_FRONTEND_URL` on the backend. The sender's refresh token is encrypted in the `google_mailer_accounts` table. Keep the original `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI` for user sign-in/Google connections.
+Password-reset messages are sent through Mailjet Send API v3.1. This is a transactional sender and is independent of user Google sign-in and Gmail/Calendar connections. Verify `MAILJET_FROM_EMAIL` in the Mailjet dashboard before testing. The backend sends a `Messages` array with a single `From`, `To`, `Subject`, `TextPart`, and `HTMLPart` object, using Mailjet API-key/secret Basic Auth. It uses the public frontend URL for the one-hour reset link and does not log reset tokens or recipient addresses.
 
-To start the one-time connection, send `POST https://YOUR-BACKEND-HOST/api/auth/google/mailer/start` with header `X-Mailer-Setup-Secret` set to `GOOGLE_MAILER_SETUP_SECRET`. The endpoint returns an `authorization_url`; open it in a browser, sign in to the dedicated Smady sender Gmail account, and consent to Gmail sending. Google returns to `/api/auth/google/mailer/callback`, which saves the encrypted refresh token and displays a success page. The setup secret is an admin credential: never place it in browser code, a URL, workflow JSON, or chat. Keep it in a secure password manager and rotate it if exposed.
-
-Example PowerShell once the setup secret is available locally (enter it in your terminal, not in chat):
-
-```powershell
-$headers = @{ "X-Mailer-Setup-Secret" = $env:GOOGLE_MAILER_SETUP_SECRET }
-$result = Invoke-RestMethod -Method Post -Uri "https://YOUR-BACKEND-HOST/api/auth/google/mailer/start" -Headers $headers
-Start-Process $result.authorization_url
-```
-
-Gmail API sending is subject to Google's OAuth verification and Gmail use policies. Do not use the sender to send unsolicited mail.
+The endpoint limits password-reset requests to **three per normalized email address per rolling 24 hours**, plus an IP-based limit. The response remains generic to avoid revealing whether an account exists. Delivery requires `MAILJET_API_KEY`, `MAILJET_API_SECRET`, `MAILJET_FROM_EMAIL`, and `PUBLIC_FRONTEND_URL` on the backend.
 
 Google authorization is incremental: Login/Signup requests only `openid`, `email`, and `profile` for identity. A signed-in user must separately choose **Profile → Connect Google** to grant `https://www.googleapis.com/auth/gmail.send` and `https://www.googleapis.com/auth/calendar.events.owned` for email/calendar features. These scopes cover:
 

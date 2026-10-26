@@ -33,11 +33,11 @@ Use **"Save to GitHub"** in the Emergent chat input to push this repo to your ow
    | `N8N_CALLBACK_SECRET` | **New random secret for production** — must match what you put in n8n's HTTP node headers |
    | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Credentials for your Google Cloud OAuth **Web application** client |
    | `GOOGLE_REDIRECT_URI` | `https://YOUR-FRONTEND-DOMAIN/api/auth/google/callback` (the frontend must proxy `/api/*` to this backend, including the callback) |
-   | `GOOGLE_MAILER_CLIENT_ID` / `GOOGLE_MAILER_CLIENT_SECRET` | A separate Google Cloud OAuth Web client for the dedicated password-reset sender account |
-   | `GOOGLE_MAILER_REDIRECT_URI` | `https://YOUR-FRONTEND-DOMAIN/api/auth/google/mailer/callback` (second authorized redirect for password-reset sender setup) |
-   | `GOOGLE_MAILER_SETUP_SECRET` | A separate random secret of at least 64 characters to protect one-time mailer setup |
    | `GOOGLE_TOKEN_ENCRYPTION_KEY` | A stable Fernet key generated with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
    | `PUBLIC_FRONTEND_URL` | The deployed frontend origin, e.g. `https://smady.vercel.app` (used in reset links) |
+   | `MAILJET_API_KEY` / `MAILJET_API_SECRET` | Mailjet API credentials for transactional password-reset emails; store as EB secrets and rotate the credentials previously pasted into chat |
+   | `MAILJET_FROM_EMAIL` | Sender address verified in your Mailjet account |
+   | `MAILJET_FROM_NAME` | Optional display name; defaults to `Smady` |
    | `PUBLIC_BACKEND_URL` | Your EB environment's URL, e.g. `http://smady-backend-env.eba-xxxxx.eu-north-1.elasticbeanstalk.com` (or your custom domain once set up) |
    | `CORS_ORIGINS` | Your Amplify frontend URL |
    | `JWT_SECRET` | **New random 32+ char secret for production** |

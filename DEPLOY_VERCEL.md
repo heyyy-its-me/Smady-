@@ -38,11 +38,11 @@ own GitHub account. Everything below starts from that GitHub repo.
    | `N8N_CALLBACK_SECRET` | Generate a new independent random secret of at least 64 characters; update it in every n8n callback node. |
    | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Credentials for your Google Cloud OAuth **Web application** client. |
    | `GOOGLE_REDIRECT_URI` | `https://YOUR-FRONTEND-DOMAIN/api/auth/google/callback` (must match the Google OAuth client exactly). |
-   | `GOOGLE_MAILER_CLIENT_ID` / `GOOGLE_MAILER_CLIENT_SECRET` | A separate Google Cloud OAuth Web client for the dedicated password-reset sender account. |
-   | `GOOGLE_MAILER_REDIRECT_URI` | `https://YOUR-FRONTEND-DOMAIN/api/auth/google/mailer/callback` (second authorized redirect for the Smady password-reset sender). |
-   | `GOOGLE_MAILER_SETUP_SECRET` | A separate random secret of at least 64 characters to protect one-time mailer setup. |
    | `GOOGLE_TOKEN_ENCRYPTION_KEY` | A Fernet key generated with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`; keep it stable and secret. |
    | `PUBLIC_FRONTEND_URL` | The deployed frontend origin, e.g. `https://smady.vercel.app` (used in reset links). |
+   | `MAILJET_API_KEY` / `MAILJET_API_SECRET` | Mailjet API credentials for transactional password-reset emails; store as Render secrets and rotate the credentials previously pasted into chat. |
+   | `MAILJET_FROM_EMAIL` | Sender address verified in your Mailjet account. |
+   | `MAILJET_FROM_NAME` | Optional display name; defaults to `Smady`. |
    | `PUBLIC_BACKEND_URL` | Your Render service's public URL, e.g. `https://smady-backend.onrender.com` (needed so the backend can tell n8n where to call back) |
    | `CORS_ORIGINS` | Exact Vercel/custom frontend origins, comma-separated; never use `*`. |
    | `JWT_SECRET` | Generate a new independent random secret of at least 64 characters. Rotating this logs out existing sessions. |
