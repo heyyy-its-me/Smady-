@@ -126,20 +126,43 @@ def _serialize_proposal_result(row) -> dict:
 
 async def _get_user_lead_emails(db: AsyncSession, user_id: str) -> set:
     """
-    Return the set of lead emails belonging to this user (via public.lead_results).
-    Used to soft-scope public.proposal_review_log since n8n doesn't set user_id there.
+    Return lead emails uniquely owned by this user (via public.lead_results).
+    Legacy n8n review rows have no user_id, so an email is a safe ownership key
+    only when it maps to exactly one application user.
     """
-    result = await db.execute(
-        select(lead_results.c.leads).where(lead_results.c.user_id == user_id)
-    )
-    emails = set()
+    result = await db.execute(text("""
+        SELECT DISTINCT
+            lead_run.user_id,
+            lower(btrim(coalesce(
+                NULLIF(btrim(lead_item->>'Email'), ''),
+                NULLIF(btrim(lead_item->>'email'), ''),
+                NULLIF(btrim(lead_item->>'email_address'), ''),
+                ''
+            ))) AS email
+        FROM public.lead_results AS lead_run
+        CROSS JOIN LATERAL jsonb_array_elements(
+            CASE
+                WHEN jsonb_typeof(lead_run.leads) = 'array' THEN lead_run.leads
+                ELSE '[]'::jsonb
+            END
+        ) AS expanded(lead_item)
+        WHERE lead_run.user_id IS NOT NULL
+          AND lower(btrim(coalesce(
+              NULLIF(btrim(lead_item->>'Email'), ''),
+              NULLIF(btrim(lead_item->>'email'), ''),
+              NULLIF(btrim(lead_item->>'email_address'), ''),
+              ''
+          ))) <> ''
+    """))
+    owners_by_email: dict[str, set[str]] = {}
     for row in result.fetchall():
-        for item in (row.leads or []):
-            if isinstance(item, dict):
-                e = item.get("Email") or item.get("email") or item.get("email_address")
-                if e:
-                    emails.add(str(e).lower())
-    return emails
+        email = str(row.email).strip().lower()
+        owners_by_email.setdefault(email, set()).add(str(row.user_id))
+    return {
+        email
+        for email, owners in owners_by_email.items()
+        if owners == {str(user_id)}
+    }
 
 
 def _review_log_scope(user_id: str, user_emails: set):
@@ -841,15 +864,25 @@ class ProposalCallbackRequest(BaseModel):
 @router.post("/callback")
 async def proposal_callback(body: ProposalCallbackRequest, x_callback_secret: Optional[str] = Header(None), db: AsyncSession = Depends(get_db)):
     verify_callback_secret(x_callback_secret)
-    result = await db.execute(select(proposal_results).where(proposal_results.c.request_id == body.request_id))
+    try:
+        request_uuid = uuid.UUID(body.request_id)
+        callback_user_id = uuid.UUID(body.user_id)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid proposal request or user id")
+    result = await db.execute(
+        select(proposal_results).where(
+            proposal_results.c.request_id == request_uuid,
+            proposal_results.c.user_id == callback_user_id,
+        )
+    )
     row = result.first()
     if not row:
         raise HTTPException(status_code=404, detail="Proposal request not found")
 
     await db.execute(
         update(proposal_results).where(
-            proposal_results.c.request_id == body.request_id,
-            proposal_results.c.user_id == row.user_id,
+            proposal_results.c.request_id == request_uuid,
+            proposal_results.c.user_id == callback_user_id,
         ).values(
             proposal_json=body.proposal_json,
             guardrail_errors=body.guardrail_errors,
