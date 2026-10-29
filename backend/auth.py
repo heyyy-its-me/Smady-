@@ -37,8 +37,15 @@ def get_jwt_secret() -> str:
 
 def _configured_secret(name: str) -> str:
     value = os.environ.get(name, "")
-    if len(value) < 64 or len(set(value)) < 16:
-        raise RuntimeError(f"{name} must be a securely generated value of at least 64 characters")
+    has_short_repeating_pattern = any(
+        all(value[index] == value[index % period] for index in range(period, len(value)))
+        for period in range(1, min(32, len(value) // 2) + 1)
+    )
+    if len(value) < 64 or len(set(value)) < 16 or has_short_repeating_pattern:
+        raise RuntimeError(
+            f"{name} must be a securely generated value of at least 64 characters "
+            "and must not be a short repeating pattern"
+        )
     return value
 
 

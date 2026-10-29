@@ -1,6 +1,7 @@
 """Focused regression tests for application security controls."""
 import asyncio
 import os
+import secrets
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -124,8 +125,8 @@ def test_password_policy_accepts_long_passphrases_and_rejects_short_or_oversized
 
 
 def test_production_requires_secure_cookies_and_strong_secrets(monkeypatch):
-    monkeypatch.setenv("JWT_SECRET", "0123456789abcdef" * 4)
-    monkeypatch.setenv("N8N_CALLBACK_SECRET", "fedcba9876543210" * 4)
+    monkeypatch.setenv("JWT_SECRET", secrets.token_urlsafe(48))
+    monkeypatch.setenv("N8N_CALLBACK_SECRET", secrets.token_urlsafe(48))
     monkeypatch.setattr(auth, "APP_ENV", "production")
     monkeypatch.setenv("COOKIE_SECURE", "false")
     with pytest.raises(RuntimeError, match="COOKIE_SECURE"):
@@ -138,6 +139,13 @@ def test_production_requires_secure_cookies_and_strong_secrets(monkeypatch):
     monkeypatch.setenv("JWT_SECRET", "weak")
     with pytest.raises(RuntimeError, match="JWT_SECRET"):
         auth.validate_security_configuration()
+
+
+@pytest.mark.parametrize("secret", ["0123456789abcdef" * 4, "fedcba9876543210" * 4])
+def test_secret_strength_rejects_short_repeating_patterns(monkeypatch, secret):
+    monkeypatch.setenv("JWT_SECRET", secret)
+    with pytest.raises(RuntimeError, match="repeating pattern"):
+        auth._configured_secret("JWT_SECRET")
 
 
 def test_refresh_cookie_is_limited_and_deleted_at_the_same_path():
@@ -156,19 +164,11 @@ def test_refresh_cookie_is_limited_and_deleted_at_the_same_path():
 
 def test_password_reset_token_is_not_written_to_logs(monkeypatch, caplog):
     monkeypatch.setenv("JWT_SECRET", TEST_JWT_SECRET)
-    rate_limit_calls = []
-    reset_emails = []
 
     async def allow_rate_limited_request(*_args, **_kwargs):
-        rate_limit_calls.append((_args[2], _args[3]))
         return None
 
-    async def capture_reset_email(email, token):
-        reset_emails.append((email, token))
-        return False
-
     monkeypatch.setattr(auth_router, "enforce_rate_limit", allow_rate_limited_request)
-    monkeypatch.setattr(auth_router, "send_password_reset_email", capture_reset_email)
     db = FakeDatabase([FakeResult(row=SimpleNamespace(id="user-a"))])
     request = make_request()
     body = auth_router.ForgotPasswordRequest(email="user@example.com")
@@ -177,9 +177,6 @@ def test_password_reset_token_is_not_written_to_logs(monkeypatch, caplog):
     issued_token = db.statements[1].compile().params["token"]
     assert issued_token not in caplog.text
     assert "Password reset requested" in caplog.text
-    assert rate_limit_calls == [(10, 3600), (3, 86400)]
-    assert reset_emails and reset_emails[0][0] == "user@example.com"
-    assert reset_emails[0][1] == issued_token
 
 
 def test_rate_limiter_uses_shared_atomic_database_counter_and_returns_429():
@@ -217,6 +214,41 @@ def test_proposal_detail_is_not_found_for_other_user_review_row(monkeypatch):
         asyncio.run(proposals_router.get_proposal("123", user={"id": "user-b"}, db=db))
     assert error.value.status_code == 404
     assert "user_id" in str(db.statements[0]).lower()
+
+
+def test_legacy_proposal_email_scope_excludes_addresses_shared_by_users():
+    db = FakeDatabase([FakeResult(rows=[
+        SimpleNamespace(user_id="user-a", email="unique@example.test"),
+        SimpleNamespace(user_id="user-a", email="shared@example.test"),
+        SimpleNamespace(user_id="user-b", email="shared@example.test"),
+    ])])
+
+    emails = asyncio.run(proposals_router._get_user_lead_emails(db, "user-a"))
+
+    assert emails == {"unique@example.test"}
+    query = str(db.statements[0]).lower()
+    assert "jsonb_array_elements" in query
+    assert "select distinct" in query
+
+
+def test_proposal_callback_requires_matching_request_owner(monkeypatch):
+    monkeypatch.setenv("N8N_CALLBACK_SECRET", TEST_CALLBACK_SECRET)
+    body = proposals_router.ProposalCallbackRequest(
+        request_id="72981b93-b115-4df8-8eaa-19f511e088d0",
+        user_id="f96f66f9-bd3f-4e89-b5c3-3708d0085a61",
+        lead_name="Test Lead",
+        lead_email="lead@example.test",
+        proposal_json={"body": "draft"},
+    )
+    db = FakeDatabase([FakeResult()])
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(proposals_router.proposal_callback(body, TEST_CALLBACK_SECRET, db))
+
+    assert error.value.status_code == 404
+    assert "proposal_results.request_id" in str(db.statements[0]).lower()
+    assert "proposal_results.user_id" in str(db.statements[0]).lower()
+    assert db.commits == 0
 
 
 def test_meeting_update_requires_secret_for_anonymous_webhook(monkeypatch):

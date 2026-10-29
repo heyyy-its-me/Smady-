@@ -4,8 +4,6 @@ import { Logo } from "@/components/smady/Logo";
 
 /* ─── Injected global styles (keyframes + custom classes) ─── */
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
   .lv2-root {
     font-family: 'Inter', sans-serif;
     background: #080808;
