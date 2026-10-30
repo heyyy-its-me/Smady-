@@ -134,20 +134,23 @@ async def _get_user_lead_emails(db: AsyncSession, user_id: str) -> set:
         SELECT DISTINCT
             lead_run.user_id,
             lower(btrim(coalesce(
-                lead_item->>'Email',
-                lead_item->>'email',
-                lead_item->>'email_address',
+                NULLIF(btrim(lead_item->>'Email'), ''),
+                NULLIF(btrim(lead_item->>'email'), ''),
+                NULLIF(btrim(lead_item->>'email_address'), ''),
                 ''
             ))) AS email
         FROM public.lead_results AS lead_run
         CROSS JOIN LATERAL jsonb_array_elements(
-            COALESCE(lead_run.leads, '[]'::jsonb)
+            CASE
+                WHEN jsonb_typeof(lead_run.leads) = 'array' THEN lead_run.leads
+                ELSE '[]'::jsonb
+            END
         ) AS expanded(lead_item)
         WHERE lead_run.user_id IS NOT NULL
           AND lower(btrim(coalesce(
-              lead_item->>'Email',
-              lead_item->>'email',
-              lead_item->>'email_address',
+              NULLIF(btrim(lead_item->>'Email'), ''),
+              NULLIF(btrim(lead_item->>'email'), ''),
+              NULLIF(btrim(lead_item->>'email_address'), ''),
               ''
           ))) <> ''
     """))

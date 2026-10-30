@@ -42,6 +42,9 @@ own GitHub account. Everything below starts from that GitHub repo.
    | `GOOGLE_MAILER_SETUP_SECRET` | A separate random secret of at least 64 characters to protect one-time mailer setup. |
    | `GOOGLE_TOKEN_ENCRYPTION_KEY` | A Fernet key generated with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`; keep it stable and secret. |
    | `PUBLIC_FRONTEND_URL` | The deployed frontend origin, e.g. `https://smady.vercel.app` (used in reset links). |
+   | `MAILJET_API_KEY` / `MAILJET_API_SECRET` | Mailjet API credentials for transactional password-reset emails; store as Render secrets and rotate any credentials previously shared outside your secret manager. |
+   | `MAILJET_FROM_EMAIL` | Sender address verified in your Mailjet account. |
+   | `MAILJET_FROM_NAME` | Optional display name; defaults to `Smady`. |
    | `PUBLIC_BACKEND_URL` | Your Render service's public URL, e.g. `https://smady-backend.onrender.com` (needed so the backend can tell n8n where to call back) |
    | `CORS_ORIGINS` | Exact Vercel/custom frontend origins, comma-separated; never use `*`. |
    | `JWT_SECRET` | Generate a new independent random secret of at least 64 characters. Rotating this logs out existing sessions. |
