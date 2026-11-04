@@ -1,12 +1,13 @@
 import asyncpg
 import asyncio
 import json
+import os
 
 async def explore_db():
     conn = await asyncpg.connect(
         host='smady-db.cb6c8wk4cue1.eu-north-1.rds.amazonaws.com',
         user='postgres',
-        password='Onaamika#1506',
+        password=os.environ["DB_PASSWORD"],
         database='postgres',
         port=5432
     )
