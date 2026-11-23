@@ -427,8 +427,10 @@ function NavBar() {
       </div>
       {/* Links */}
       <div className="hidden md:flex items-center gap-7">
-        {["Platform", "Solutions", "Pricing", "Blog"].map(l => (
-          <a key={l} href="#" className="text-[14px] text-neutral-400 font-medium transition-colors hover:text-white">{l}</a>
+        {["Platform", "What We Offer", "Pricing", "Blog"].map(l => (
+          l === "What We Offer"
+            ? <Link key={l} to="/what-we-offer" className="text-[14px] text-neutral-400 font-medium transition-colors hover:text-white">{l}</Link>
+            : <a key={l} href="#" className="text-[14px] text-neutral-400 font-medium transition-colors hover:text-white">{l}</a>
         ))}
       </div>
       {/* Right actions */}

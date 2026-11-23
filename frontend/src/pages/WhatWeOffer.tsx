@@ -1,5 +1,7 @@
 import { ArrowUpRight, Building2, Globe2, Mail, MapPin, Users, BriefcaseBusiness, BadgeCheck, Workflow } from "lucide-react";
 import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
+import { Logo } from "@/components/smady/Logo";
 
 const actors = [
   {
@@ -55,6 +57,14 @@ function Tag({ children }: { children: ReactNode }) {
 export default function WhatWeOffer() {
   return (
     <div className="space-y-12 pb-10" data-testid="what-we-offer-page">
+      <header className="flex items-center justify-between border-b border-border/70 py-4">
+        <Link to="/" aria-label="Smady home"><Logo /></Link>
+        <nav className="flex items-center gap-4 text-sm font-medium text-body">
+          <Link to="/" className="hover:text-primary-600">Home</Link>
+          <Link to="/login" className="hover:text-primary-600">Log in</Link>
+          <Link to="/signup" className="rounded-full bg-primary-500 px-4 py-2 text-white hover:bg-primary-600">Get started</Link>
+        </nav>
+      </header>
       <section className="relative overflow-hidden rounded-3xl border border-border bg-white p-7 shadow-sm sm:p-10">
         <div className="absolute -right-16 -top-24 h-72 w-72 rounded-full bg-primary-500/10 blur-3xl" />
         <div className="relative max-w-3xl">

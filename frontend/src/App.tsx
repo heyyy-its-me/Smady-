@@ -38,6 +38,7 @@ function AnimatedRoutes() {
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<LandingV2 />} />
         <Route path="/preview" element={<LandingV2 />} />
+        <Route path="/what-we-offer" element={<PageTransition><WhatWeOffer /></PageTransition>} />
         <Route path="/privacy" element={<PageTransition><PrivacyPolicy /></PageTransition>} />
         <Route path="/terms" element={<PageTransition><TermsOfService /></PageTransition>} />
         <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
@@ -52,7 +53,6 @@ function AnimatedRoutes() {
           <Route path="/meetings" element={<PageTransition><Meetings /></PageTransition>} />
           <Route path="/proposals" element={<PageTransition><Proposals /></PageTransition>} />
           <Route path="/reports" element={<PageTransition><Reports /></PageTransition>} />
-          <Route path="/what-we-offer" element={<PageTransition><WhatWeOffer /></PageTransition>} />
           <Route path="/profile" element={<PageTransition><Profile /></PageTransition>} />
         </Route>
       </Routes>
