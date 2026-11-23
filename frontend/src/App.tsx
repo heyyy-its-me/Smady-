@@ -21,6 +21,7 @@ import Profile from "@/pages/Profile";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import ResetPassword from "@/pages/ResetPassword";
+import WhatWeOffer from "@/pages/WhatWeOffer";
 
 function PageTransition({ children }: { children: ReactNode }) {
   return (
@@ -51,6 +52,7 @@ function AnimatedRoutes() {
           <Route path="/meetings" element={<PageTransition><Meetings /></PageTransition>} />
           <Route path="/proposals" element={<PageTransition><Proposals /></PageTransition>} />
           <Route path="/reports" element={<PageTransition><Reports /></PageTransition>} />
+          <Route path="/what-we-offer" element={<PageTransition><WhatWeOffer /></PageTransition>} />
           <Route path="/profile" element={<PageTransition><Profile /></PageTransition>} />
         </Route>
       </Routes>
