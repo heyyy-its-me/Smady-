@@ -42,8 +42,8 @@ export default function Pricing() {
                 <li className="flex items-start gap-2.5"><Check className="mt-0.5 h-4 w-4 shrink-0 text-orange-400" />AI-powered sales tools</li>
                 <li className="flex items-start gap-2.5"><Check className="mt-0.5 h-4 w-4 shrink-0 text-orange-400" />{plan.term}</li>
               </ul>
-              <Link to={`/signup?plan=${plan.id}`} data-testid={`pricing-start-trial-${plan.id}`} className={`mt-8 inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition ${plan.recommended ? "bg-orange-500 text-white hover:bg-orange-400" : "border border-white/15 bg-white/[0.04] text-white hover:border-orange-400/40 hover:bg-orange-400/10"}`}>
-                Start Your Free Trial <ArrowRight className="h-4 w-4" />
+              <Link to={`/signup?plan=${plan.id}`} data-testid={`pricing-buy-now-${plan.id}`} className={`mt-8 inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition ${plan.recommended ? "bg-orange-500 text-white hover:bg-orange-400" : "border border-white/15 bg-white/[0.04] text-white hover:border-orange-400/40 hover:bg-orange-400/10"}`}>
+                Buy Now <ArrowRight className="h-4 w-4" />
               </Link>
             </article>
           ))}
