@@ -16,7 +16,6 @@ const appNavItems = [
   { label: "Meetings", path: "/meetings" },
   { label: "Proposals", path: "/proposals" },
   { label: "Reports", path: "/reports" },
-  { label: "What We Offer", path: "/what-we-offer" },
 ];
 
 export function AppPillNav() {
