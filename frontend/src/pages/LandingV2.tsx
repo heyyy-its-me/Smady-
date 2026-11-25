@@ -430,6 +430,8 @@ function NavBar() {
         {["Platform", "What We Offer", "Pricing", "Blog"].map(l => (
           l === "What We Offer"
             ? <Link key={l} to="/what-we-offer" className="text-[14px] text-neutral-400 font-medium transition-colors hover:text-white">{l}</Link>
+            : l === "Pricing"
+              ? <Link key={l} to="/pricing" className="text-[14px] text-neutral-400 font-medium transition-colors hover:text-white" data-testid="landing-pricing-link">{l}</Link>
             : <a key={l} href="#" className="text-[14px] text-neutral-400 font-medium transition-colors hover:text-white">{l}</a>
         ))}
       </div>
@@ -945,59 +947,6 @@ function ProblemSection() {
   );
 }
 
-function PricingSection() {
-  return (
-    <section className="lv2-section-reveal relative z-10 mx-auto max-w-screen-xl px-6 py-20">
-      {/* Section header */}
-      <div className="text-center mb-14">
-        <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[12px] font-medium text-neutral-400 mb-5 inline-block">
-          Pricing is coming soon
-        </span>
-        <h2 className="text-[40px] font-[800] leading-tight tracking-[-0.03em] text-white md:text-[52px]">
-          The right plan for<br /><span className="lv2-orange-text">your sales journey.</span>
-        </h2>
-        <p className="mt-4 text-[16px] text-neutral-400 max-w-xl mx-auto">
-          We&apos;re shaping pricing around how teams actually sell. While the details are being finalized, here&apos;s what <span className="font-brand text-white">Smady</span> is built to help you do.
-        </p>
-      </div>
-      {/* Coming-soon panel */}
-      <div className="lv2-card relative overflow-hidden rounded-3xl p-8 md:p-10" style={{ background: "linear-gradient(135deg, #17100a 0%, #0f0f10 55%, #0a0a0b 100%)", border: "1px solid rgba(249,115,22,0.2)" }}>
-        <div className="lv2-glow-orange lv2-parallax absolute -right-24 -top-32" data-lv2-parallax="0.06" style={{ width: 320, height: 320, opacity: 0.18 }} />
-        <div className="relative z-10 flex flex-col items-center text-center">
-          <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-orange-500/25 bg-orange-500/10">
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="1.8"><path d="M12 8v4l2.5 2.5"/><circle cx="12" cy="12" r="8.5"/><path d="M4.8 4.8 3 3m16.2 1.8L21 3"/></svg>
-          </div>
-          <p className="text-[24px] font-[800] tracking-tight text-white">Pricing plans are on the way.</p>
-          <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-neutral-400">
-            We&apos;re making sure every plan reflects real sales workflows—not arbitrary limits. The pricing details will be announced when they&apos;re ready.
-          </p>
-          <Link
-            to="/signup"
-            className="lv2-btn-primary mt-7 flex items-center gap-2 rounded-full px-7 py-3 text-[14px] font-semibold text-white"
-          >
-            Explore <span className="font-brand">Smady</span>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </Link>
-        </div>
-
-        <div className="relative z-10 mt-10 grid grid-cols-1 gap-3 border-t border-white/10 pt-8 md:grid-cols-3">
-          {[
-            { title: "Find the right customers", desc: "Define your ICP and discover leads that fit your product." },
-            { title: "Reach them with context", desc: "Create relevant outreach and move interest toward meetings." },
-            { title: "Move the deal forward", desc: "Turn conversations into proposals and know what to do next." },
-          ].map((benefit, i) => (
-            <div key={benefit.title} className="rounded-2xl bg-white/[0.03] p-5">
-              <span className="text-[11px] font-bold uppercase tracking-widest text-orange-400">0{i + 1}</span>
-              <h3 className="mt-3 text-[15px] font-bold text-white">{benefit.title}</h3>
-              <p className="mt-2 text-[12px] leading-relaxed text-neutral-500">{benefit.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function ComparisonSection() {
   return (
     <section className="lv2-section-reveal relative z-10 mx-auto max-w-screen-xl px-6 py-20">
@@ -1465,7 +1414,6 @@ export default function LandingV2() {
       <ProblemSection />
       <ComparisonSection />
       <HowItWorks />
-      <PricingSection />
       <MetricsSection />
       <CTASection />
       <Footer />

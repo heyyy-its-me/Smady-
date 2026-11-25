@@ -37,6 +37,7 @@ export function MarketingNav() {
               {l.label}
             </a>
           ))}
+          <Link to="/pricing" className="text-sm font-medium text-body hover:text-ink" data-testid="marketing-nav-pricing">Pricing</Link>
         </nav>
         <div className="hidden items-center gap-5 lg:flex">
           <Link to="/login" className="text-sm font-semibold text-body hover:text-ink" data-testid="nav-login-link">
@@ -69,6 +70,7 @@ export function MarketingNav() {
                 {l.label}
               </a>
             ))}
+            <Link to="/pricing" onClick={() => setOpen(false)} data-testid="marketing-mobile-nav-pricing" className="block py-2 text-sm font-medium text-body">Pricing</Link>
             <Link to="/login" onClick={() => setOpen(false)} className="block py-2 text-sm font-semibold text-body">
               Log In
             </Link>

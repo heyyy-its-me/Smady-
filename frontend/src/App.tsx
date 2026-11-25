@@ -22,6 +22,7 @@ import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import ResetPassword from "@/pages/ResetPassword";
 import WhatWeOffer from "@/pages/WhatWeOffer";
+import Pricing from "@/pages/Pricing";
 
 function PageTransition({ children }: { children: ReactNode }) {
   return (
@@ -39,6 +40,7 @@ function AnimatedRoutes() {
         <Route path="/" element={<LandingV2 />} />
         <Route path="/preview" element={<LandingV2 />} />
         <Route path="/what-we-offer" element={<PageTransition><WhatWeOffer /></PageTransition>} />
+        <Route path="/pricing" element={<PageTransition><Pricing /></PageTransition>} />
         <Route path="/privacy" element={<PageTransition><PrivacyPolicy /></PageTransition>} />
         <Route path="/terms" element={<PageTransition><TermsOfService /></PageTransition>} />
         <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
